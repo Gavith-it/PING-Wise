@@ -1,0 +1,54 @@
+{
+  "name": "pingwise-clinic-management",
+  "version": "2.0.0",
+  "description": "Medical Clinic Management System - Next.js application with TypeScript",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "mongoose": "^8.0.3",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "express-validator": "^7.0.1",
+    "express-rate-limit": "^7.1.5",
+    "date-fns": "^2.30.0",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.294.0",
+    "react-countup": "^6.5.3",
+    "react-hot-toast": "^2.4.1",
+    "recharts": "^2.10.3",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/react": "^18.2.46",
+    "@types/react-dom": "^18.2.18",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/express": "^4.17.21",
+    "typescript": "^5.3.3",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4"
+  },
+  "keywords": [
+    "medical",
+    "clinic",
+    "management",
+    "nextjs",
+    "typescript",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT"
+}
