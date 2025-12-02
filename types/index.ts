@@ -11,6 +11,8 @@ export interface User {
   status: 'active' | 'leave' | 'inactive';
   initials?: string;
   avatarColor?: string;
+  rating?: number; // 1-5 star rating
+  appointmentCount?: number; // Total appointments/bookings held
   createdAt?: Date;
   updatedAt?: Date;
 }

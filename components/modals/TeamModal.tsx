@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { teamService } from '@/lib/services/api';
 import toast from 'react-hot-toast';
@@ -14,16 +14,31 @@ interface TeamModalProps {
 
 export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalProps) {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: teamMember?.name || '',
+    email: teamMember?.email || '',
     password: '',
-    role: 'staff' as 'admin' | 'doctor' | 'staff',
-    department: '',
-    specialization: '',
-    phone: '',
-    experience: '',
+    role: (teamMember?.role || 'staff') as 'admin' | 'doctor' | 'staff',
+    department: teamMember?.department || '',
+    specialization: teamMember?.specialization || '',
+    phone: teamMember?.phone || '',
+    experience: teamMember?.experience || '',
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (teamMember) {
+      setFormData({
+        name: teamMember.name || '',
+        email: teamMember.email || '',
+        password: '',
+        role: teamMember.role || 'staff',
+        department: teamMember.department || '',
+        specialization: teamMember.specialization || '',
+        phone: teamMember.phone || '',
+        experience: teamMember.experience || '',
+      });
+    }
+  }, [teamMember]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
