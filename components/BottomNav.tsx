@@ -2,10 +2,13 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Users, Calendar, Megaphone, UserCheck, FileText } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   const menuItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
@@ -19,8 +22,68 @@ export default function BottomNav() {
     return pathname === path;
   };
 
+  useEffect(() => {
+    // Reset visibility when pathname changes
+    setIsVisible(true);
+    lastScrollY.current = 0;
+  }, [pathname]);
+
+  useEffect(() => {
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Get scroll position from window or document
+          const currentScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+          
+          // Show nav when at top of page
+          if (currentScrollY < 10) {
+            setIsVisible(true);
+            lastScrollY.current = currentScrollY;
+            ticking = false;
+            return;
+          }
+          
+          // Calculate scroll direction
+          const scrollDifference = currentScrollY - lastScrollY.current;
+          
+          // Hide nav when scrolling down (after 50px threshold for better responsiveness)
+          if (scrollDifference > 5 && currentScrollY > 50) {
+            setIsVisible(false);
+          } 
+          // Show nav when scrolling up
+          else if (scrollDifference < -5) {
+            setIsVisible(true);
+          }
+          
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    // Add scroll listener to window
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Also listen to touchmove for mobile scrolling
+    window.addEventListener('touchmove', handleScroll, { passive: true });
+    
+    // Initial check
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('touchmove', handleScroll);
+    };
+  }, [pathname]);
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden shadow-lg safe-area-inset-bottom">
+    <nav 
+      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden shadow-lg safe-area-inset-bottom transition-transform duration-300 ease-in-out ${
+        isVisible ? 'translate-y-0' : 'translate-y-full'
+      }`}
+    >
       <div className="flex items-center justify-around px-1 py-1.5">
         {menuItems.map((item) => {
           const Icon = item.icon;

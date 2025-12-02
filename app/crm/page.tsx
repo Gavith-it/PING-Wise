@@ -179,39 +179,33 @@ export default function CRMPage() {
                   className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 bg-white rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base"
                 />
               </div>
-              {/* Action Buttons - Single Row */}
+              {/* Action Buttons - Add Patient (left) and Upload (right) */}
               <div className="flex gap-2 md:gap-2.5">
-                <button
-                  onClick={() => setShowFilterModal(true)}
-                  className="flex-1 bg-white text-gray-700 py-2 px-3 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1.5 border border-gray-200 shadow-sm hover:shadow-md text-xs md:text-sm"
-                >
-                  <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                  <span className="truncate">Filter</span>
-                </button>
-                <button
-                  onClick={() => setShowBulkUploadModal(true)}
-                  className="flex-1 bg-white text-gray-700 py-2 px-3 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1.5 border border-gray-200 shadow-sm hover:shadow-md text-xs md:text-sm"
-                >
-                  <Upload className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                  <span className="truncate">Upload</span>
-                </button>
                 <button
                   onClick={() => {
                     setSelectedPatient(null);
                     setShowAddModal(true);
                   }}
-                  className="flex-1 bg-primary text-white py-2 px-3 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center justify-center space-x-1.5 shadow-md hover:shadow-lg text-xs md:text-sm"
+                  className="flex-1 bg-primary text-white py-2.5 px-4 md:py-3 md:px-6 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center justify-center space-x-2 shadow-md hover:shadow-lg text-sm md:text-base"
                 >
-                  <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                  <Plus className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                   <span className="truncate">Add Patient</span>
+                </button>
+                <button
+                  onClick={() => setShowBulkUploadModal(true)}
+                  className="bg-white text-gray-700 py-2 px-3 md:py-2.5 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1.5 border border-gray-200 shadow-sm hover:shadow-md text-xs md:text-sm"
+                >
+                  <Upload className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                  <span className="truncate">Upload</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Status Filter Pills */}
+          {/* Status Filter Pills with Filter Button */}
           <div className="mb-4 md:mb-6">
-            <div className="flex flex-wrap gap-1.5 md:gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+              {/* Status Filter Pills */}
               {['all', 'active', 'booked', 'follow-up', 'inactive'].map((status) => (
                 <button
                   key={status}
@@ -232,6 +226,13 @@ export default function CRMPage() {
                   <span className="capitalize">{status === 'all' ? 'All' : status.replace('-', ' ')}</span>
                 </button>
               ))}
+              {/* Filter Button - Icon Only - Moved to Last */}
+              <button
+                onClick={() => setShowFilterModal(true)}
+                className="bg-white text-gray-700 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center border border-gray-200 shadow-sm hover:shadow-md"
+              >
+                <Filter className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
             </div>
           </div>
 

@@ -34,12 +34,43 @@ export default function CampaignsPage() {
     }
   };
 
+  // TemplateCard Component
+  type TemplateCardProps = {
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    subtitle: string;
+    gradientClasses: string;
+    isSelected?: boolean;
+    onClick?: () => void;
+  };
+
+  const TemplateCard = ({ icon: Icon, title, subtitle, gradientClasses, isSelected, onClick }: TemplateCardProps) => {
+    return (
+      <button
+        onClick={onClick}
+        className={`bg-gradient-to-r ${gradientClasses} rounded-[20px] md:rounded-[22px] w-full h-[120px] md:h-[140px] max-w-[260px] mx-auto relative overflow-hidden hover:scale-[1.02] transition-transform ${
+          isSelected ? 'ring-2 ring-white ring-opacity-50' : ''
+        }`}
+      >
+        {/* Icon: 16px from top and left */}
+        <div className="absolute top-4 left-4">
+          <Icon className="w-5 h-5 md:w-6 md:h-6 text-white stroke-2" />
+        </div>
+        {/* Title and Subtitle: 8-10px gap below icon, 16px left padding */}
+        <div className="absolute top-[44px] md:top-[48px] left-4">
+          <p className="text-white font-semibold text-sm md:text-base leading-tight text-left">{title}</p>
+          <p className="text-xs md:text-sm mt-1 text-left" style={{ color: '#FFFFFF99' }}>{subtitle}</p>
+        </div>
+      </button>
+    );
+  };
+
   const templates = [
     { 
       name: 'Festival Promotions', 
       subtitle: 'Seasonal',
       icon: Sparkles, 
-      gradient: 'from-purple-500 to-pink-500',
+      gradient: 'from-purple-500 to-blue-500',
       message: '🎉 Happy Festival! We\'re offering special health checkup packages this festive season. Book your appointment today and avail exclusive discounts!'
     },
     { 
@@ -60,7 +91,7 @@ export default function CampaignsPage() {
       name: 'Special Offers', 
       subtitle: 'Offers',
       icon: Percent, 
-      gradient: 'from-green-500 to-emerald-500',
+      gradient: 'from-green-500 to-teal-500',
       message: '🎁 Special Offer: Limited time discount on health packages! Book your appointment now and save up to 30%. Offer valid until month end.'
     },
     { 
@@ -254,27 +285,59 @@ export default function CampaignsPage() {
             </div>
           </div>
 
-          {/* Template Options Section */}
+          {/* Templates Section */}
           <div className="mb-4 md:mb-6">
-            <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-2 md:mb-3">Campaign Templates</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1.5 md:gap-2">
-              {templates.map((template) => {
-                const Icon = template.icon;
-                const isSelected = selectedTemplate === template.name;
-                return (
-                  <button
-                    key={template.name}
-                    onClick={() => handleTemplateClick(template)}
-                    className={`bg-gradient-to-br ${template.gradient} rounded-lg md:rounded-xl p-2 md:p-2.5 text-white text-center hover:scale-[1.02] transition-transform shadow-md hover:shadow-lg border-2 aspect-square flex flex-col items-center justify-center ${
-                      isSelected ? 'border-white border-opacity-50 ring-2 ring-white ring-opacity-30' : 'border-transparent'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 md:w-4 md:h-4 mb-1 flex-shrink-0" />
-                    <p className="font-semibold mb-0.5 text-[10px] md:text-xs leading-tight">{template.name}</p>
-                    <p className="text-[9px] md:text-[10px] opacity-90">{template.subtitle}</p>
-                  </button>
-                );
-              })}
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-4">Templates</h3>
+            {/* Mobile: Horizontal scroll with centered 2x2 grid */}
+            <div className="md:hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+              <div className="flex gap-0">
+                {/* First 4 templates in centered 2x2 grid */}
+                <div className="flex-shrink-0 snap-start w-full flex justify-center px-4">
+                  <div className="grid grid-cols-2 gap-4 w-full max-w-[600px]">
+                    {templates.slice(0, 4).map((template) => (
+                      <TemplateCard
+                        key={template.name}
+                        icon={template.icon}
+                        title={template.name}
+                        subtitle={template.subtitle}
+                        gradientClasses={template.gradient}
+                        isSelected={selectedTemplate === template.name}
+                        onClick={() => handleTemplateClick(template)}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {/* 5th template - accessible by scrolling */}
+                {templates.length > 4 && (
+                  <div className="flex-shrink-0 snap-start w-full flex justify-center px-4">
+                    <div className="grid grid-cols-2 gap-4 w-full max-w-[600px]">
+                      <TemplateCard
+                        icon={templates[4].icon}
+                        title={templates[4].name}
+                        subtitle={templates[4].subtitle}
+                        gradientClasses={templates[4].gradient}
+                        isSelected={selectedTemplate === templates[4].name}
+                        onClick={() => handleTemplateClick(templates[4])}
+                      />
+                      <div></div> {/* Empty space to maintain grid */}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Desktop: All cards in a single row */}
+            <div className="hidden md:grid md:grid-cols-5 gap-4">
+              {templates.map((template) => (
+                <TemplateCard
+                  key={template.name}
+                  icon={template.icon}
+                  title={template.name}
+                  subtitle={template.subtitle}
+                  gradientClasses={template.gradient}
+                  isSelected={selectedTemplate === template.name}
+                  onClick={() => handleTemplateClick(template)}
+                />
+              ))}
             </div>
           </div>
 

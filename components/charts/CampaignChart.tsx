@@ -1,0 +1,356 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+
+interface CampaignData {
+  labels: string[];
+  opens: number[];
+  clicks: number[];
+  conversions: number[];
+  dates?: string[];
+}
+
+const allCampaignData: CampaignData = {
+  labels: ['Campaign A', 'Campaign B', 'Campaign C', 'Campaign D'],
+  opens: [850, 920, 780, 1050],
+  clicks: [420, 580, 390, 650],
+  conversions: [180, 290, 160, 340],
+  dates: ['2024-01-15', '2024-02-20', '2024-03-10', '2024-04-05'],
+};
+
+const colors = ['#6366F1', '#F59E0B', '#10B981']; // Opens (blue), Clicks (yellow), Conversions (green)
+
+interface TooltipPosition {
+  x: number;
+  y: number;
+  visible: boolean;
+  label: string;
+  value: string;
+}
+
+type SortBy = 'date' | 'performance' | 'conversions';
+
+export default function CampaignChart() {
+  const [sortBy, setSortBy] = useState<SortBy>('date');
+  const [isAnimating, setIsAnimating] = useState(true);
+  const [tooltip, setTooltip] = useState<TooltipPosition>({
+    x: 0,
+    y: 0,
+    visible: false,
+    label: '',
+    value: '',
+  });
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const getSortedData = (): CampaignData => {
+    const data = { ...allCampaignData };
+    const indices = data.labels.map((_, i) => i);
+
+    if (sortBy === 'date') {
+      // Sort by date (already sorted)
+      return data;
+    } else if (sortBy === 'performance') {
+      // Sort by total performance (opens + clicks + conversions)
+      const sortedIndices = indices.sort((a, b) => {
+        const totalA = data.opens[a] + data.clicks[a] + data.conversions[a];
+        const totalB = data.opens[b] + data.clicks[b] + data.conversions[b];
+        return totalB - totalA;
+      });
+      return {
+        labels: sortedIndices.map((i) => data.labels[i]),
+        opens: sortedIndices.map((i) => data.opens[i]),
+        clicks: sortedIndices.map((i) => data.clicks[i]),
+        conversions: sortedIndices.map((i) => data.conversions[i]),
+        dates: sortedIndices.map((i) => data.dates?.[i] || ''),
+      };
+    } else {
+      // Sort by conversions
+      const sortedIndices = indices.sort((a, b) => data.conversions[b] - data.conversions[a]);
+      return {
+        labels: sortedIndices.map((i) => data.labels[i]),
+        opens: sortedIndices.map((i) => data.opens[i]),
+        clicks: sortedIndices.map((i) => data.clicks[i]),
+        conversions: sortedIndices.map((i) => data.conversions[i]),
+        dates: sortedIndices.map((i) => data.dates?.[i] || ''),
+      };
+    }
+  };
+
+  const campaignData = getSortedData();
+
+  useEffect(() => {
+    setIsAnimating(true);
+    drawChart();
+    const timer = setTimeout(() => setIsAnimating(false), 1200);
+    return () => clearTimeout(timer);
+  }, [sortBy]);
+
+  const drawChart = (animate: boolean = false) => {
+    if (!svgRef.current) return;
+
+    const svg = svgRef.current;
+    svg.innerHTML = '';
+    
+    // Fade in the SVG
+    if (animate) {
+      setTimeout(() => {
+        if (svgRef.current) {
+          svgRef.current.style.opacity = '1';
+        }
+      }, 100);
+    } else {
+      svg.style.opacity = '1';
+    }
+
+    const width = 400;
+    const height = 350;
+    const padding = { top: 40, right: 20, bottom: 60, left: 60 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    const datasets = ['opens', 'clicks', 'conversions'] as const;
+
+    // Calculate max value
+    let maxValue = 0;
+    datasets.forEach((key) => {
+      maxValue = Math.max(maxValue, ...campaignData[key]);
+    });
+    maxValue *= 1.2;
+
+    // Draw grid lines
+    for (let i = 0; i <= 5; i++) {
+      const y = padding.top + (chartHeight / 5) * i;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', padding.left.toString());
+      line.setAttribute('y1', y.toString());
+      line.setAttribute('x2', (width - padding.right).toString());
+      line.setAttribute('y2', y.toString());
+      line.setAttribute('stroke', '#E5E7EB');
+      line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke-dasharray', '4 4');
+      svg.appendChild(line);
+
+      // Y-axis labels
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', (padding.left - 10).toString());
+      label.setAttribute('y', (y + 4).toString());
+      label.setAttribute('text-anchor', 'end');
+      label.setAttribute('font-size', '12');
+      label.setAttribute('fill', '#9CA3AF');
+      label.setAttribute('font-family', 'Inter, sans-serif');
+      label.textContent = Math.round(maxValue - (maxValue / 5) * i).toString();
+      svg.appendChild(label);
+    }
+
+    // Draw bars
+    const groupWidth = chartWidth / campaignData.labels.length;
+    const barWidth = groupWidth / (datasets.length + 1);
+
+    campaignData.labels.forEach((label, i) => {
+      datasets.forEach((dataset, j) => {
+        const value = campaignData[dataset][i];
+        const barHeight = (value / maxValue) * chartHeight;
+        const x = padding.left + i * groupWidth + j * barWidth + barWidth * 0.2;
+        const y = padding.top + chartHeight - barHeight;
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x.toString());
+        rect.setAttribute('y', isAnimating ? (padding.top + chartHeight).toString() : y.toString());
+        rect.setAttribute('width', (barWidth * 0.8).toString());
+        rect.setAttribute('height', isAnimating ? '0' : barHeight.toString());
+        rect.setAttribute('fill', colors[j]);
+        rect.setAttribute('rx', '4');
+        rect.setAttribute('style', 'cursor: pointer; transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0;');
+        
+        if (isAnimating) {
+          const delay = (i * 100) + (j * 50);
+          setTimeout(() => {
+            rect.setAttribute('y', y.toString());
+            rect.setAttribute('height', barHeight.toString());
+            rect.style.opacity = '1';
+          }, delay);
+        } else {
+          rect.setAttribute('y', y.toString());
+          rect.setAttribute('height', barHeight.toString());
+          rect.style.opacity = '1';
+        }
+
+        const handleMouseEnter = (e: MouseEvent | TouchEvent) => {
+          if (!svgRef.current) return;
+          
+          // Get the chart container (parent with relative positioning)
+          const chartContainer = svgRef.current.parentElement;
+          if (!chartContainer) return;
+          
+          const svgRect = svgRef.current.getBoundingClientRect();
+          const svgViewBox = svgRef.current.viewBox.baseVal;
+          const svgWidth = svgRect.width;
+          const svgHeight = svgRect.height;
+          
+          // Calculate center of the bar (top of the bar)
+          const barCenterX = x + (barWidth * 0.8) / 2;
+          const barTopY = y; // Top of the bar
+          
+          // Convert SVG coordinates to screen coordinates
+          const scaleX = svgWidth / svgViewBox.width;
+          const scaleY = svgHeight / svgViewBox.height;
+          
+          // Calculate position relative to chart container
+          const relativeX = (barCenterX * scaleX);
+          const relativeY = (barTopY * scaleY) - 12; // Position above the bar top
+          
+          // Position tooltip relative to chart container
+          setTooltip({
+            x: relativeX,
+            y: relativeY,
+            visible: true,
+            label: label,
+            value: `${dataset.charAt(0).toUpperCase() + dataset.slice(1)}: ${value.toLocaleString()}`,
+          });
+        };
+        
+        const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+          if (!svgRef.current) return;
+          
+          const chartContainer = svgRef.current.parentElement;
+          if (!chartContainer) return;
+          
+          const svgRect = svgRef.current.getBoundingClientRect();
+          const svgViewBox = svgRef.current.viewBox.baseVal;
+          const svgWidth = svgRect.width;
+          const svgHeight = svgRect.height;
+          
+          const barCenterX = x + (barWidth * 0.8) / 2;
+          const barTopY = y;
+          
+          const scaleX = svgWidth / svgViewBox.width;
+          const scaleY = svgHeight / svgViewBox.height;
+          
+          const relativeX = (barCenterX * scaleX);
+          const relativeY = (barTopY * scaleY) - 12;
+          
+          setTooltip((prev) => ({
+            ...prev,
+            x: relativeX,
+            y: relativeY,
+          }));
+        };
+
+        const handleMouseLeave = () => {
+          setTooltip((prev) => ({ ...prev, visible: false }));
+        };
+
+        rect.addEventListener('mouseenter', handleMouseEnter);
+        rect.addEventListener('mousemove', handleMouseMove);
+        rect.addEventListener('mouseleave', handleMouseLeave);
+        rect.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          handleMouseEnter(e);
+        });
+        rect.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          handleMouseMove(e);
+        });
+        rect.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          setTimeout(() => handleMouseLeave(), 2000);
+        });
+
+        rect.addEventListener('click', () => {
+          console.log(`Clicked: ${label} - ${dataset}: ${value}`);
+        });
+
+        svg.appendChild(rect);
+      });
+
+      // X-axis labels
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', (padding.left + i * groupWidth + groupWidth / 2).toString());
+      text.setAttribute('y', (height - padding.bottom + 25).toString());
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', '12');
+      text.setAttribute('fill', '#9CA3AF');
+      text.setAttribute('font-family', 'Inter, sans-serif');
+      text.textContent = label;
+      svg.appendChild(text);
+    });
+  };
+
+  return (
+    <>
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <h2 className="text-lg font-semibold text-[#1F2937] m-0">Campaign Performance</h2>
+        <div className="flex bg-[#F3F4F6] rounded-lg p-1 gap-1 flex-wrap">
+          <button
+            onClick={() => setSortBy('date')}
+            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+              sortBy === 'date'
+                ? 'bg-white text-[#6366F1] shadow-sm'
+                : 'bg-transparent text-[#6B7280] hover:text-[#6366F1]'
+            }`}
+          >
+            By Date
+          </button>
+          <button
+            onClick={() => setSortBy('performance')}
+            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+              sortBy === 'performance'
+                ? 'bg-white text-[#6366F1] shadow-sm'
+                : 'bg-transparent text-[#6B7280] hover:text-[#6366F1]'
+            }`}
+          >
+            By Performance
+          </button>
+          <button
+            onClick={() => setSortBy('conversions')}
+            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+              sortBy === 'conversions'
+                ? 'bg-white text-[#6366F1] shadow-sm'
+                : 'bg-transparent text-[#6B7280] hover:text-[#6366F1]'
+            }`}
+          >
+            By Conversions
+          </button>
+        </div>
+      </div>
+
+      <div className="relative w-full min-h-[300px]">
+        <svg
+          ref={svgRef}
+          className="w-full h-[350px] transition-opacity duration-500"
+          viewBox="0 0 400 350"
+          preserveAspectRatio="xMidYMid meet"
+        />
+        <div
+          className={`absolute bg-black/90 text-white px-3 py-2 rounded-lg text-[13px] pointer-events-none transition-opacity duration-200 z-[1000] shadow-lg whitespace-nowrap ${
+            tooltip.visible ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            left: `${tooltip.x}px`,
+            top: `${tooltip.y}px`,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <div className="font-semibold mb-1">{tooltip.label}</div>
+          <div className="text-xs opacity-90">{tooltip.value}</div>
+        </div>
+      </div>
+
+      <div className="flex justify-center gap-8 mt-5 flex-wrap">
+        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+          <div className="w-4 h-4 rounded bg-[#6366F1]" />
+          <span>Opens</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+          <div className="w-4 h-4 rounded bg-[#F59E0B]" />
+          <span>Clicks</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+          <div className="w-4 h-4 rounded bg-[#10B981]" />
+          <span>Conversions</span>
+        </div>
+      </div>
+    </>
+  );
+}
+

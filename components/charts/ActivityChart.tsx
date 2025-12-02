@@ -1,9 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import CountUp from 'react-countup';
-import { ActivityData } from '@/types';
+
+interface ActivityData {
+  total?: number;
+  active?: {
+    count?: number;
+    percentage?: number;
+  };
+  booked?: {
+    count?: number;
+    percentage?: number;
+  };
+  followUp?: {
+    count?: number;
+    percentage?: number;
+  };
+}
 
 interface ActivityChartProps {
   data: ActivityData;
@@ -17,23 +32,23 @@ export default function ActivityChart({ data }: ActivityChartProps) {
       name: 'Active',
       value: data.active?.count || 0,
       percentage: data.active?.percentage || 0,
-      color: '#10b981',
+      color: '#10b981', // Medical green
     },
     {
       name: 'Booked',
       value: data.booked?.count || 0,
       percentage: data.booked?.percentage || 0,
-      color: '#34d399',
+      color: '#34d399', // Light green
     },
     {
-      name: 'Follow-up',
+      name: 'Churned',
       value: data.followUp?.count || 0,
       percentage: data.followUp?.percentage || 0,
-      color: '#14b8a6',
+      color: '#14b8a6', // Teal green
     },
   ];
 
-  const onPieEnter = (_: any, index: number) => {
+  const onPieEnter = (_: unknown, index: number) => {
     setActiveIndex(index);
   };
 
@@ -42,17 +57,18 @@ export default function ActivityChart({ data }: ActivityChartProps) {
   };
 
   return (
-    <div className="flex flex-row items-start gap-3 md:gap-6">
-      <div className="relative w-28 h-28 md:w-48 md:h-48 lg:w-56 lg:h-56 flex-shrink-0">
+    <div className="flex flex-row items-center gap-4 md:gap-6">
+      {/* Chart */}
+      <div className="relative w-36 h-36 md:w-40 md:h-40 flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={chartData}
               cx="50%"
               cy="50%"
-              innerRadius="50%"
-              outerRadius="75%"
-              paddingAngle={1}
+              innerRadius={45}
+              outerRadius={60}
+              paddingAngle={2}
               dataKey="value"
               onMouseEnter={onPieEnter}
               onMouseLeave={onPieLeave}
@@ -65,53 +81,56 @@ export default function ActivityChart({ data }: ActivityChartProps) {
                 />
               ))}
             </Pie>
+            <Tooltip />
           </PieChart>
         </ResponsiveContainer>
         
+        {/* Center Label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-sm md:text-xl lg:text-2xl font-bold text-gray-900">
+          <span className="text-xl md:text-2xl font-bold text-gray-900">
             <CountUp
               start={0}
-              end={activeIndex !== null ? chartData[activeIndex].value : data.total || 0}
-              duration={activeIndex !== null ? 0.3 : 2.5}
+              end={data.total || 0}
+              duration={2.5}
               separator=","
-              delay={activeIndex !== null ? 0 : 0.3}
-              key={activeIndex !== null ? chartData[activeIndex].value : data.total || 0}
+              delay={0.3}
             />
           </span>
-          <span className="text-[9px] md:text-xs text-gray-500">
-            {activeIndex !== null ? chartData[activeIndex].name : 'Total'}
-          </span>
+          <span className="text-[10px] md:text-xs text-gray-500 mt-0.5">Total</span>
         </div>
       </div>
 
-      <div className="flex-1 space-y-1.5 md:space-y-3 min-w-0">
-        {chartData.map((item, index) => (
+      {/* Legend */}
+      <div className="flex-1 space-y-2 md:space-y-2.5">
+        {chartData.map((entry, index) => (
           <div
-            key={index}
-            className={`flex items-center justify-between p-1 md:p-2 rounded-lg transition-colors ${
-              activeIndex === index ? 'bg-gray-50' : ''
-            }`}
+            key={entry.name}
+            className="flex items-center gap-2"
+            onMouseEnter={() => setActiveIndex(index)}
+            onMouseLeave={() => setActiveIndex(null)}
+            style={{
+              opacity: activeIndex === index ? 1 : activeIndex === null ? 1 : 0.5,
+            }}
           >
-            <div className="flex items-center space-x-1.5 md:space-x-3 min-w-0 flex-1">
-              <div
-                className="w-2 h-2 md:w-3 md:h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: item.color }}
-              ></div>
-              <span className="text-xs md:text-sm font-medium text-gray-700 truncate">{item.name}</span>
+            <div
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: entry.color }}
+            />
+            <div className="flex-1">
+              <div className="font-semibold text-xs md:text-sm text-gray-900">{entry.name}</div>
             </div>
-            <div className="text-right flex-shrink-0 ml-2">
-              <span className="text-xs md:text-sm font-bold text-gray-900">
+            <div className="flex items-baseline gap-1">
+              <span className="text-sm md:text-base font-bold text-gray-900">
                 <CountUp
                   start={0}
-                  end={item.value}
-                  duration={2.5}
+                  end={entry.value}
+                  duration={2}
                   separator=","
-                  delay={0.4 + index * 0.1}
+                  delay={0.2}
                 />
               </span>
-              <span className="text-[9px] md:text-xs text-gray-500 ml-0.5 md:ml-1">
-                ({item.percentage}%)
+              <span className="text-[10px] md:text-xs text-gray-500">
+                ({entry.percentage}%)
               </span>
             </div>
           </div>
@@ -120,4 +139,3 @@ export default function ActivityChart({ data }: ActivityChartProps) {
     </div>
   );
 }
-

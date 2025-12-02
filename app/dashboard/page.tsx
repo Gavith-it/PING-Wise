@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarCheck, Users, Clock, DollarSign, CalendarPlus, UserPlus, ArrowRight } from 'lucide-react';
+import { CalendarCheck, Users, Clock, DollarSign, CalendarPlus, UserPlus, Plus } from 'lucide-react';
 import { dashboardService } from '@/lib/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import CountUp from 'react-countup';
@@ -14,6 +14,8 @@ import AppointmentModal from '@/components/modals/AppointmentModal';
 import PatientModal from '@/components/modals/PatientModal';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Appointment } from '@/types';
+import { FloatingButton, FloatingButtonItem } from '@/components/ui/floating-button';
+import { cn } from '@/lib/utils';
 
 interface KPICardProps {
   icon: React.ElementType;
@@ -123,52 +125,6 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
   );
 }
 
-function QuickActionCard({ icon: Icon, title, description, onClick, color = 'primary' }: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  onClick: () => void;
-  color?: 'primary' | 'success';
-}) {
-  const colorConfig = {
-    primary: {
-      bg: 'bg-gradient-to-br from-blue-500 to-blue-600',
-      hoverBg: 'hover:from-blue-600 hover:to-blue-700',
-      iconBg: 'bg-white/20',
-      text: 'text-white',
-      shadow: 'shadow-lg shadow-blue-500/30',
-      hoverShadow: 'hover:shadow-xl hover:shadow-blue-500/40',
-    },
-    success: {
-      bg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
-      hoverBg: 'hover:from-emerald-600 hover:to-emerald-700',
-      iconBg: 'bg-white/20',
-      text: 'text-white',
-      shadow: 'shadow-lg shadow-emerald-500/30',
-      hoverShadow: 'hover:shadow-xl hover:shadow-emerald-500/40',
-    },
-  };
-
-  const config = colorConfig[color];
-
-  return (
-    <button
-      onClick={onClick}
-      className={`${config.bg} ${config.hoverBg} ${config.shadow} ${config.hoverShadow} rounded-lg md:rounded-xl p-1.5 md:p-2.5 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group flex items-center justify-between w-full border-0 overflow-hidden`}
-    >
-      <div className="flex items-center space-x-1.5 md:space-x-2.5 flex-1 min-w-0">
-        <div className={`w-7 h-7 md:w-9 md:h-9 ${config.iconBg} rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition-all`}>
-          <Icon className={`w-3 h-3 md:w-4 md:h-4 ${config.text}`} />
-        </div>
-        <div className="flex-1 min-w-0 text-left overflow-hidden">
-          <p className={`font-bold text-[10px] md:text-xs ${config.text} truncate mb-0 leading-tight`}>{title}</p>
-          <p className={`text-[9px] md:text-[10px] ${config.text} truncate hidden sm:block`}>{description}</p>
-        </div>
-      </div>
-      <ArrowRight className={`w-3 h-3 md:w-4 md:h-4 ${config.text} opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0 ml-0.5 md:ml-0`} />
-    </button>
-  );
-}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -241,28 +197,11 @@ export default function DashboardPage() {
     <PrivateRoute>
       <Layout>
         <div className="space-y-4 md:space-y-6">
-          <div className="mb-3 md:mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+          <div className="mb-3 md:mb-4">
             <div className="flex-1">
               <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 md:mb-2">
                 Welcome back, {user?.name || 'Doctor'}! 👋
               </h2>
-              <p className="text-sm md:text-base text-gray-600">Here&apos;s what&apos;s happening today</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 md:gap-2.5 md:w-auto md:min-w-[320px]">
-              <QuickActionCard
-                icon={CalendarPlus}
-                title="Schedule Appointment"
-                description="Create a new appointment"
-                onClick={() => setShowAppointmentModal(true)}
-                color="primary"
-              />
-              <QuickActionCard
-                icon={UserPlus}
-                title="Add Patient"
-                description="Register a new patient"
-                onClick={() => setShowPatientModal(true)}
-                color="success"
-              />
             </div>
           </div>
 
@@ -299,9 +238,9 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/reports')}
-            className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 shadow-sm border border-gray-100 card-hover w-full text-left hover:shadow-md transition-shadow"
+            className="bg-white rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 card-hover w-full text-left hover:shadow-md transition-shadow"
           >
-            <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div className="flex items-center justify-between mb-2 md:mb-3">
               <div>
                 <h3 className="text-base md:text-lg font-bold text-gray-900">Patient Activity</h3>
                 <p className="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Distribution overview</p>
@@ -339,6 +278,39 @@ export default function DashboardPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Floating Action Button - Positioned before Team in footer */}
+        <div className="fixed bottom-14 right-4 md:bottom-6 md:right-6 z-50">
+          <FloatingButton
+            triggerContent={
+              <button className="flex items-center justify-center h-11 w-11 md:h-12 md:w-12 rounded-full bg-primary text-white shadow-lg hover:shadow-xl transition-shadow z-10">
+                <Plus className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            }>
+            <FloatingButtonItem key="add-patient">
+              <button
+                onClick={() => setShowPatientModal(true)}
+                className={cn(
+                  'h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg transition-shadow',
+                  'bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+                )}
+                title="Add Patient">
+                <UserPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              </button>
+            </FloatingButtonItem>
+            <FloatingButtonItem key="schedule-appointment">
+              <button
+                onClick={() => setShowAppointmentModal(true)}
+                className={cn(
+                  'h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg transition-shadow',
+                  'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                )}
+                title="Schedule Appointment">
+                <CalendarPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              </button>
+            </FloatingButtonItem>
+          </FloatingButton>
         </div>
 
         {/* Modals */}
