@@ -115,7 +115,7 @@ export default function FAQsPage() {
                   Still need help?
                 </h3>
                 <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-4">
-                  If you can't find the answer you're looking for, please contact our support team.
+                  If you can&apos;t find the answer you&apos;re looking for, please contact our support team.
                 </p>
                 <button className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors text-sm md:text-base">
                   Contact Support
