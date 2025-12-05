@@ -26,9 +26,11 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
 
   useEffect(() => {
+    // Load data in background after modal opens
     loadFormData();
   }, []);
 
@@ -49,7 +51,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
 
   const loadFormData = async () => {
     try {
-      setLoadingData(true);
+      setLoadingPatients(true);
+      setLoadingDoctors(true);
       const [patientsRes, doctorsRes] = await Promise.all([
         patientService.getPatients({ limit: 100 }),
         teamService.getTeamMembers({ role: 'doctor' }),
@@ -59,7 +62,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     } catch (error) {
       toast.error('Failed to load form data');
     } finally {
-      setLoadingData(false);
+      setLoadingPatients(false);
+      setLoadingDoctors(false);
     }
   };
 
@@ -86,16 +90,6 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     }
   };
 
-  if (loadingData) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-2xl p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -118,9 +112,10 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 required
                 value={formData.patient}
                 onChange={(e) => setFormData({ ...formData, patient: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                disabled={loadingPatients}
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="">Select Patient</option>
+                <option value="">{loadingPatients ? 'Loading patients...' : 'Select Patient'}</option>
                 {patients.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} ({p.age} years)
@@ -137,9 +132,10 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 required
                 value={formData.doctor}
                 onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                disabled={loadingDoctors}
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="">Select Doctor</option>
+                <option value="">{loadingDoctors ? 'Loading doctors...' : 'Select Doctor'}</option>
                 {doctors.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} - {d.department || 'General'}

@@ -400,6 +400,7 @@ export default function CampaignsPage() {
               onSchedule={handleSchedule}
               initialDate={scheduledDate}
               initialTime={scheduledTime}
+              message={message}
             />
           )}
         </div>

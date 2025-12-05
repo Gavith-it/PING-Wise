@@ -1,128 +1,309 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Clock } from 'lucide-react';
+import { X, Send, Calendar as CalendarIcon } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
 
 interface ScheduleModalProps {
   onClose: () => void;
   onSchedule: (date: string, time: string) => void;
   initialDate?: string;
   initialTime?: string;
+  message?: string;
 }
 
-export default function ScheduleModal({ onClose, onSchedule, initialDate, initialTime }: ScheduleModalProps) {
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+type ScheduleOption = 'now' | 'later';
+
+const TIME_SLOTS = [
+  '9:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '2:00 PM',
+  '3:00 PM',
+  '4:00 PM',
+  '5:00 PM',
+  '6:00 PM',
+];
+
+export default function ScheduleModal({ onClose, onSchedule, initialDate, initialTime, message = '' }: ScheduleModalProps) {
+  const [scheduleOption, setScheduleOption] = useState<ScheduleOption>('now');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string>('');
 
   useEffect(() => {
-    // Set default to current date and time
-    const now = new Date();
-    const defaultDate = initialDate || now.toISOString().split('T')[0];
-    const defaultTime = initialTime || `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
-    setDate(defaultDate);
-    setTime(defaultTime);
+    if (initialDate && initialTime) {
+      setScheduleOption('later');
+      setSelectedDate(new Date(initialDate));
+      setSelectedTime(initialTime);
+    }
   }, [initialDate, initialTime]);
 
   const handleSchedule = () => {
-    if (!date || !time) {
+    if (scheduleOption === 'now') {
+      onSchedule('', '');
+      onClose();
       return;
     }
 
-    // Check if scheduled time is in the future
-    const scheduledDateTime = new Date(`${date}T${time}`);
-    const now = new Date();
-
-    if (scheduledDateTime <= now) {
-      // If current or past time, send immediately
-      onSchedule('', '');
-    } else {
-      // If future time, schedule it
-      onSchedule(date, time);
+    if (!selectedDate || !selectedTime) {
+      return;
     }
+
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const timeStr = convertTimeTo24Hour(selectedTime);
+    onSchedule(dateStr, timeStr);
     onClose();
   };
 
-  const isFutureDateTime = () => {
-    if (!date || !time) return false;
-    const scheduledDateTime = new Date(`${date}T${time}`);
-    const now = new Date();
-    return scheduledDateTime > now;
+  const convertTimeTo24Hour = (time12h: string): string => {
+    const [time, period] = time12h.split(' ');
+    const [hours, minutes] = time.split(':');
+    let hour24 = parseInt(hours, 10);
+    
+    if (period === 'PM' && hour24 !== 12) {
+      hour24 += 12;
+    } else if (period === 'AM' && hour24 === 12) {
+      hour24 = 0;
+    }
+    
+    return `${String(hour24).padStart(2, '0')}:${minutes ? minutes.padStart(2, '0') : '00'}`;
   };
+
+  const isDateAvailable = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    // Past dates are not available
+    if (checkDate < today) return false;
+    
+    // For demo purposes, mark some dates as busy (e.g., 24th and 25th of any month)
+    const dayOfMonth = checkDate.getDate();
+    if (dayOfMonth === 24 || dayOfMonth === 25) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const isDateBusy = (date: Date): boolean => {
+    const dayOfMonth = date.getDate();
+    return dayOfMonth === 24 || dayOfMonth === 25;
+  };
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const calendarStart = startOfWeek(monthStart);
+  const calendarEnd = endOfWeek(monthEnd);
+  
+  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+
+  const handleDateClick = (date: Date) => {
+    if (isDateAvailable(date) || isToday(date)) {
+      setSelectedDate(date);
+    }
+  };
+
+  const getDateClassName = (date: Date): string => {
+    const baseClasses = 'w-full py-2 text-sm rounded-md transition-colors';
+    
+    if (!isSameMonth(date, currentMonth)) {
+      return `${baseClasses} text-gray-300 cursor-not-allowed`;
+    }
+    
+    if (isToday(date)) {
+      return `${baseClasses} bg-gray-200 text-gray-700 font-medium cursor-pointer hover:bg-gray-300`;
+    }
+    
+    if (isDateBusy(date)) {
+      return `${baseClasses} bg-gray-800 text-white cursor-not-allowed`;
+    }
+    
+    if (selectedDate && isSameDay(date, selectedDate)) {
+      return `${baseClasses} bg-primary text-white font-semibold cursor-pointer hover:bg-primary-dark`;
+    }
+    
+    if (isDateAvailable(date)) {
+      return `${baseClasses} bg-white text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-primary`;
+    }
+    
+    return `${baseClasses} text-gray-400 cursor-not-allowed`;
+  };
+
+  const canSchedule = scheduleOption === 'now' || (selectedDate && selectedTime);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-primary" />
-              <h3 className="text-xl font-bold text-gray-900">Schedule Campaign</h3>
-            </div>
+            <h3 className="text-xl font-bold text-gray-900">Schedule Campaign</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
           <div className="space-y-6">
+            {/* Campaign Preview */}
+            {message && (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="text-sm text-gray-700 italic">{message}</p>
+              </div>
+            )}
+
+            {/* Schedule Options */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-              />
+              <h4 className="text-base font-semibold text-gray-900 mb-4">Schedule Options</h4>
+              <div className="space-y-3">
+                <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="scheduleOption"
+                    value="now"
+                    checked={scheduleOption === 'now'}
+                    onChange={() => setScheduleOption('now')}
+                    className="w-4 h-4 text-primary focus:ring-primary focus:ring-2"
+                  />
+                  <Send className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Send Now</span>
+                </label>
+                
+                <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="scheduleOption"
+                    value="later"
+                    checked={scheduleOption === 'later'}
+                    onChange={() => setScheduleOption('later')}
+                    className="w-4 h-4 text-primary focus:ring-primary focus:ring-2"
+                  />
+                  <CalendarIcon className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Schedule for Later</span>
+                </label>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time
-              </label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-              />
-            </div>
+            {/* Date & Time Selection - Only show when "Schedule for Later" is selected */}
+            {scheduleOption === 'later' && (
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900 mb-4">Select Date & Time</h4>
+                  
+                  {/* Calendar */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="text-sm font-semibold text-gray-700">
+                        {format(currentMonth, 'MMMM yyyy')}
+                      </h5>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={prevMonth}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                          type="button"
+                        >
+                          <span className="text-gray-600 font-semibold">&lt;</span>
+                        </button>
+                        <button
+                          onClick={nextMonth}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                          type="button"
+                        >
+                          <span className="text-gray-600 font-semibold">&gt;</span>
+                        </button>
+                      </div>
+                    </div>
 
-            {date && time && (
-              <div className={`p-4 rounded-xl ${
-                isFutureDateTime() 
-                  ? 'bg-blue-50 border border-blue-200' 
-                  : 'bg-yellow-50 border border-yellow-200'
-              }`}>
-                <p className={`text-sm font-medium ${
-                  isFutureDateTime() ? 'text-blue-900' : 'text-yellow-900'
-                }`}>
-                  {isFutureDateTime() 
-                    ? 'Campaign will be scheduled and sent at the specified date and time.'
-                    : 'Selected time is in the past or current time. Campaign will be sent immediately.'}
-                </p>
+                    <div className="grid grid-cols-7 gap-1 mb-4">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                        <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+                          {day}
+                        </div>
+                      ))}
+                      {calendarDays.map((day) => (
+                        <button
+                          key={day.toISOString()}
+                          onClick={() => handleDateClick(day)}
+                          disabled={!isSameMonth(day, currentMonth) || (!isDateAvailable(day) && !isToday(day))}
+                          className={getDateClassName(day)}
+                          type="button"
+                        >
+                          {format(day, 'd')}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4 text-xs">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-gray-200"></div>
+                          <span className="text-gray-600">Today</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-white border border-gray-300"></div>
+                          <span className="text-gray-600">Available</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-gray-800"></div>
+                          <span className="text-gray-600">Busy</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'No date selected'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Time Slots */}
+                  <div>
+                    <h5 className="text-sm font-semibold text-gray-700 mb-3">Select Time</h5>
+                    <div className="grid grid-cols-3 gap-2">
+                      {TIME_SLOTS.map((timeSlot) => (
+                        <button
+                          key={timeSlot}
+                          onClick={() => setSelectedTime(timeSlot)}
+                          className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                            selectedTime === timeSlot
+                              ? 'bg-primary text-white shadow-md'
+                              : 'bg-white text-gray-700 border border-gray-200 hover:border-primary hover:bg-blue-50'
+                          }`}
+                          type="button"
+                        >
+                          {timeSlot}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="flex space-x-3 pt-6">
+          {/* Action Buttons */}
+          <div className="flex space-x-3 pt-6 mt-6 border-t border-gray-200">
             <button
               onClick={onClose}
-              className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              className="flex-1 bg-white text-gray-700 py-3 px-4 rounded-xl font-medium hover:bg-gray-50 transition-colors border border-gray-200"
+              type="button"
             >
               Cancel
             </button>
             <button
               onClick={handleSchedule}
-              disabled={!date || !time}
+              disabled={!canSchedule}
               className="flex-1 bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+              type="button"
             >
-              {isFutureDateTime() ? 'Schedule Campaign' : 'Send Now'}
+              Schedule Campaign
             </button>
           </div>
         </div>

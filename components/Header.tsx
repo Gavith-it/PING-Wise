@@ -6,6 +6,7 @@ import { Bell, Settings, X, Home, Users, Calendar, Megaphone, UserCheck, FileTex
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
+import SettingsMenu from '@/components/SettingsMenu';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -92,7 +93,8 @@ export default function Header() {
   return (
     <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
       <div className="px-3 md:px-4 py-2 md:py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-3 md:space-x-6">
+        <div className="flex items-center space-x-2 md:space-x-3">
+          <SettingsMenu />
           <h1 className="text-lg md:text-xl font-bold text-primary">PingWise</h1>
           
           <nav className="hidden md:flex items-center space-x-1">
@@ -138,13 +140,6 @@ export default function Header() {
             </button>
 
           <button
-            onClick={() => router.push('/settings')}
-            className="p-1.5 md:p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Settings className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
-
-          <button
             onClick={() => router.push(`/guide?page=${pathname}`)}
             className="p-1.5 md:p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
             title="Help & User Guide"
@@ -156,10 +151,10 @@ export default function Header() {
       </div>
 
       {showNotifications && (
-        <div className="absolute top-full right-2 md:right-4 mt-2 w-[calc(100vw-1rem)] md:w-80 max-w-sm bg-white border border-gray-200 rounded-xl md:rounded-2xl shadow-lg z-50 max-h-[70vh] md:max-h-96 overflow-hidden flex flex-col">
-          <div className="p-3 md:p-4 border-b border-gray-100 flex-shrink-0">
+        <div className="absolute top-full right-2 md:right-4 mt-2 w-[calc(100vw-1rem)] md:w-80 max-w-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl md:rounded-2xl shadow-lg z-50 max-h-[70vh] md:max-h-96 overflow-hidden flex flex-col">
+          <div className="p-3 md:p-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm md:text-base font-semibold text-gray-900">Notifications</h3>
+              <h3 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">Notifications</h3>
               <div className="flex items-center space-x-2">
                 {notifications.length > 0 && unreadCount > 0 && (
                   <button
@@ -171,7 +166,7 @@ export default function Header() {
                 )}
                 <button
                   onClick={() => setShowNotifications(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -181,9 +176,9 @@ export default function Header() {
           <div className="overflow-y-auto flex-1">
             {notifications.length === 0 ? (
               <div className="p-4 md:p-6 text-center">
-                <Bell className="w-8 h-8 md:w-12 md:h-12 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-900">No notifications</p>
-                <p className="text-xs text-gray-500 mt-1">You&apos;re all caught up!</p>
+                <Bell className="w-8 h-8 md:w-12 md:h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-900 dark:text-white">No notifications</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">You&apos;re all caught up!</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
@@ -198,8 +193,8 @@ export default function Header() {
                           markAsRead(notification.id);
                         }
                       }}
-                      className={`p-3 md:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                        !notification.read ? 'bg-blue-50/50' : ''
+                      className={`p-3 md:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
+                        !notification.read ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''
                       }`}
                     >
                       <div className="flex items-start space-x-3">

@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import NotificationToast from '@/components/NotificationToast';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -28,11 +29,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.variable}>
-        <AuthProvider>
-          <NotificationProvider>
-            {children}
-            <NotificationToast />
-            <Toaster
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              {children}
+              <NotificationToast />
+              <Toaster
             position="top-right"
             toastOptions={{
               duration: 3000,
@@ -56,8 +58,9 @@ export default function RootLayout({
               },
             }}
           />
-          </NotificationProvider>
-        </AuthProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
