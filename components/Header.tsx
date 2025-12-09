@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Settings, X, Home, Users, Calendar, Megaphone, UserCheck, FileText, CalendarCheck, UserPlus, MessageSquare, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Bell, Settings, X, Home, Users, Calendar, Megaphone, UserCheck, FileText, CalendarCheck, UserPlus, MessageSquare, AlertCircle, CheckCircle2, HelpCircle, Wallet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 import SettingsMenu from '@/components/SettingsMenu';
+import { walletService } from '@/lib/services/api';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -15,8 +16,46 @@ export default function Header() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
   const notificationRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      if (!user) {
+        setWalletBalance(0);
+        setLoadingBalance(false);
+        return;
+      }
+      
+      try {
+        setLoadingBalance(true);
+        // Try to fetch from API, fallback to user object or default
+        try {
+          const response = await walletService.getBalance();
+          setWalletBalance(response.data?.balance || 0);
+        } catch (apiError: any) {
+          // If API endpoint doesn't exist yet (404), silently use default
+          // Don't log errors for missing endpoints to avoid console spam
+          if (apiError?.response?.status && apiError.response.status !== 404) {
+            console.error('Error fetching wallet balance:', apiError);
+          }
+          // Check user object or use default
+          const balance = (user as any)?.walletBalance || 0;
+          setWalletBalance(balance);
+        }
+      } catch (error) {
+        // Silent fail - wallet balance is optional
+        setWalletBalance(0);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    fetchWalletBalance();
+  }, [user]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -121,6 +160,16 @@ export default function Header() {
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-3">
+          {/* Wallet Icon - Icon only on all screen sizes */}
+          <div className="relative">
+            <button
+              className="p-1.5 md:p-2 text-gray-900 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              title={`Wallet Balance: ₹${walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+            >
+              <Wallet className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          </div>
+
           <div className="relative" ref={notificationRef}>
             <button
               onClick={() => {
@@ -138,6 +187,7 @@ export default function Header() {
                 </div>
               )}
             </button>
+          </div>
 
           <button
             onClick={() => router.push(`/guide?page=${pathname}`)}
@@ -146,7 +196,6 @@ export default function Header() {
           >
             <HelpCircle className="w-4 h-4 md:w-5 md:h-5" />
           </button>
-          </div>
         </div>
       </div>
 

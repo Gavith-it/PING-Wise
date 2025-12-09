@@ -33,13 +33,49 @@ api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      if (token && token.trim()) {
+        // Ensure headers object exists - important for POST/PUT requests
+        // Use axios's proper header setting method
+        if (!config.headers) {
+          config.headers = {} as any;
+        }
+        
+        // Set Authorization header - axios will handle the case
+        const authHeader = `Bearer ${token.trim()}`;
+        // Set using both methods to ensure compatibility
+        if (config.headers.set) {
+          // If headers is a Headers object
+          config.headers.set('Authorization', authHeader);
+        } else {
+          // If headers is a plain object
+          config.headers['Authorization'] = authHeader;
+          config.headers['authorization'] = authHeader; // lowercase for Next.js
+        }
+        
+        // Log the actual headers being sent (for debugging)
+        const method = (config.method || 'get').toUpperCase();
+        console.log(`Token added to ${method} request:`, {
+          url: config.url,
+          method: method,
+          hasToken: true,
+          tokenPreview: token.substring(0, 20) + '...',
+          headersSet: {
+            Authorization: config.headers['Authorization'] || config.headers.get?.('Authorization') ? '✓' : '✗',
+            authorization: config.headers['authorization'] || config.headers.get?.('authorization') ? '✓' : '✗'
+          },
+          allHeaders: Object.keys(config.headers)
+        });
+      } else {
+        console.warn('No token found in localStorage for request:', {
+          url: config.url,
+          method: config.method
+        });
       }
     }
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -48,9 +84,29 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    // Only redirect to login if it's a true authentication error (not a validation error)
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      const errorMessage = error.response?.data?.message?.toLowerCase() || '';
+      const errorData = error.response?.data;
+      
+      // Check if it's a validation error (has errors array)
+      const isValidationError = errorData?.errors && Array.isArray(errorData.errors);
+      
+      // Check if it's a token/authentication error
+      const isAuthError = errorMessage.includes('token') || 
+                         errorMessage.includes('unauthorized') ||
+                         errorMessage.includes('authentication') ||
+                         errorMessage.includes('access denied') ||
+                         errorMessage.includes('no token');
+      
+      // Only redirect if it's a clear authentication error, not a validation error
+      // Don't redirect for validation errors (400 with errors array) or other non-auth 401s
+      if (isAuthError && !isValidationError) {
+        // Don't redirect immediately - let the component handle the error first
+        // The component will show the error message and handle redirect
+        // This prevents double redirects and allows proper error handling
+        console.warn('Authentication error detected:', errorMessage);
+      }
     }
     return Promise.reject(error);
   }
@@ -159,6 +215,12 @@ export const dashboardService = {
   },
   getTodayAppointments: (): Promise<ApiResponse<Appointment[]>> => {
     return api.get('/dashboard/today-appointments');
+  },
+};
+
+export const walletService = {
+  getBalance: (): Promise<ApiResponse<{ balance: number }>> => {
+    return api.get('/wallet/balance');
   },
 };
 

@@ -2,7 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarCheck, Users, Clock, DollarSign, CalendarPlus, UserPlus, Plus } from 'lucide-react';
+import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus } from 'lucide-react';
+
+// Custom Rupee Icon Component to replace DollarSign
+const RupeeIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <text
+      x="12"
+      y="18"
+      textAnchor="middle"
+      fontSize="20"
+      fontWeight="bold"
+      fill="currentColor"
+      fontFamily="Arial, sans-serif"
+    >
+      ₹
+    </text>
+  </svg>
+);
 import { dashboardService } from '@/lib/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import CountUp from 'react-countup';
@@ -39,7 +61,7 @@ function KPICard({ icon: Icon, value, label, change, trend, isCurrency, isComing
   
   if (isCurrency && !isComingSoon) {
     numericValue = typeof value === 'number' ? value / 1000 : parseFloat(String(value)) / 1000 || 0;
-    prefix = '$';
+    prefix = '₹';
     suffix = 'K';
   } else if (!isComingSoon) {
     numericValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
@@ -228,7 +250,7 @@ export default function DashboardPage() {
               trend={stats?.followUps?.trend}
             />
             <KPICard
-              icon={DollarSign}
+              icon={RupeeIcon}
               value={0}
               label="Revenue"
               isCurrency={false}
@@ -280,14 +302,16 @@ export default function DashboardPage() {
 
         </div>
 
-        {/* Floating Action Button - Positioned before Team in footer */}
-        <div className="fixed bottom-14 right-4 md:bottom-6 md:right-6 z-50">
-          <FloatingButton
-            triggerContent={
-              <button className="flex items-center justify-center h-11 w-11 md:h-12 md:w-12 rounded-full bg-primary text-white shadow-lg hover:shadow-xl transition-shadow z-10">
-                <Plus className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-            }>
+        {/* Floating Action Button - Draggable */}
+        <FloatingButton
+          className="fixed bottom-14 right-4 md:bottom-6 md:right-6 z-50"
+          draggable={true}
+          storageKey="dashboard-floating-button-position"
+          triggerContent={
+            <button className="flex items-center justify-center h-11 w-11 md:h-12 md:w-12 rounded-full bg-primary text-white shadow-lg hover:shadow-xl transition-shadow z-10">
+              <Plus className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          }>
             <FloatingButtonItem key="add-patient">
               <button
                 onClick={() => setShowPatientModal(true)}
@@ -311,7 +335,6 @@ export default function DashboardPage() {
               </button>
             </FloatingButtonItem>
           </FloatingButton>
-        </div>
 
         {/* Modals */}
         {showAppointmentModal && (

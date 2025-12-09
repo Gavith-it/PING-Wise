@@ -6,6 +6,7 @@ import { appointmentService, patientService, teamService } from '@/lib/services/
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Appointment, Patient, User } from '@/types';
+import Autocomplete from '@/components/ui/autocomplete';
 
 interface AppointmentModalProps {
   appointment?: Appointment | null;
@@ -28,6 +29,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const [loading, setLoading] = useState(false);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
 
   useEffect(() => {
     // Load data in background after modal opens
@@ -44,10 +47,25 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         date: format(new Date(appointment.date), 'yyyy-MM-dd'),
         time: appointment.time || '',
         type: appointment.type || '',
-        reason: '',
+        reason: appointment.reason || '',
       });
+      
+      // Set selected patient and doctor if they exist
+      if (typeof appointment.patient === 'object' && appointment.patient) {
+        setSelectedPatient(appointment.patient as Patient);
+      } else if (patientId) {
+        const patient = patients.find(p => p.id === patientId);
+        if (patient) setSelectedPatient(patient);
+      }
+      
+      if (typeof appointment.doctor === 'object' && appointment.doctor) {
+        setSelectedDoctor(appointment.doctor as User);
+      } else if (doctorId) {
+        const doctor = doctors.find(d => d.id === doctorId);
+        if (doctor) setSelectedDoctor(doctor);
+      }
     }
-  }, [appointment]);
+  }, [appointment, patients, doctors]);
 
   const loadFormData = async () => {
     try {
@@ -69,6 +87,33 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.patient) {
+      toast.error('Please select a patient');
+      return;
+    }
+    if (!formData.doctor) {
+      toast.error('Please select a doctor');
+      return;
+    }
+    if (!formData.date) {
+      toast.error('Please select a date');
+      return;
+    }
+    if (!formData.time) {
+      toast.error('Please select a time');
+      return;
+    }
+    if (!formData.type) {
+      toast.error('Please select an appointment type');
+      return;
+    }
+    if (!formData.reason) {
+      toast.error('Please provide a reason for the visit');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -84,7 +129,53 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       }
       onSuccess();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save appointment');
+      // Handle different types of errors
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save appointment';
+      const status = error.response?.status;
+      const token = localStorage.getItem('token');
+      
+      console.error('Appointment save error:', {
+        status,
+        message: errorMessage,
+        hasToken: !!token,
+        tokenLength: token?.length || 0,
+        url: error.config?.url,
+        requestHeaders: error.config?.headers,
+      });
+      
+      // Check if it's an authentication error
+      if (status === 401) {
+        const authErrorMsg = errorMessage.toLowerCase();
+        if (authErrorMsg.includes('token') || authErrorMsg.includes('access denied') || authErrorMsg.includes('unauthorized') || authErrorMsg.includes('no token')) {
+          // Check if token exists
+          if (!token) {
+            toast.error('Please log in to continue.');
+            setTimeout(() => {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
+            }, 1500);
+          } else {
+            // Token exists but was rejected - might be expired or invalid
+            toast.error('Your session has expired. Please log in again.');
+            setTimeout(() => {
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+              }
+            }, 2000);
+          }
+        } else {
+          // It's a validation error, show the message
+          toast.error(errorMessage);
+        }
+      } else if (status === 400) {
+        // Validation error
+        toast.error(errorMessage);
+      } else {
+        // Other errors (500, etc.)
+        toast.error(errorMessage || 'An unexpected error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -108,40 +199,46 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Patient *
               </label>
-              <select
-                required
+              <Autocomplete
+                options={patients.map(p => ({
+                  ...p,
+                  id: p.id,
+                  label: `${p.name} (${p.age} years)`,
+                }))}
                 value={formData.patient}
-                onChange={(e) => setFormData({ ...formData, patient: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, patient: value })}
+                onSelect={(option) => setSelectedPatient(option as Patient | null)}
+                placeholder={loadingPatients ? 'Loading patients...' : 'Type to search patients...'}
                 disabled={loadingPatients}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">{loadingPatients ? 'Loading patients...' : 'Select Patient'}</option>
-                {patients.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.age} years)
-                  </option>
-                ))}
-              </select>
+                loading={loadingPatients}
+                required
+                name="patient"
+                getOptionLabel={(option) => option.label}
+                getOptionValue={(option) => option.id}
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Assigned Doctor *
               </label>
-              <select
-                required
+              <Autocomplete
+                options={doctors.map(d => ({
+                  ...d,
+                  id: d.id,
+                  label: `${d.name} - ${d.department || 'General'}`,
+                }))}
                 value={formData.doctor}
-                onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, doctor: value })}
+                onSelect={(option) => setSelectedDoctor(option as User | null)}
+                placeholder={loadingDoctors ? 'Loading doctors...' : 'Type to search doctors...'}
                 disabled={loadingDoctors}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">{loadingDoctors ? 'Loading doctors...' : 'Select Doctor'}</option>
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} - {d.department || 'General'}
-                  </option>
-                ))}
-              </select>
+                loading={loadingDoctors}
+                required
+                name="doctor"
+                getOptionLabel={(option) => option.label}
+                getOptionValue={(option) => option.id}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

@@ -10,12 +10,14 @@ import BulkUploadModal from '@/components/modals/BulkUploadModal';
 import FilterModal, { FilterOptions } from '@/components/modals/FilterModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
+import BottomNav from '@/components/BottomNav';
 import { Patient } from '@/types';
 
 export default function CRMPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -34,11 +36,17 @@ export default function CRMPage() {
   });
   const limit = 10;
   const menuRef = useRef<HTMLDivElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Only show loading on initial load, not on filter changes
+    const isInitialLoad = patients.length === 0 && loading;
+    if (!isInitialLoad) {
+      setIsFiltering(true);
+    }
     setPage(1);
     setPatients([]);
-    loadPatients(true);
+    loadPatients(true, !isInitialLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, statusFilter, advancedFilters]);
 
@@ -52,10 +60,14 @@ export default function CRMPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const loadPatients = async (reset = false) => {
+  const loadPatients = async (reset = false, skipLoadingSpinner = false) => {
     try {
-      if (reset) {
+      if (reset && !skipLoadingSpinner) {
         setLoading(true);
+        setPage(1);
+      } else if (reset && skipLoadingSpinner) {
+        // Filter change - don't show loading spinner
+        setIsFiltering(true);
         setPage(1);
       } else {
         setLoadingMore(true);
@@ -94,6 +106,7 @@ export default function CRMPage() {
     } finally {
       setLoading(false);
       setLoadingMore(false);
+      setIsFiltering(false);
     }
   };
 
@@ -155,93 +168,102 @@ export default function CRMPage() {
   return (
     <PrivateRoute>
       <Layout>
-        <div className="space-y-4 md:space-y-6">
-          <div className="mb-4 md:mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Patients</h2>
-                <p className="text-sm md:text-base text-gray-600 mt-0.5 md:mt-1">{total} patients</p>
+        <div className="flex flex-col h-full min-h-0">
+          {/* Fixed Header Section - Search, Filters, and Actions */}
+          <div className="flex-shrink-0 space-y-4 md:space-y-6 pb-4 md:pb-6 bg-gray-50">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Patients</h2>
+                  <p className="text-sm md:text-base text-gray-600 mt-0.5 md:mt-1">{total} patients</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons Row */}
+            <div>
+              <div className="flex flex-col gap-2 md:gap-3">
+                {/* Search Bar - Full Width */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 md:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search patients..."
+                    className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 bg-white rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base"
+                  />
+                </div>
+                {/* Action Buttons - Add Patient (left) and Upload (right) */}
+                <div className="flex gap-2 md:gap-2.5">
+                  <button
+                    onClick={() => {
+                      setSelectedPatient(null);
+                      setShowAddModal(true);
+                    }}
+                    className="flex-1 bg-primary text-white py-2.5 px-4 md:py-3 md:px-6 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center justify-center space-x-2 shadow-md hover:shadow-lg text-sm md:text-base"
+                  >
+                    <Plus className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                    <span className="truncate">Add Patient</span>
+                  </button>
+                  <button
+                    onClick={() => setShowBulkUploadModal(true)}
+                    className="bg-white text-gray-700 py-2 px-3 md:py-2.5 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1.5 border border-gray-200 shadow-sm hover:shadow-md text-xs md:text-sm"
+                  >
+                    <Upload className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                    <span className="truncate">Upload</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Filter Pills with Filter Button */}
+            <div>
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                {/* Status Filter Pills */}
+                {['all', 'active', 'booked', 'follow-up', 'inactive'].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`flex items-center space-x-1.5 md:space-x-2 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${
+                      statusFilter === status
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:border-primary'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${
+                      status === 'all' ? 'bg-current' :
+                      status === 'active' ? 'bg-green-500' :
+                      status === 'booked' ? 'bg-blue-500' :
+                      status === 'follow-up' ? 'bg-yellow-500' :
+                      'bg-gray-500'
+                    }`}></span>
+                    <span className="capitalize">{status === 'all' ? 'All' : status.replace('-', ' ')}</span>
+                  </button>
+                ))}
+                {/* Filter Button - Icon Only - Moved to Last */}
+                <button
+                  onClick={() => setShowFilterModal(true)}
+                  className="bg-white text-gray-700 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center border border-gray-200 shadow-sm hover:shadow-md"
+                >
+                  <Filter className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons Row */}
-          <div className="mb-4 md:mb-6">
-            <div className="flex flex-col gap-2 md:gap-3">
-              {/* Search Bar - Full Width */}
-              <div className="relative">
-                <Search className="absolute left-2.5 md:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search patients..."
-                  className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 bg-white rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base"
-                />
+          {/* Scrollable Patient List Container - Only this section scrolls */}
+          <div 
+            ref={listContainerRef}
+            className="flex-1 overflow-y-auto min-h-0 pr-1"
+            style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
+          >
+            {/* Loading State - Only on initial load */}
+            {loading && patients.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-              {/* Action Buttons - Add Patient (left) and Upload (right) */}
-              <div className="flex gap-2 md:gap-2.5">
-                <button
-                  onClick={() => {
-                    setSelectedPatient(null);
-                    setShowAddModal(true);
-                  }}
-                  className="flex-1 bg-primary text-white py-2.5 px-4 md:py-3 md:px-6 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center justify-center space-x-2 shadow-md hover:shadow-lg text-sm md:text-base"
-                >
-                  <Plus className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-                  <span className="truncate">Add Patient</span>
-                </button>
-                <button
-                  onClick={() => setShowBulkUploadModal(true)}
-                  className="bg-white text-gray-700 py-2 px-3 md:py-2.5 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1.5 border border-gray-200 shadow-sm hover:shadow-md text-xs md:text-sm"
-                >
-                  <Upload className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                  <span className="truncate">Upload</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Filter Pills with Filter Button */}
-          <div className="mb-4 md:mb-6">
-            <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-              {/* Status Filter Pills */}
-              {['all', 'active', 'booked', 'follow-up', 'inactive'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`flex items-center space-x-1.5 md:space-x-2 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${
-                    statusFilter === status
-                      ? 'bg-primary text-white shadow-md'
-                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:border-primary'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${
-                    status === 'all' ? 'bg-current' :
-                    status === 'active' ? 'bg-green-500' :
-                    status === 'booked' ? 'bg-blue-500' :
-                    status === 'follow-up' ? 'bg-yellow-500' :
-                    'bg-gray-500'
-                  }`}></span>
-                  <span className="capitalize">{status === 'all' ? 'All' : status.replace('-', ' ')}</span>
-                </button>
-              ))}
-              {/* Filter Button - Icon Only - Moved to Last */}
-              <button
-                onClick={() => setShowFilterModal(true)}
-                className="bg-white text-gray-700 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center border border-gray-200 shadow-sm hover:shadow-md"
-              >
-                <Filter className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Loading State */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : isEmpty ? (
+            ) : isEmpty && !isFiltering ? (
             /* Empty State or No Search Results */
             <div className="bg-white rounded-2xl p-8 md:p-12 text-center">
               {isSearchResult ? (
@@ -294,7 +316,7 @@ export default function CRMPage() {
           ) : (
             <>
               {/* Patient List */}
-              <div className="space-y-3">
+              <div className="space-y-3 pb-4">
                 {patients.map((patient) => (
                   <PatientCard
                     key={patient.id}
@@ -315,7 +337,7 @@ export default function CRMPage() {
 
               {/* Load More Button */}
               {hasMore && (
-                <div className="flex justify-center pt-4">
+                <div className="flex justify-center pt-4 pb-4">
                   <button
                     onClick={handleLoadMore}
                     disabled={loadingMore}
@@ -334,8 +356,14 @@ export default function CRMPage() {
                   </button>
                 </div>
               )}
+
+              {/* Footer - Scrolls with content */}
+              <div className="md:hidden mt-4">
+                <BottomNav />
+              </div>
             </>
           )}
+          </div>
 
           {/* Modals */}
           {showAddModal && (
@@ -393,6 +421,41 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Generate initials if not present
+  const getInitials = (name?: string) => {
+    if (!name) return 'P';
+    const names = name.trim().split(' ');
+    if (names.length === 1) {
+      return names[0].charAt(0).toUpperCase();
+    }
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+
+  // Generate avatar color if not present or invalid
+  const getAvatarColor = () => {
+    // Valid Tailwind color classes
+    const validColors = [
+      'bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-red-500',
+      'bg-orange-500', 'bg-indigo-500', 'bg-pink-500', 'bg-teal-500',
+      'bg-cyan-500', 'bg-yellow-500', 'bg-lime-500', 'bg-emerald-500',
+      'bg-violet-500', 'bg-fuchsia-500', 'bg-rose-500', 'bg-amber-500'
+    ];
+    
+    // Check if patient has a valid color
+    if (patient.avatarColor && validColors.includes(patient.avatarColor)) {
+      return patient.avatarColor;
+    }
+    
+    // Generate consistent color based on name
+    if (patient.name) {
+      const nameHash = patient.name.charCodeAt(0);
+      return validColors[nameHash % validColors.length];
+    }
+    
+    // Default color
+    return 'bg-blue-500';
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -403,12 +466,21 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const initials = patient.initials || getInitials(patient.name);
+  const avatarColor = getAvatarColor();
+  
+  // Ensure initials are never empty
+  const displayInitials = initials && initials.trim() ? initials : getInitials(patient.name || 'Patient');
+
   return (
     <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0">
-          <div className={`w-10 h-10 md:w-12 md:h-12 ${patient.avatarColor || 'bg-blue-500'} rounded-full flex items-center justify-center text-white text-sm md:text-base font-semibold flex-shrink-0`}>
-            {patient.initials || 'P'}
+          <div 
+            className={`w-10 h-10 md:w-12 md:h-12 ${avatarColor} rounded-full flex items-center justify-center text-white text-sm md:text-base font-semibold flex-shrink-0 shadow-sm`}
+            style={{ minWidth: '2.5rem', minHeight: '2.5rem' }}
+          >
+            <span className="select-none">{displayInitials}</span>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-1.5 md:space-x-2 mb-1 flex-wrap">
@@ -431,9 +503,10 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: {
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="p-1.5 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center"
+            aria-label="More options"
           >
-            <MoreVertical className="w-4 h-4 md:w-5 md:h-5" />
+            <MoreVertical className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
           </button>
           {showMenu && (
             <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[140px] py-1">
@@ -445,7 +518,7 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: {
                 }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center space-x-2"
               >
-                <Eye className="w-4 h-4" />
+                <Eye className="w-4 h-4 flex-shrink-0" />
                 <span>View</span>
               </button>
               <button
@@ -456,7 +529,7 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: {
                 }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 flex items-center space-x-2"
               >
-                <Edit className="w-4 h-4" />
+                <Edit className="w-4 h-4 flex-shrink-0" />
                 <span>Edit</span>
               </button>
               <button
@@ -467,7 +540,7 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: {
                 }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center space-x-2 border-t border-gray-100"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4 flex-shrink-0" />
                 <span>Delete</span>
               </button>
             </div>

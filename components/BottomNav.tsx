@@ -29,6 +29,12 @@ export default function BottomNav() {
   }, [pathname]);
 
   useEffect(() => {
+    // Don't handle scroll visibility for CRM page (footer scrolls with content)
+    if (pathname === '/crm') {
+      setIsVisible(true);
+      return;
+    }
+
     let ticking = false;
     
     const handleScroll = () => {
@@ -78,10 +84,13 @@ export default function BottomNav() {
     };
   }, [pathname]);
 
+  // Check if we're on CRM page (footer should scroll with content)
+  const isScrollableFooter = pathname === '/crm';
+
   return (
     <nav 
-      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden shadow-lg safe-area-inset-bottom transition-transform duration-300 ease-in-out ${
-        isVisible ? 'translate-y-0' : 'translate-y-full'
+      className={`${isScrollableFooter ? 'relative' : 'fixed bottom-0 left-0 right-0'} bg-white border-t border-gray-200 z-40 md:hidden shadow-lg safe-area-inset-bottom ${
+        isScrollableFooter ? '' : `transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`
       }`}
     >
       <div className="flex items-center justify-around px-1 py-1.5">

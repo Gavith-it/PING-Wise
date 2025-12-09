@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Send, Calendar as CalendarIcon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
+import toast from 'react-hot-toast';
 
 interface ScheduleModalProps {
   onClose: () => void;
@@ -51,8 +52,17 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
       return;
     }
 
+    // Validate that scheduled date/time is in the future
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const timeStr = convertTimeTo24Hour(selectedTime);
+    const scheduledDateTime = new Date(`${dateStr}T${timeStr}`);
+    const now = new Date();
+
+    if (scheduledDateTime <= now) {
+      toast.error('Scheduled date and time must be in the future');
+      return;
+    }
+
     onSchedule(dateStr, timeStr);
     onClose();
   };

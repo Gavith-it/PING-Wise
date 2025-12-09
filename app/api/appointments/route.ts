@@ -16,13 +16,39 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const USE_MOCK_API = process.env.USE_MOCK_API === 'true' || !process.env.MONGODB_URI;
 
 function getUserIdFromToken(req: NextRequest): string | null {
-  const authHeader = req.headers.get('authorization');
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return null;
+  // Check both lowercase and uppercase header names (Next.js is case-insensitive but be explicit)
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+  
+  if (!authHeader) {
+    console.log('No authorization header found. Available headers:', Object.keys(req.headers));
+    return null;
+  }
+  
+  console.log('Authorization header found:', authHeader.substring(0, 20) + '...');
+  
+  const token = authHeader.startsWith('Bearer ') 
+    ? authHeader.split(' ')[1] 
+    : authHeader;
+    
+  if (!token || token.trim() === '') {
+    console.log('No token found in authorization header after parsing');
+    return null;
+  }
+  
+  // Handle mock tokens when in mock mode
+  if (USE_MOCK_API && token.startsWith('mock-jwt-token-')) {
+    // For mock mode, return the default user ID (matches mock API)
+    console.log('Mock token detected, using default user ID: 1');
+    return '1'; // Return default user ID for mock mode (matches mockApi.auth.login)
+  }
+  
+  // Verify real JWT tokens
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    console.log('Token verified successfully for user:', decoded.id);
     return decoded.id;
-  } catch {
+  } catch (error: any) {
+    console.log('Token verification failed:', error.message);
     return null;
   }
 }
@@ -89,8 +115,17 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Log all headers for debugging
+  const allHeaders: Record<string, string> = {};
+  req.headers.forEach((value, key) => {
+    allHeaders[key] = value;
+  });
+  console.log('POST /appointments - Received headers:', Object.keys(allHeaders));
+  console.log('POST /appointments - Authorization header:', req.headers.get('authorization') || req.headers.get('Authorization') || 'NOT FOUND');
+  
   if (USE_MOCK_API) {
     const userId = getUserIdFromToken(req);
+    console.log('POST /appointments - User ID from token:', userId);
     if (!userId) {
       return NextResponse.json(
         { success: false, message: 'Access denied. No token provided.' },
@@ -117,7 +152,16 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
+    // Log headers for debugging
+    const allHeaders: Record<string, string> = {};
+    req.headers.forEach((value, key) => {
+      allHeaders[key] = value;
+    });
+    console.log('POST /appointments (DB) - Received headers:', Object.keys(allHeaders));
+    console.log('POST /appointments (DB) - Authorization header:', req.headers.get('authorization') || req.headers.get('Authorization') || 'NOT FOUND');
+
     const userId = getUserIdFromToken(req);
+    console.log('POST /appointments (DB) - User ID from token:', userId);
     if (!userId) {
       return NextResponse.json(
         { success: false, message: 'Access denied. No token provided.' },

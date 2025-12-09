@@ -20,6 +20,7 @@ export default function CampaignsPage() {
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [showTagModal, setShowTagModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [errors, setErrors] = useState<{ message?: string; tags?: string; schedule?: string }>({});
 
   useEffect(() => {
     loadCampaigns();
@@ -110,34 +111,86 @@ export default function CampaignsPage() {
 
   const handleTagApply = (tags: string[]) => {
     setSelectedTags(tags);
+    if (errors.tags && tags.length > 0) {
+      setErrors({ ...errors, tags: '' });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: { message?: string; tags?: string; schedule?: string } = {};
+
+    // Message validation
+    if (!message.trim()) {
+      newErrors.message = 'Campaign message is required';
+    } else if (message.trim().length < 10) {
+      newErrors.message = 'Message must be at least 10 characters';
+    } else if (message.trim().length > 1000) {
+      newErrors.message = 'Message must be less than 1000 characters';
+    }
+
+    // Tags validation
+    if (selectedTags.length === 0) {
+      newErrors.tags = 'Please select at least one recipient tag';
+    }
+
+    // Schedule validation (if scheduled)
+    if (scheduledDate && scheduledTime) {
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+      const now = new Date();
+      
+      if (scheduledDateTime <= now) {
+        newErrors.schedule = 'Scheduled date and time must be in the future';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSchedule = (date: string, time: string) => {
     if (date && time) {
       setScheduledDate(date);
       setScheduledTime(time);
+      
+      // Validate scheduled date/time
+      const scheduledDateTime = new Date(`${date}T${time}`);
+      const now = new Date();
+      
+      if (scheduledDateTime <= now) {
+        toast.error('Scheduled date and time must be in the future');
+        setErrors({ ...errors, schedule: 'Scheduled date and time must be in the future' });
+        return;
+      }
+      
+      setErrors({ ...errors, schedule: '' });
       toast.success('Campaign scheduled successfully');
     } else {
       setScheduledDate('');
       setScheduledTime('');
+      setErrors({ ...errors, schedule: '' });
     }
   };
 
   const handleSend = async () => {
-    if (!message.trim()) {
-      toast.error('Please enter a message or select a template');
-      return;
-    }
-
-    if (selectedTags.length === 0) {
-      toast.error('Please select at least one tag');
+    // Validate form before submission
+    if (!validateForm()) {
+      // Show specific error messages
+      if (errors.message) {
+        toast.error(errors.message);
+      } else if (errors.tags) {
+        toast.error(errors.tags);
+      } else if (errors.schedule) {
+        toast.error(errors.schedule);
+      } else {
+        toast.error('Please fix the errors in the form');
+      }
       return;
     }
 
     setLoading(true);
     try {
       const campaignData: any = {
-        message,
+        message: message.trim(),
         recipientTags: selectedTags,
         template: selectedTemplate || '',
       };
@@ -163,10 +216,11 @@ export default function CampaignsPage() {
       setSelectedTemplate(null);
       setScheduledDate('');
       setScheduledTime('');
+      setErrors({});
       
       loadCampaigns();
-    } catch (error) {
-      toast.error('Failed to send campaign');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to send campaign');
     } finally {
       setLoading(false);
     }
@@ -208,53 +262,82 @@ export default function CampaignsPage() {
             <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Create New Campaign</h3>
             
             {/* Message Input */}
-            <textarea
-              value={message}
-              onChange={(e) => {
-                setMessage(e.target.value);
-                if (e.target.value !== templates.find(t => t.name === selectedTemplate)?.message) {
-                  setSelectedTemplate(null);
-                }
-              }}
-              placeholder="Write your message…"
-              className="w-full h-24 md:h-32 p-3 md:p-4 border border-gray-200 rounded-lg md:rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-3 md:mb-4 text-sm md:text-base"
-            />
+            <div>
+              <textarea
+                value={message}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  if (e.target.value !== templates.find(t => t.name === selectedTemplate)?.message) {
+                    setSelectedTemplate(null);
+                  }
+                  if (errors.message) {
+                    setErrors({ ...errors, message: '' });
+                  }
+                }}
+                placeholder="Write your message…"
+                className={`w-full h-24 md:h-32 p-3 md:p-4 border rounded-lg md:rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-1 text-sm md:text-base ${
+                  errors.message ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                }`}
+                maxLength={1000}
+              />
+              {errors.message && (
+                <p className="text-sm text-red-600 mb-2">{errors.message}</p>
+              )}
+              <div className="flex justify-between items-center mb-3 md:mb-4">
+                <p className="text-xs text-gray-500">
+                  {message.length}/1000 characters
+                  {message.trim().length < 10 && message.length > 0 && (
+                    <span className="text-red-500 ml-1">(minimum 10 characters required)</span>
+                  )}
+                </p>
+              </div>
+            </div>
 
             {/* Selected Tags Display */}
-            {selectedTags.length > 0 && (
-              <div className="mb-3 md:mb-4">
-                <p className="text-xs text-gray-500 mb-2">Selected tags:</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedTags.map((tagId) => {
-                    const tagLabels: Record<string, string> = {
-                      'all': 'All',
-                      'active': 'Active',
-                      'inactive': 'Inactive',
-                      'booked': 'Booked',
-                      'follow-up': 'Follow-up',
-                      'new': 'New',
-                      'birthday': 'Birthday',
-                    };
-                    return (
-                      <span
-                        key={tagId}
-                        className="inline-flex items-center space-x-1 px-2 py-1 bg-primary/10 text-primary rounded-lg text-xs"
-                      >
-                        <span>{tagLabels[tagId] || tagId}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <div className="mb-3 md:mb-4">
+              {selectedTags.length > 0 ? (
+                <>
+                  <p className="text-xs text-gray-500 mb-2">Selected tags:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.map((tagId) => {
+                      const tagLabels: Record<string, string> = {
+                        'all': 'All',
+                        'active': 'Active',
+                        'inactive': 'Inactive',
+                        'booked': 'Booked',
+                        'follow-up': 'Follow-up',
+                        'new': 'New',
+                        'birthday': 'Birthday',
+                      };
+                      return (
+                        <span
+                          key={tagId}
+                          className="inline-flex items-center space-x-1 px-2 py-1 bg-primary/10 text-primary rounded-lg text-xs"
+                        >
+                          <span>{tagLabels[tagId] || tagId}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-gray-500 mb-2">No tags selected</p>
+              )}
+              {errors.tags && (
+                <p className="text-sm text-red-600 mt-1">{errors.tags}</p>
+              )}
+            </div>
 
             {/* Scheduled Info Display */}
             {scheduledDate && scheduledTime && (
               <div className="mb-3 md:mb-4">
                 <p className="text-xs text-gray-500 mb-1">Scheduled for:</p>
-                <p className="text-sm text-gray-700">
+                <p className={`text-sm ${errors.schedule ? 'text-red-600' : 'text-gray-700'}`}>
                   {new Date(`${scheduledDate}T${scheduledTime}`).toLocaleString()}
                 </p>
+                {errors.schedule && (
+                  <p className="text-sm text-red-600 mt-1">{errors.schedule}</p>
+                )}
               </div>
             )}
 
