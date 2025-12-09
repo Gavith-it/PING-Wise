@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Send, Calendar as CalendarIcon } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
+import { X, Calendar as CalendarIcon } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import toast from 'react-hot-toast';
 
 interface ScheduleModalProps {
@@ -12,8 +12,6 @@ interface ScheduleModalProps {
   initialTime?: string;
   message?: string;
 }
-
-type ScheduleOption = 'now' | 'later';
 
 const TIME_SLOTS = [
   '9:00 AM',
@@ -28,27 +26,20 @@ const TIME_SLOTS = [
 ];
 
 export default function ScheduleModal({ onClose, onSchedule, initialDate, initialTime, message = '' }: ScheduleModalProps) {
-  const [scheduleOption, setScheduleOption] = useState<ScheduleOption>('now');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   useEffect(() => {
     if (initialDate && initialTime) {
-      setScheduleOption('later');
       setSelectedDate(new Date(initialDate));
       setSelectedTime(initialTime);
     }
   }, [initialDate, initialTime]);
 
   const handleSchedule = () => {
-    if (scheduleOption === 'now') {
-      onSchedule('', '');
-      onClose();
-      return;
-    }
-
     if (!selectedDate || !selectedTime) {
+      toast.error('Please select both date and time');
       return;
     }
 
@@ -146,7 +137,7 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
     return `${baseClasses} text-gray-400 cursor-not-allowed`;
   };
 
-  const canSchedule = scheduleOption === 'now' || (selectedDate && selectedTime);
+  const canSchedule = selectedDate && selectedTime;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -170,43 +161,13 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
               </div>
             )}
 
-            {/* Schedule Options */}
-            <div>
-              <h4 className="text-base font-semibold text-gray-900 mb-4">Schedule Options</h4>
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="scheduleOption"
-                    value="now"
-                    checked={scheduleOption === 'now'}
-                    onChange={() => setScheduleOption('now')}
-                    className="w-4 h-4 text-primary focus:ring-primary focus:ring-2"
-                  />
-                  <Send className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Send Now</span>
-                </label>
-                
-                <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="scheduleOption"
-                    value="later"
-                    checked={scheduleOption === 'later'}
-                    onChange={() => setScheduleOption('later')}
-                    className="w-4 h-4 text-primary focus:ring-primary focus:ring-2"
-                  />
-                  <CalendarIcon className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Schedule for Later</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Date & Time Selection - Only show when "Schedule for Later" is selected */}
-            {scheduleOption === 'later' && (
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900 mb-4">Select Date & Time</h4>
+            {/* Date & Time Selection */}
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                  <CalendarIcon className="w-5 h-5 text-primary" />
+                  <span>Select Date & Time</span>
+                </h4>
                   
                   {/* Calendar */}
                   <div className="mb-4">
@@ -252,22 +213,22 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
                     </div>
 
                     {/* Legend */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-4 text-xs">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0 mb-4">
+                      <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs">
                         <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-gray-200"></div>
+                          <div className="w-3 h-3 rounded-full bg-gray-200 flex-shrink-0"></div>
                           <span className="text-gray-600">Today</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-white border border-gray-300"></div>
+                          <div className="w-3 h-3 rounded-full bg-white border border-gray-300 flex-shrink-0"></div>
                           <span className="text-gray-600">Available</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-gray-800"></div>
+                          <div className="w-3 h-3 rounded-full bg-gray-800 flex-shrink-0"></div>
                           <span className="text-gray-600">Busy</span>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 text-left md:text-right whitespace-nowrap">
                         {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'No date selected'}
                       </div>
                     </div>
@@ -295,7 +256,6 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
                   </div>
                 </div>
               </div>
-            )}
           </div>
 
           {/* Action Buttons */}

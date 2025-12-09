@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Send, Clock, Tag, Sparkles, Stethoscope, Heart, Percent, Snowflake } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Clock, Tag, Sparkles, Stethoscope, Heart, Percent, Snowflake, Image as ImageIcon, X } from 'lucide-react';
 import { campaignService } from '@/lib/services/api';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
@@ -11,6 +11,7 @@ import ScheduleModal from '@/components/modals/ScheduleModal';
 import { Campaign } from '@/types';
 
 export default function CampaignsPage() {
+  const [campaignTitle, setCampaignTitle] = useState('');
   const [message, setMessage] = useState('');
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(false);
@@ -20,11 +21,76 @@ export default function CampaignsPage() {
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [showTagModal, setShowTagModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [errors, setErrors] = useState<{ message?: string; tags?: string; schedule?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; message?: string; tags?: string; schedule?: string }>({});
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCampaigns();
   }, []);
+
+  // Clean up image previews when component unmounts
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach(preview => {
+        if (preview.startsWith('blob:')) {
+          URL.revokeObjectURL(preview);
+        }
+      });
+    };
+  }, [imagePreviews]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    Array.from(files).forEach((file) => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not an image file`);
+        return;
+      }
+
+      // Validate file size (max 5MB per image)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Maximum size is 5MB`);
+        return;
+      }
+
+      // Limit to 5 images total
+      if (images.length + newFiles.length >= 5) {
+        toast.error('Maximum 5 images allowed');
+        return;
+      }
+
+      newFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+    });
+
+    if (newFiles.length > 0) {
+      setImages([...images, ...newFiles]);
+      setImagePreviews([...imagePreviews, ...newPreviews]);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    // Revoke object URL to free memory
+    if (imagePreviews[index]?.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviews[index]);
+    }
+
+    setImages(images.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
+  };
 
   const loadCampaigns = async () => {
     try {
@@ -117,7 +183,16 @@ export default function CampaignsPage() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: { message?: string; tags?: string; schedule?: string } = {};
+    const newErrors: { title?: string; message?: string; tags?: string; schedule?: string } = {};
+
+    // Title validation (required)
+    if (!campaignTitle.trim()) {
+      newErrors.title = 'Campaign title is required';
+    } else if (campaignTitle.trim().length < 3) {
+      newErrors.title = 'Campaign title must be at least 3 characters';
+    } else if (campaignTitle.trim().length > 100) {
+      newErrors.title = 'Campaign title must be less than 100 characters';
+    }
 
     // Message validation
     if (!message.trim()) {
@@ -190,6 +265,7 @@ export default function CampaignsPage() {
     setLoading(true);
     try {
       const campaignData: any = {
+        title: campaignTitle.trim() || undefined,
         message: message.trim(),
         recipientTags: selectedTags,
         template: selectedTemplate || '',
@@ -211,12 +287,21 @@ export default function CampaignsPage() {
       toast.success(scheduledDate && scheduledTime ? 'Campaign scheduled successfully' : 'Campaign sent successfully');
       
       // Reset form
+      setCampaignTitle('');
       setMessage('');
       setSelectedTags([]);
       setSelectedTemplate(null);
       setScheduledDate('');
       setScheduledTime('');
       setErrors({});
+      // Clean up image previews
+      imagePreviews.forEach(preview => {
+        if (preview.startsWith('blob:')) {
+          URL.revokeObjectURL(preview);
+        }
+      });
+      setImages([]);
+      setImagePreviews([]);
       
       loadCampaigns();
     } catch (error: any) {
@@ -242,7 +327,7 @@ export default function CampaignsPage() {
   };
 
   // Check if Send Campaign button should be disabled
-  const isSendDisabled = loading || !message.trim() || selectedTags.length === 0;
+  const isSendDisabled = loading || !campaignTitle.trim() || !message.trim() || selectedTags.length === 0;
 
   return (
     <PrivateRoute>
@@ -259,7 +344,41 @@ export default function CampaignsPage() {
 
           {/* Create Campaign Section */}
           <div className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 shadow-sm border border-gray-100 mb-4 md:mb-6">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Create New Campaign</h3>
+            <div className="mb-3 md:mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900">Create New Campaign</h3>
+              </div>
+              {/* Campaign Title/Header Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Campaign Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={campaignTitle}
+                  onChange={(e) => {
+                    setCampaignTitle(e.target.value);
+                    if (errors.title) {
+                      setErrors({ ...errors, title: '' });
+                    }
+                  }}
+                  placeholder="Enter campaign title"
+                  className={`w-full p-2 md:p-2.5 border rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base ${
+                    errors.title ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                  }`}
+                  maxLength={100}
+                  required
+                />
+              </div>
+              {errors.title && (
+                <p className="text-sm text-red-600 mt-1">{errors.title}</p>
+              )}
+              {campaignTitle.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {campaignTitle.length}/100 characters
+                </p>
+              )}
+            </div>
             
             {/* Message Input */}
             <div>
@@ -280,6 +399,14 @@ export default function CampaignsPage() {
                 }`}
                 maxLength={1000}
               />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+              />
               {errors.message && (
                 <p className="text-sm text-red-600 mb-2">{errors.message}</p>
               )}
@@ -291,6 +418,34 @@ export default function CampaignsPage() {
                   )}
                 </p>
               </div>
+
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="mb-3 md:mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Remove image"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {images.length} image{images.length !== 1 ? 's' : ''} selected (max 5)
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Selected Tags Display */}
@@ -364,6 +519,15 @@ export default function CampaignsPage() {
               >
                 <Tag className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Tags</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 bg-white text-gray-700 py-2 px-2 md:px-3 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1 border border-gray-200 shadow-sm hover:shadow-md text-xs"
+                title="Add images"
+              >
+                <ImageIcon className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Images</span>
               </button>
             </div>
           </div>
