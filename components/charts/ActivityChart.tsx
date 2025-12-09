@@ -56,6 +56,14 @@ export default function ActivityChart({ data }: ActivityChartProps) {
     setActiveIndex(null);
   };
 
+  const onPieClick = (_: unknown, index: number) => {
+    // For mobile touch support
+    setActiveIndex(index);
+    setTimeout(() => {
+      setActiveIndex(null);
+    }, 500);
+  };
+
   return (
     <div className="flex flex-row items-center gap-4 md:gap-6">
       {/* Chart */}
@@ -72,6 +80,7 @@ export default function ActivityChart({ data }: ActivityChartProps) {
               dataKey="value"
               onMouseEnter={onPieEnter}
               onMouseLeave={onPieLeave}
+              onClick={onPieClick}
             >
               {chartData.map((entry, index) => (
                 <Cell
@@ -104,9 +113,21 @@ export default function ActivityChart({ data }: ActivityChartProps) {
         {chartData.map((entry, index) => (
           <div
             key={entry.name}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 touch-manipulation"
             onMouseEnter={() => setActiveIndex(index)}
             onMouseLeave={() => setActiveIndex(null)}
+            onTouchStart={() => setActiveIndex(index)}
+            onTouchEnd={() => {
+              setTimeout(() => {
+                setActiveIndex(null);
+              }, 500);
+            }}
+            onClick={() => {
+              setActiveIndex(index);
+              setTimeout(() => {
+                setActiveIndex(null);
+              }, 500);
+            }}
             style={{
               opacity: activeIndex === index ? 1 : activeIndex === null ? 1 : 0.5,
             }}
