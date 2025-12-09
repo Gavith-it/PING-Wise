@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus } from 'lucide-react';
+import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus, ChevronRight } from 'lucide-react';
 
 // Custom Rupee Icon Component to replace DollarSign
 const RupeeIcon = ({ className }: { className?: string }) => (
@@ -68,21 +68,21 @@ function KPICard({ icon: Icon, value, label, change, trend, isCurrency, isComing
   }
 
   return (
-    <div className="bg-white rounded-lg p-3 md:p-6 shadow-sm border border-gray-100 card-hover">
-      <div className="flex items-center justify-between mb-2 md:mb-4">
-        <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg md:rounded-xl flex items-center justify-center">
-          <Icon className="w-5 h-5 md:w-7 md:h-7 text-primary" />
+    <div className="bg-white rounded-lg p-2 md:p-6 shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between mb-1.5 md:mb-4">
+        <div className="w-8 h-8 md:w-14 md:h-14 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg md:rounded-xl flex items-center justify-center">
+          <Icon className="w-4 h-4 md:w-7 md:h-7 text-primary" />
         </div>
         {change !== undefined && !isComingSoon && (
-          <div className={`flex items-center space-x-1 text-[10px] md:text-xs font-semibold px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-full ${changeColor}`}>
+          <div className={`flex items-center space-x-1 text-[9px] md:text-xs font-semibold px-1 md:px-2.5 py-0.5 md:py-1 rounded-full ${changeColor}`}>
             <span>{trendIcon}</span>
             <span>{changeSymbol}{change}%</span>
           </div>
         )}
       </div>
-      <div className="text-xl md:text-3xl font-bold text-gray-900 mb-1 md:mb-2">
+      <div className="text-lg md:text-3xl font-bold text-gray-900 mb-0.5 md:mb-2">
         {isComingSoon ? (
-          <span className="text-base md:text-lg text-gray-500 font-medium">Coming Soon</span>
+          <span className="text-sm md:text-lg text-gray-500 font-medium">Coming Soon</span>
         ) : isCurrency ? (
           <>
             {prefix}
@@ -106,7 +106,7 @@ function KPICard({ icon: Icon, value, label, change, trend, isCurrency, isComing
           />
         )}
       </div>
-      <p className="text-xs md:text-sm text-gray-600 font-medium">{label}</p>
+      <p className="text-[10px] md:text-sm text-gray-600 font-medium">{label}</p>
     </div>
   );
 }
@@ -267,6 +267,7 @@ export default function DashboardPage() {
                 <h3 className="text-base md:text-lg font-bold text-gray-900">Patient Activity</h3>
                 <p className="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Distribution overview</p>
               </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
             </div>
             {activity && <ActivityChart data={activity} />}
           </button>
