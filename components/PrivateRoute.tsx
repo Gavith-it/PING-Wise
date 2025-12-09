@@ -1,49 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const [hasChecked, setHasChecked] = useState(false);
 
-  // Check authentication on mount and route changes
+  // Redirect to login if not authenticated (only check once after loading completes)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Clear any old localStorage token (migration)
-    if (localStorage.getItem('token')) {
-      localStorage.removeItem('token');
-    }
-    
-    const token = sessionStorage.getItem('token');
-    
-    // If no token, redirect immediately
-    if (!token) {
-      router.replace('/login');
-      return;
-    }
-    
-    setHasChecked(true);
-  }, [router, pathname]); // Re-check on route change
-
-  // Check after auth loading completes
-  useEffect(() => {
-    if (!loading && hasChecked) {
-      const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
-      
-      // If no token or not authenticated after loading, redirect
-      if (!token || !isAuthenticated) {
+    if (!loading && !isAuthenticated) {
+      // Double-check token in sessionStorage as fallback
+      if (typeof window !== 'undefined') {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+          router.replace('/login');
+        }
+      } else {
         router.replace('/login');
       }
     }
-  }, [loading, isAuthenticated, hasChecked, router, pathname]);
+  }, [loading, isAuthenticated, router]);
 
-  // Show loading while checking authentication
-  if (loading || !hasChecked) {
+  // Show loading only while AuthContext is initializing
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
@@ -54,12 +35,8 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
     );
   }
 
-  // Final check - if not authenticated, don't render
+  // If not authenticated after loading, don't render (will redirect via useEffect)
   if (!isAuthenticated) {
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
-    if (!token) {
-      return null; // Will redirect via useEffect
-    }
     return null;
   }
 

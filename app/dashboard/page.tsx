@@ -160,40 +160,18 @@ export default function DashboardPage() {
   const [showPatientModal, setShowPatientModal] = useState(false);
 
   useEffect(() => {
-    // Only load data when authentication is complete and user is authenticated
-    // Also check token exists in sessionStorage to ensure it's available
-    if (!authLoading) {
-      if (isAuthenticated && user) {
-        // Double-check token exists before making requests
-        if (typeof window !== 'undefined') {
-          const token = sessionStorage.getItem('token');
-          if (token) {
-            loadDashboardData();
-          } else {
-            // Token missing, stop loading (PrivateRoute will redirect)
-            setLoading(false);
-          }
-        } else {
-          // SSR - wait for client-side hydration
-          setLoading(false);
-        }
-      } else {
-        // Not authenticated, stop loading (PrivateRoute will handle redirect)
-        setLoading(false);
-      }
+    // Only load data once when authentication is complete
+    // PrivateRoute already handles authentication check, so we can trust isAuthenticated
+    if (!authLoading && isAuthenticated && user) {
+      loadDashboardData();
+    } else if (!authLoading) {
+      // Not authenticated or still loading - stop loading
+      // PrivateRoute will handle redirect if needed
+      setLoading(false);
     }
   }, [authLoading, isAuthenticated, user]);
 
   const loadDashboardData = async () => {
-    // Double check token exists before making requests
-    if (typeof window !== 'undefined') {
-      const token = sessionStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-    }
-
     try {
       setLoading(true);
       const [statsData, activityData, appointmentsData] = await Promise.all([

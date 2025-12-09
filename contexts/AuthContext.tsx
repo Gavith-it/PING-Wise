@@ -53,7 +53,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Token exists, validate it
+      // Token exists - set it first so it's available immediately
+      // Then validate in background
+      setToken(storedToken);
+
+      // Validate token in background (don't block rendering)
       try {
         const response = await fetch('/api/auth/me', {
           headers: {
@@ -68,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (data.success && data.user) {
             // Valid token and user, set authenticated state
             setUser(data.user);
-            setToken(storedToken);
+            // Token already set above
           } else {
             // Invalid response, clear token
             sessionStorage.removeItem('token');
@@ -82,14 +86,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
         }
       } catch (error) {
+        // Network error - keep token but don't set user
+        // This allows offline access if token was valid before
         // Only log errors in development
         if (process.env.NODE_ENV === 'development') {
-          console.error('Auth initialization error:', error);
+          console.error('Auth validation error:', error);
         }
-        // Network error or other error, clear token
-        sessionStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
+        // Don't clear token on network errors - might just be temporary
+        // setToken(null);
+        // setUser(null);
       } finally {
         setLoading(false);
       }
