@@ -50,6 +50,7 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
+  const [hasUserDragged, setHasUserDragged] = useState(false);
 
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -72,10 +73,17 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
     return { x: defaultX, y: defaultY };
   };
 
-  // Load saved position from localStorage or calculate default
+  // Load saved position from sessionStorage or calculate default
+  // Using sessionStorage so position resets after login (new session)
   useEffect(() => {
     if (typeof window !== 'undefined' && draggable && !isInitialized) {
-      const saved = localStorage.getItem(storageKey);
+      // Clear any old localStorage position (migration)
+      if (localStorage.getItem(storageKey)) {
+        localStorage.removeItem(storageKey);
+      }
+      
+      // Check sessionStorage for position (only persists during current session)
+      const saved = sessionStorage.getItem(storageKey);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -85,6 +93,8 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
             const buttonHeight = 48;
             if (parsed.x < window.innerWidth - buttonWidth && parsed.y < window.innerHeight - buttonHeight) {
               setPosition(parsed);
+              // User has already dragged in this session, so enable saving
+              setHasUserDragged(true);
               setIsInitialized(true);
               return;
             }
@@ -94,9 +104,11 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
         }
       }
       
-      // Calculate and set default position
+      // Calculate and set default position (original/main position)
+      // This is used when no saved position exists (new session after login)
       const defaultPos = calculateDefaultPosition();
       setPosition(defaultPos);
+      setHasUserDragged(false); // Reset - user hasn't dragged yet in this session
       setIsInitialized(true);
     }
   }, [storageKey, draggable, isInitialized]);
@@ -122,15 +134,25 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
     return () => window.removeEventListener('resize', handleResize);
   }, [draggable, isInitialized, position]);
 
-  // Save position to localStorage (only after user drags)
+  // Save position to sessionStorage (only after user drags)
+  // Using sessionStorage so position resets after login (new session)
+  // Only saves when user actually drags the button, not on initial load
   useEffect(() => {
-    if (typeof window !== 'undefined' && draggable && isInitialized && !isDragging) {
-      // Only save if position has been set (not default 0,0)
+    if (typeof window !== 'undefined' && draggable && isInitialized && !isDragging && hasUserDragged) {
+      // Only save if user has actually dragged the button
+      // Ensure position is valid (not 0,0 and within viewport)
       if (position.x > 0 && position.y > 0) {
-        localStorage.setItem(storageKey, JSON.stringify(position));
+        const buttonWidth = 48;
+        const buttonHeight = 48;
+        const maxX = window.innerWidth - buttonWidth;
+        const maxY = window.innerHeight - buttonHeight;
+        
+        if (position.x <= maxX && position.y <= maxY) {
+          sessionStorage.setItem(storageKey, JSON.stringify(position));
+        }
       }
     }
-  }, [position, storageKey, draggable, isInitialized, isDragging]);
+  }, [position, storageKey, draggable, isInitialized, isDragging, hasUserDragged]);
 
   useOnClickOutside(ref, () => setIsOpen(false));
 
@@ -192,6 +214,15 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
     const upHandler = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      
+      // Check if position actually changed from initial position
+      const moved = Math.abs(position.x - initialPosition.x) > 5 || 
+                    Math.abs(position.y - initialPosition.y) > 5;
+      
+      if (moved) {
+        setHasUserDragged(true);
+      }
+      
       setIsDragging(false);
     };
     
@@ -361,6 +392,11 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
         e.stopPropagation();
         
         const moved = Math.abs(position.x - initialPosition.x) > 10 || Math.abs(position.y - initialPosition.y) > 10;
+        
+        if (moved) {
+          setHasUserDragged(true);
+        }
+        
         setIsDragging(false);
         
         // If moved significantly, it was a drag, not a click

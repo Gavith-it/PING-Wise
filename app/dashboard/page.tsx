@@ -150,7 +150,7 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { addNotification } = useNotifications();
   const [stats, setStats] = useState<any>(null);
   const [activity, setActivity] = useState<any>(null);
@@ -160,10 +160,25 @@ export default function DashboardPage() {
   const [showPatientModal, setShowPatientModal] = useState(false);
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    // Only load data when authentication is complete and user is authenticated
+    if (!authLoading && isAuthenticated && user) {
+      loadDashboardData();
+    } else if (!authLoading && !isAuthenticated) {
+      // If not authenticated, stop loading (PrivateRoute will handle redirect)
+      setLoading(false);
+    }
+  }, [authLoading, isAuthenticated, user]);
 
   const loadDashboardData = async () => {
+    // Double check token exists before making requests
+    if (typeof window !== 'undefined') {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const [statsData, activityData, appointmentsData] = await Promise.all([
@@ -175,9 +190,14 @@ export default function DashboardPage() {
       setStats(statsData.data);
       setActivity(activityData.data);
       setTodayAppointments(appointmentsData.data || []);
-    } catch (error) {
-      toast.error('Failed to load dashboard data');
-      console.error('Dashboard load error:', error);
+    } catch (error: any) {
+      // Handle 401 errors silently - PrivateRoute will redirect
+      if (error?.response?.status !== 401) {
+        toast.error('Failed to load dashboard data');
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Dashboard load error:', error);
+        }
+      }
     } finally {
       setLoading(false);
     }

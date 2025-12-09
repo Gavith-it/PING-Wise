@@ -59,22 +59,32 @@ api.interceptors.request.use(
         
         // Log the actual headers being sent (for debugging)
         const method = (config.method || 'get').toUpperCase();
-        console.log(`Token added to ${method} request:`, {
-          url: config.url,
-          method: method,
-          hasToken: true,
-          tokenPreview: token.substring(0, 20) + '...',
-          headersSet: {
-            Authorization: config.headers['Authorization'] || config.headers.get?.('Authorization') ? '✓' : '✗',
-            authorization: config.headers['authorization'] || config.headers.get?.('authorization') ? '✓' : '✗'
-          },
-          allHeaders: Object.keys(config.headers)
-        });
+        // Only log in development mode to reduce console noise
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Token added to ${method} request:`, {
+            url: config.url,
+            method: method,
+            hasToken: true,
+            tokenPreview: token.substring(0, 20) + '...',
+            headersSet: {
+              Authorization: config.headers['Authorization'] || config.headers.get?.('Authorization') ? '✓' : '✗',
+              authorization: config.headers['authorization'] || config.headers.get?.('authorization') ? '✓' : '✗'
+            }
+          });
+        }
       } else {
-        console.warn('No token found in localStorage for request:', {
-          url: config.url,
-          method: config.method
-        });
+        // Only warn for protected routes that typically require auth
+        // Don't warn for public routes like /auth/login, /auth/register, etc.
+        const isPublicRoute = config.url?.includes('/auth/login') || 
+                              config.url?.includes('/auth/register') ||
+                              config.url?.includes('/health');
+        
+        if (!isPublicRoute && process.env.NODE_ENV === 'development') {
+          console.warn('No token found in sessionStorage for request:', {
+            url: config.url,
+            method: config.method
+          });
+        }
       }
     }
     return config;

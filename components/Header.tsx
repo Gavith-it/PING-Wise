@@ -24,10 +24,21 @@ export default function Header() {
   // Fetch wallet balance
   useEffect(() => {
     const fetchWalletBalance = async () => {
+      // Wait for user to be authenticated
       if (!user) {
         setWalletBalance(0);
         setLoadingBalance(false);
         return;
+      }
+      
+      // Check if token exists in sessionStorage before making request
+      if (typeof window !== 'undefined') {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+          setWalletBalance(0);
+          setLoadingBalance(false);
+          return;
+        }
       }
       
       try {
@@ -37,14 +48,26 @@ export default function Header() {
           const response = await walletService.getBalance();
           setWalletBalance(response.data?.balance || 0);
         } catch (apiError: any) {
+          // Silently handle auth errors (401) - user might not be fully authenticated yet
           // If API endpoint doesn't exist yet (404), silently use default
-          // Don't log errors for missing endpoints to avoid console spam
-          if (apiError?.response?.status && apiError.response.status !== 404) {
-            console.error('Error fetching wallet balance:', apiError);
+          // Don't log errors for missing endpoints or auth errors to avoid console spam
+          const status = apiError?.response?.status;
+          if (status === 401 || status === 404) {
+            // Silent fail for auth errors and missing endpoints
+            const balance = (user as any)?.walletBalance || 0;
+            setWalletBalance(balance);
+          } else if (status) {
+            // Only log non-auth, non-404 errors
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error fetching wallet balance:', apiError);
+            }
+            const balance = (user as any)?.walletBalance || 0;
+            setWalletBalance(balance);
+          } else {
+            // Check user object or use default
+            const balance = (user as any)?.walletBalance || 0;
+            setWalletBalance(balance);
           }
-          // Check user object or use default
-          const balance = (user as any)?.walletBalance || 0;
-          setWalletBalance(balance);
         }
       } catch (error) {
         // Silent fail - wallet balance is optional
