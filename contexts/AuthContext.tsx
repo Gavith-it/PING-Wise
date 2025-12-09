@@ -31,41 +31,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      if (typeof window === 'undefined') return;
+      if (typeof window === 'undefined') {
+        setLoading(false);
+        return;
+      }
       
       const storedToken = localStorage.getItem('token');
-      if (storedToken) {
-        try {
-          const response = await fetch('/api/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${storedToken}`
-            }
-          });
+      if (!storedToken) {
+        // No token, clear everything and set loading to false
+        setToken(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.user) {
-              // Update state synchronously
-              setUser(data.user);
-              setToken(storedToken);
-            } else {
-              localStorage.removeItem('token');
-              setToken(null);
-              setUser(null);
-            }
+      // Token exists, validate it
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${storedToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            // Valid token and user, set authenticated state
+            setUser(data.user);
+            setToken(storedToken);
           } else {
+            // Invalid response, clear token
             localStorage.removeItem('token');
             setToken(null);
             setUser(null);
           }
-        } catch (error) {
-          console.error('Auth initialization error:', error);
+        } else {
+          // API error (401, etc.), clear token
           localStorage.removeItem('token');
           setToken(null);
           setUser(null);
         }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        // Network error or other error, clear token
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
