@@ -4,6 +4,9 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const USE_MOCK_API = process.env.USE_MOCK_API === 'true';
 
+// Mark this route as dynamic since it uses request headers
+export const dynamic = 'force-dynamic';
+
 function getUserIdFromToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
   
@@ -34,6 +37,13 @@ function getUserIdFromToken(req: NextRequest): string | null {
 
 export async function GET(req: NextRequest) {
   try {
+    // Handle mock API mode
+    if (USE_MOCK_API) {
+      const { mockApi } = await import('@/lib/mockApi');
+      const mockResponse = await mockApi.wallet.getBalance();
+      return NextResponse.json(mockResponse);
+    }
+
     const userId = getUserIdFromToken(req);
     
     if (!userId) {

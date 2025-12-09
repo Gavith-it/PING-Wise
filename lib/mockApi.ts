@@ -348,6 +348,15 @@ export const mockApi = {
         data: newMember
       };
     }
+  },
+  wallet: {
+    getBalance: async (): Promise<ApiResponse<{ balance: number }>> => {
+      await delay(300);
+      return { 
+        success: true, 
+        data: { balance: 123456 } // Mock balance
+      };
+    }
   }
 };
 
