@@ -161,11 +161,26 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Only load data when authentication is complete and user is authenticated
-    if (!authLoading && isAuthenticated && user) {
-      loadDashboardData();
-    } else if (!authLoading && !isAuthenticated) {
-      // If not authenticated, stop loading (PrivateRoute will handle redirect)
-      setLoading(false);
+    // Also check token exists in sessionStorage to ensure it's available
+    if (!authLoading) {
+      if (isAuthenticated && user) {
+        // Double-check token exists before making requests
+        if (typeof window !== 'undefined') {
+          const token = sessionStorage.getItem('token');
+          if (token) {
+            loadDashboardData();
+          } else {
+            // Token missing, stop loading (PrivateRoute will redirect)
+            setLoading(false);
+          }
+        } else {
+          // SSR - wait for client-side hydration
+          setLoading(false);
+        }
+      } else {
+        // Not authenticated, stop loading (PrivateRoute will handle redirect)
+        setLoading(false);
+      }
     }
   }, [authLoading, isAuthenticated, user]);
 

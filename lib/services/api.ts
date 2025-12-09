@@ -79,11 +79,16 @@ api.interceptors.request.use(
                               config.url?.includes('/auth/register') ||
                               config.url?.includes('/health');
         
+        // Suppress warnings in production and for public routes
         if (!isPublicRoute && process.env.NODE_ENV === 'development') {
-          console.warn('No token found in sessionStorage for request:', {
-            url: config.url,
-            method: config.method
-          });
+          // Only log if we're actually in browser and making a real request
+          const isClient = typeof window !== 'undefined';
+          if (isClient) {
+            console.warn('No token found in sessionStorage for request:', {
+              url: config.url,
+              method: config.method
+            });
+          }
         }
       }
     }

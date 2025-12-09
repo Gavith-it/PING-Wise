@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [hasChecked, setHasChecked] = useState(false);
 
-  // Immediate check on mount - before any rendering
+  // Check authentication on mount and route changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -27,7 +28,7 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
     }
     
     setHasChecked(true);
-  }, [router]);
+  }, [router, pathname]); // Re-check on route change
 
   // Check after auth loading completes
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
         router.replace('/login');
       }
     }
-  }, [loading, isAuthenticated, hasChecked, router]);
+  }, [loading, isAuthenticated, hasChecked, router, pathname]);
 
   // Show loading while checking authentication
   if (loading || !hasChecked) {

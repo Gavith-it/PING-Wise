@@ -26,11 +26,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  // Initialize token as null for SSR - will be set in useEffect
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const initAuth = async () => {
+      // Ensure we're in browser environment
       if (typeof window === 'undefined') {
         setLoading(false);
         return;
@@ -56,7 +58,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const response = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${storedToken}`
-          }
+          },
+          // Add cache control to prevent stale responses
+          cache: 'no-store'
         });
 
         if (response.ok) {
@@ -78,7 +82,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        // Only log errors in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Auth initialization error:', error);
+        }
         // Network error or other error, clear token
         sessionStorage.removeItem('token');
         setToken(null);
@@ -89,6 +96,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initAuth();
+    
+    // Listen for storage events to sync across tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token' && e.storageArea === sessionStorage) {
+        if (!e.newValue) {
+          // Token was removed, logout
+          setToken(null);
+          setUser(null);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
