@@ -77,7 +77,7 @@ export const mockTeamMembers: User[] = [
     experience: '15 years',
     specialization: 'General Medicine',
     initials: 'JD',
-    avatarColor: 'bg-primary'
+    avatarColor: 'bg-blue-500'
   },
   {
     id: '2',
@@ -90,7 +90,7 @@ export const mockTeamMembers: User[] = [
     experience: '12 years',
     specialization: 'Cardiologist',
     initials: 'SW',
-    avatarColor: 'bg-primary-dark'
+    avatarColor: 'bg-purple-500'
   },
   {
     id: '3',
@@ -103,7 +103,7 @@ export const mockTeamMembers: User[] = [
     experience: '8 years',
     specialization: 'Family Medicine',
     initials: 'MB',
-    avatarColor: 'bg-primary-light'
+    avatarColor: 'bg-green-500'
   },
 ];
 

@@ -13,6 +13,35 @@ import TeamFilterModal from '@/components/modals/TeamFilterModal';
 import StarRating from '@/components/ui/star-rating';
 import { useOnClickOutside } from 'usehooks-ts';
 
+// Helper function to generate initials from name
+const generateInitials = (name: string): string => {
+  if (!name) return 'U';
+  const names = name.trim().split(' ').filter(n => n.length > 0);
+  if (names.length === 0) return 'U';
+  if (names.length === 1) return names[0].charAt(0).toUpperCase();
+  // Take first letter of first name and first letter of last name
+  return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+};
+
+// Helper function to generate avatar color based on name (deterministic)
+const generateAvatarColor = (name: string, index: number): string => {
+  const colors = [
+    'bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-red-500',
+    'bg-orange-500', 'bg-indigo-500', 'bg-pink-500', 'bg-teal-500',
+    'bg-cyan-500', 'bg-yellow-500', 'bg-lime-500', 'bg-emerald-500',
+    'bg-violet-500', 'bg-fuchsia-500', 'bg-rose-500', 'bg-amber-500'
+  ];
+  // Use a hash of the name or index to get consistent color
+  if (name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+  return colors[index % colors.length];
+};
+
 export default function TeamPage() {
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<User[]>([]);
@@ -58,8 +87,26 @@ export default function TeamPage() {
 
       const response = await teamService.getTeamMembers(params);
       const members = response.data || [];
-      setTeamMembers(members);
-      setFilteredMembers(members);
+      
+      // Ensure each member has initials and unique avatarColor
+      // Always generate unique colors based on name/index to ensure each member is different
+      const processedMembers = members.map((member: User, index: number) => {
+        // Always generate initials if missing
+        const memberInitials = member.initials || generateInitials(member.name);
+        
+        // Always generate unique avatar color based on name (deterministic but unique per name)
+        // This ensures each member gets a distinct color, even if API returns same colors
+        const memberAvatarColor = generateAvatarColor(member.name, index);
+        
+        return {
+          ...member,
+          initials: memberInitials,
+          avatarColor: memberAvatarColor
+        };
+      });
+      
+      setTeamMembers(processedMembers);
+      setFilteredMembers(processedMembers);
     } catch (error) {
       toast.error('Failed to load team members');
       console.error('Load team error:', error);
@@ -83,14 +130,17 @@ export default function TeamPage() {
 
   const filterMembers = () => {
     if (!searchQuery.trim()) {
+      // Use already processed teamMembers (they already have initials and avatarColor)
       setFilteredMembers(teamMembers);
       return;
     }
 
     const query = searchQuery.toLowerCase();
+    // Filter already processed members (they already have initials and avatarColor)
     const filtered = teamMembers.filter((member) =>
       member.name.toLowerCase().includes(query)
     );
+    
     setFilteredMembers(filtered);
   };
 
@@ -212,10 +262,11 @@ export default function TeamPage() {
               </div>
             ) : (
               <div className="space-y-2 md:space-y-3">
-                {filteredMembers.map((member) => (
+                {filteredMembers.map((member, index) => (
                   <TeamMemberCard
                     key={member.id}
                     member={member}
+                    index={index}
                     getStatusColor={getStatusColor}
                     appointmentCount={appointmentCounts[member.id] || 0}
                     onView={() => handleView(member)}
@@ -283,27 +334,40 @@ function FilterCard({ icon: Icon, value, label, active, onClick, color = 'blue' 
   onClick: () => void;
   color?: 'blue' | 'green' | 'orange';
 }) {
-  const colorClasses = {
-    blue: 'border-primary text-primary',
-    green: 'border-green-500 text-green-600',
-    orange: 'border-orange-500 text-orange-600',
+  const borderColorClasses = {
+    blue: 'border-primary',
+    green: 'border-green-500',
+    orange: 'border-orange-500',
   };
-
+  
+  const textColorClasses = {
+    blue: 'text-primary',
+    green: 'text-green-600',
+    orange: 'text-orange-600',
+  };
+  
+  const iconBgClasses = {
+    blue: 'bg-primary/10',
+    green: 'bg-green-100',
+    orange: 'bg-orange-100',
+  };
+  
   return (
     <button
       onClick={onClick}
       className={`bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border-2 text-left transition-all card-hover ${
         active
-          ? `${colorClasses[color]} shadow-md`
+          ? `${borderColorClasses[color]} ${textColorClasses[color]} shadow-md`
           : 'border-gray-100 hover:border-gray-200'
       }`}
     >
       <div className="flex items-center justify-between mb-2 md:mb-3">
-        <div className={`w-10 h-10 md:w-12 md:h-12 ${active ? colorClasses[color].replace('text-', 'bg-').replace('-600', '-100') : 'bg-primary/10'} rounded-lg flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 md:w-6 md:h-6 ${active ? colorClasses[color] : 'text-primary'}`} />
+        <div className={`w-10 h-10 md:w-12 md:h-12 ${active ? iconBgClasses[color] : 'bg-primary/10'} rounded-lg flex items-center justify-center`}>
+          {/* Icon always stays primary color, doesn't change on click */}
+          <Icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
         </div>
       </div>
-      <p className={`text-xl md:text-3xl font-bold mb-0.5 md:mb-1 ${active ? colorClasses[color] : 'text-gray-900'}`}>
+      <p className={`text-xl md:text-3xl font-bold mb-0.5 md:mb-1 ${active ? textColorClasses[color] : 'text-gray-900'}`}>
         {value}
       </p>
       <p className="text-xs md:text-sm text-gray-600 font-medium">{label}</p>
@@ -313,6 +377,7 @@ function FilterCard({ icon: Icon, value, label, active, onClick, color = 'blue' 
 
 function TeamMemberCard({ 
   member, 
+  index,
   getStatusColor, 
   appointmentCount,
   onView,
@@ -320,6 +385,7 @@ function TeamMemberCard({
   onDelete,
 }: {
   member: User;
+  index: number;
   getStatusColor: (status: string) => string;
   appointmentCount: number;
   onView: () => void;
@@ -335,8 +401,12 @@ function TeamMemberCard({
     <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2 md:gap-4">
         <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0">
-          <div className={`w-10 h-10 md:w-12 md:h-12 ${member.avatarColor || 'bg-primary'} rounded-full flex items-center justify-center text-white text-sm md:text-base font-semibold flex-shrink-0`}>
-            {member.initials || member.name.charAt(0).toUpperCase()}
+          <div 
+            className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white text-sm md:text-base font-semibold flex-shrink-0 ${
+              member.avatarColor || generateAvatarColor(member.name, index)
+            }`}
+          >
+            {member.initials || generateInitials(member.name)}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 md:gap-2 mb-1 flex-wrap">
