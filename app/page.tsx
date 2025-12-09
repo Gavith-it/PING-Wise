@@ -10,8 +10,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading) {
-      // Check token from localStorage as source of truth
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      // Clear any old localStorage token (migration)
+      if (typeof window !== 'undefined' && localStorage.getItem('token')) {
+        localStorage.removeItem('token');
+      }
+      
+      // Check token from sessionStorage as source of truth
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
       
       if (token && isAuthenticated) {
         router.replace('/dashboard');

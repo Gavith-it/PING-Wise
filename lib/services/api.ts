@@ -32,7 +32,12 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
+      // Migrate from localStorage to sessionStorage (one-time migration)
+      if (localStorage.getItem('token')) {
+        localStorage.removeItem('token');
+      }
+      
+      const token = sessionStorage.getItem('token');
       if (token && token.trim()) {
         // Ensure headers object exists - important for POST/PUT requests
         // Use axios's proper header setting method
@@ -102,6 +107,9 @@ api.interceptors.response.use(
       // Only redirect if it's a clear authentication error, not a validation error
       // Don't redirect for validation errors (400 with errors array) or other non-auth 401s
       if (isAuthError && !isValidationError) {
+        // Clear tokens from both sessionStorage and localStorage
+        sessionStorage.removeItem('token');
+        localStorage.removeItem('token');
         // Don't redirect immediately - let the component handle the error first
         // The component will show the error message and handle redirect
         // This prevents double redirects and allows proper error handling

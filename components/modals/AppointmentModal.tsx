@@ -132,7 +132,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       // Handle different types of errors
       const errorMessage = error.response?.data?.message || error.message || 'Failed to save appointment';
       const status = error.response?.status;
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       
       console.error('Appointment save error:', {
         status,
@@ -160,6 +160,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
             toast.error('Your session has expired. Please log in again.');
             setTimeout(() => {
               if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('token');
+                // Also clear localStorage token if it exists (cleanup)
                 localStorage.removeItem('token');
                 window.location.href = '/login';
               }

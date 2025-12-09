@@ -36,7 +36,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      const storedToken = localStorage.getItem('token');
+      // Migrate from localStorage to sessionStorage (one-time migration)
+      // Clear any old localStorage tokens to ensure session-based auth
+      if (localStorage.getItem('token')) {
+        localStorage.removeItem('token');
+      }
+      
+      const storedToken = sessionStorage.getItem('token');
       if (!storedToken) {
         // No token, clear everything and set loading to false
         setToken(null);
@@ -61,20 +67,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setToken(storedToken);
           } else {
             // Invalid response, clear token
-            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
             setToken(null);
             setUser(null);
           }
         } else {
           // API error (401, etc.), clear token
-          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
           setToken(null);
           setUser(null);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
         // Network error or other error, clear token
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         setToken(null);
         setUser(null);
       } finally {
@@ -98,8 +104,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data: AuthResponse = await response.json();
 
       if (data.success && data.token && data.user) {
-        // Update localStorage first
-        localStorage.setItem('token', data.token);
+        // Update sessionStorage (session-based, expires when tab closes)
+        sessionStorage.setItem('token', data.token);
+        // Clear any old localStorage token
+        localStorage.removeItem('token');
         // Update state - React will batch these updates
         setToken(data.token);
         setUser(data.user);
@@ -120,6 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
+    sessionStorage.removeItem('token');
+    // Also clear localStorage token if it exists (cleanup)
     localStorage.removeItem('token');
     toast.success('Logged out successfully');
     router.push('/login');
@@ -140,7 +150,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.success && data.token && data.user) {
         setUser(data.user);
         setToken(data.token);
-        localStorage.setItem('token', data.token);
+        sessionStorage.setItem('token', data.token);
+        // Clear any old localStorage token
+        localStorage.removeItem('token');
         toast.success('Registration successful!');
         return true;
       } else {

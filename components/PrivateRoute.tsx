@@ -13,7 +13,12 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    const token = localStorage.getItem('token');
+    // Clear any old localStorage token (migration)
+    if (localStorage.getItem('token')) {
+      localStorage.removeItem('token');
+    }
+    
+    const token = sessionStorage.getItem('token');
     
     // If no token, redirect immediately
     if (!token) {
@@ -27,7 +32,7 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
   // Check after auth loading completes
   useEffect(() => {
     if (!loading && hasChecked) {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
       
       // If no token or not authenticated after loading, redirect
       if (!token || !isAuthenticated) {
@@ -50,7 +55,7 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
 
   // Final check - if not authenticated, don't render
   if (!isAuthenticated) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
     if (!token) {
       return null; // Will redirect via useEffect
     }
