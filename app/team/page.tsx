@@ -237,23 +237,20 @@ export default function TeamPage() {
                 icon={Users}
                 value={teamMembers.length}
                 label="Total Team Members"
-                active={filter === 'all'}
-                onClick={() => setFilter('all')}
+                active={false}
               />
               <FilterCard
                 icon={UserCheck}
                 value={teamMembers.filter(m => m.status === 'active').length}
                 label="Active Today"
-                active={filter === 'active'}
-                onClick={() => setFilter('active')}
+                active={false}
                 color="green"
               />
               <FilterCard
                 icon={CalendarX}
                 value={teamMembers.filter(m => m.status === 'leave').length}
                 label="On Leave"
-                active={filter === 'leave'}
-                onClick={() => setFilter('leave')}
+                active={false}
                 color="orange"
               />
               <FilterCard
@@ -261,7 +258,6 @@ export default function TeamPage() {
                 value={departments.length}
                 label="Departments"
                 active={false}
-                onClick={() => {}}
               />
             </div>
 
@@ -364,12 +360,11 @@ export default function TeamPage() {
   );
 }
 
-function FilterCard({ icon: Icon, value, label, active, onClick, color = 'blue' }: {
+function FilterCard({ icon: Icon, value, label, active, color = 'blue' }: {
   icon: React.ElementType;
   value: number;
   label: string;
   active: boolean;
-  onClick: () => void;
   color?: 'blue' | 'green' | 'orange';
 }) {
   const borderColorClasses = {
@@ -391,12 +386,11 @@ function FilterCard({ icon: Icon, value, label, active, onClick, color = 'blue' 
   };
   
   return (
-    <button
-      onClick={onClick}
-      className={`bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border-2 text-left transition-all card-hover ${
+    <div
+      className={`bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border-2 text-left transition-all ${
         active
           ? `${borderColorClasses[color]} ${textColorClasses[color]} shadow-md`
-          : 'border-gray-100 hover:border-gray-200'
+          : 'border-gray-100'
       }`}
     >
       <div className="flex items-center justify-between mb-2 md:mb-3">
@@ -409,7 +403,7 @@ function FilterCard({ icon: Icon, value, label, active, onClick, color = 'blue' 
         {value}
       </p>
       <p className="text-xs md:text-sm text-gray-600 font-medium">{label}</p>
-    </button>
+    </div>
   );
 }
 
