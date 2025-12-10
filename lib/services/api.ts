@@ -34,28 +34,29 @@ api.interceptors.request.use(
     if (typeof window !== 'undefined') {
       // Migrate from localStorage to sessionStorage (one-time migration)
       if (localStorage.getItem('token')) {
+        const oldToken = localStorage.getItem('token');
+        if (oldToken) {
+          sessionStorage.setItem('token', oldToken);
+        }
         localStorage.removeItem('token');
       }
       
+      // Get token from sessionStorage - ensure we get it fresh each time
       const token = sessionStorage.getItem('token');
+      
       if (token && token.trim()) {
         // Ensure headers object exists - important for POST/PUT requests
-        // Use axios's proper header setting method
         if (!config.headers) {
           config.headers = {} as any;
         }
         
-        // Set Authorization header - axios will handle the case
+        // Set Authorization header - use Bearer token format
         const authHeader = `Bearer ${token.trim()}`;
-        // Set using both methods to ensure compatibility
-        if (config.headers.set) {
-          // If headers is a Headers object
-          config.headers.set('Authorization', authHeader);
-        } else {
-          // If headers is a plain object
-          config.headers['Authorization'] = authHeader;
-          config.headers['authorization'] = authHeader; // lowercase for Next.js
-        }
+        
+        // Set header using direct assignment (most reliable)
+        config.headers['Authorization'] = authHeader;
+        // Also set lowercase version for Next.js API routes
+        config.headers['authorization'] = authHeader;
         
         // Log the actual headers being sent (for debugging)
         const method = (config.method || 'get').toUpperCase();
@@ -67,8 +68,8 @@ api.interceptors.request.use(
             hasToken: true,
             tokenPreview: token.substring(0, 20) + '...',
             headersSet: {
-              Authorization: config.headers['Authorization'] || config.headers.get?.('Authorization') ? '✓' : '✗',
-              authorization: config.headers['authorization'] || config.headers.get?.('authorization') ? '✓' : '✗'
+              Authorization: config.headers['Authorization'] ? '✓' : '✗',
+              authorization: config.headers['authorization'] ? '✓' : '✗'
             }
           });
         }
@@ -79,14 +80,14 @@ api.interceptors.request.use(
                               config.url?.includes('/auth/register') ||
                               config.url?.includes('/health');
         
-        // Suppress warnings in production and for public routes
-        if (!isPublicRoute && process.env.NODE_ENV === 'development') {
-          // Only log if we're actually in browser and making a real request
+        // Log warning for protected routes without token
+        if (!isPublicRoute) {
           const isClient = typeof window !== 'undefined';
           if (isClient) {
             console.warn('No token found in sessionStorage for request:', {
               url: config.url,
-              method: config.method
+              method: config.method,
+              hasToken: false
             });
           }
         }
@@ -104,7 +105,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    // Only redirect to login if it's a true authentication error (not a validation error)
+    // Handle 401 errors - but don't redirect automatically
+    // Let the component handle the error and show appropriate message
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       const errorMessage = error.response?.data?.message?.toLowerCase() || '';
       const errorData = error.response?.data;
@@ -119,16 +121,19 @@ api.interceptors.response.use(
                          errorMessage.includes('access denied') ||
                          errorMessage.includes('no token');
       
-      // Only redirect if it's a clear authentication error, not a validation error
-      // Don't redirect for validation errors (400 with errors array) or other non-auth 401s
+      // Only clear tokens if it's a clear authentication error, not a validation error
       if (isAuthError && !isValidationError) {
-        // Clear tokens from both sessionStorage and localStorage
-        sessionStorage.removeItem('token');
-        localStorage.removeItem('token');
-        // Don't redirect immediately - let the component handle the error first
-        // The component will show the error message and handle redirect
-        // This prevents double redirects and allows proper error handling
-        console.warn('Authentication error detected:', errorMessage);
+        // Log the error for debugging
+        console.warn('Authentication error detected:', {
+          message: errorMessage,
+          url: error.config?.url,
+          method: error.config?.method,
+          hasToken: !!sessionStorage.getItem('token'),
+          requestHeaders: error.config?.headers
+        });
+        
+        // Don't clear tokens or redirect here - let the component handle it
+        // This allows the component to show proper error messages and handle redirects
       }
     }
     return Promise.reject(error);

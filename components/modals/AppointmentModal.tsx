@@ -117,6 +117,19 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     setLoading(true);
 
     try {
+      // Verify token exists before making the request
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        toast.error('Please log in to continue.');
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+        }, 1500);
+        setLoading(false);
+        return;
+      }
+
       if (appointment) {
         await appointmentService.updateAppointment(appointment.id, formData);
         toast.success('Appointment updated successfully');
@@ -141,14 +154,16 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         tokenLength: token?.length || 0,
         url: error.config?.url,
         requestHeaders: error.config?.headers,
+        authHeader: error.config?.headers?.Authorization || error.config?.headers?.authorization
       });
       
       // Check if it's an authentication error
       if (status === 401) {
         const authErrorMsg = errorMessage.toLowerCase();
         if (authErrorMsg.includes('token') || authErrorMsg.includes('access denied') || authErrorMsg.includes('unauthorized') || authErrorMsg.includes('no token')) {
-          // Check if token exists
+          // Check if token exists in sessionStorage
           if (!token) {
+            // No token - user needs to log in
             toast.error('Please log in to continue.');
             setTimeout(() => {
               if (typeof window !== 'undefined') {
@@ -157,11 +172,11 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
             }, 1500);
           } else {
             // Token exists but was rejected - might be expired or invalid
+            // Try to refresh the token or re-authenticate
             toast.error('Your session has expired. Please log in again.');
             setTimeout(() => {
               if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('token');
-                // Also clear localStorage token if it exists (cleanup)
                 localStorage.removeItem('token');
                 window.location.href = '/login';
               }
