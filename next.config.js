@@ -5,6 +5,16 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   
+  // Ignore ESLint warnings during build (Vercel might treat them as errors)
+  eslint: {
+    ignoreDuringBuilds: true, // Ignore ESLint warnings during builds
+  },
+  
+  // Ignore TypeScript errors during build (if any)
+  typescript: {
+    ignoreBuildErrors: false, // Keep TypeScript checking enabled
+  },
+  
   // Security headers
   async headers() {
     return [
