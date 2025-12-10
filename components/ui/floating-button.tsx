@@ -53,6 +53,10 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
   const [hasUserDragged, setHasUserDragged] = useState(false);
 
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Track if a click happened (not a drag)
+  const clickStartTime = useRef<number>(0);
+  const clickStartPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Calculate default position based on viewport
   const calculateDefaultPosition = () => {
@@ -157,80 +161,101 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
   useOnClickOutside(ref, () => setIsOpen(false));
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!draggable) return;
+    if (!draggable) {
+      // If not draggable, let click handler work normally
+      return;
+    }
+    
     // Don't start drag if clicking on a child button
     const target = e.target as HTMLElement;
     if (target.closest('button') && target.closest('button') !== e.currentTarget.querySelector('button:first-child')) {
       return;
     }
     
-    e.preventDefault(); // Prevent default behavior
-    e.stopPropagation(); // Stop event bubbling
+    // Record click start time and position for click detection
+    clickStartTime.current = Date.now();
+    clickStartPosition.current = { x: e.clientX, y: e.clientY };
+    setInitialPosition(position);
+    setMouseDown(true);
     
-    setIsDragging(true);
+    // Don't set isDragging immediately - wait to see if user actually moves
+    // This allows clicks to work properly
     setDragStart({
       x: e.clientX - (position.x || 0),
       y: e.clientY - (position.y || 0)
     });
-    setInitialPosition(position);
   };
 
 
 
-  // Add global mouse event listeners and prevent scrolling
+  // Track if mouse is currently down (for drag detection)
+  const [mouseDown, setMouseDown] = useState(false);
+  
+  // Add global mouse event listeners for drag detection
   useEffect(() => {
-    if (!isDragging) {
-      // Re-enable scrolling when not dragging
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-      return;
-    }
-    
-    // Prevent scrolling while dragging
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
+    if (!draggable) return;
     
     const moveHandler = (e: MouseEvent) => {
-      if (!draggable) return;
+      // Check if mouse moved significantly from start position
+      const movedDistance = Math.abs(e.clientX - clickStartPosition.current.x) > 5 ||
+                          Math.abs(e.clientY - clickStartPosition.current.y) > 5;
       
-      e.preventDefault(); // Prevent default behavior
-      e.stopPropagation(); // Stop event bubbling
+      // Only start dragging if user actually moved the mouse
+      if (mouseDown && movedDistance && !isDragging) {
+        setIsDragging(true);
+        // Prevent scrolling while dragging
+        document.body.style.overflow = 'hidden';
+        document.body.style.touchAction = 'none';
+      }
       
-      const newX = e.clientX - dragStart.x;
-      const newY = e.clientY - dragStart.y;
+      if (isDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const newX = e.clientX - dragStart.x;
+        const newY = e.clientY - dragStart.y;
 
-      // Constrain to viewport bounds
-      const buttonWidth = ref.current?.offsetWidth || 48;
-      const buttonHeight = ref.current?.offsetHeight || 48;
-      const maxX = window.innerWidth - buttonWidth;
-      const maxY = window.innerHeight - buttonHeight;
+        // Constrain to viewport bounds
+        const buttonWidth = ref.current?.offsetWidth || 48;
+        const buttonHeight = ref.current?.offsetHeight || 48;
+        const maxX = window.innerWidth - buttonWidth;
+        const maxY = window.innerHeight - buttonHeight;
 
-      setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY))
-      });
+        setPosition({
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY))
+        });
+      }
     };
     
     const upHandler = (e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+      setMouseDown(false);
       
-      // Check if position actually changed from initial position
-      const moved = Math.abs(position.x - initialPosition.x) > 5 || 
-                    Math.abs(position.y - initialPosition.y) > 5;
-      
-      if (moved) {
-        setHasUserDragged(true);
+      if (isDragging) {
+        // This was a drag
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const moved = Math.abs(position.x - initialPosition.x) > 5 || 
+                      Math.abs(position.y - initialPosition.y) > 5;
+        
+        if (moved) {
+          setHasUserDragged(true);
+        }
+        
+        setIsDragging(false);
+        // Re-enable scrolling
+        document.body.style.overflow = '';
+        document.body.style.touchAction = '';
       }
-      
-      setIsDragging(false);
+      // If not dragging, let the click event handle it naturally
     };
     
     // Use capture phase to catch events early
     document.addEventListener('mousemove', moveHandler, { passive: false, capture: true });
     document.addEventListener('mouseup', upHandler, { passive: false, capture: true });
     
-    // Also prevent wheel/scroll events
+    // Also prevent wheel/scroll events while dragging
     const wheelHandler = (e: WheelEvent) => {
       if (isDragging) {
         e.preventDefault();
@@ -258,9 +283,16 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
       document.body.style.overflow = '';
       document.body.style.touchAction = '';
     };
-  }, [isDragging, dragStart, draggable]);
+  }, [mouseDown, isDragging, dragStart, draggable, position, initialPosition]);
 
   const handleTriggerClick = (e: React.MouseEvent) => {
+    // If we were dragging, don't treat this as a click
+    if (isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
     e.stopPropagation();
     
     if (!draggable) {
@@ -268,17 +300,22 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
       return;
     }
     
-    // For draggable buttons, check if we actually dragged
-    // Use a small threshold to distinguish click from drag
-    const moved = Math.abs(position.x - initialPosition.x) > 5 || Math.abs(position.y - initialPosition.y) > 5;
+    // For draggable buttons, only toggle if we didn't drag
+    // Check both position change and if dragging state was set
+    const moved = Math.abs(position.x - initialPosition.x) > 5 || 
+                  Math.abs(position.y - initialPosition.y) > 5;
     
-    // Only toggle if we didn't drag (or drag was very small)
-    if (!moved && !isDragging) {
+    // Only toggle if we didn't drag
+    if (!moved) {
       setIsOpen(!isOpen);
+    } else {
+      // If we dragged, prevent the click
+      e.preventDefault();
     }
   };
 
-  // Process children and ensure unique keys
+
+  // Process children and ensure unique keys and proper event handling
   const processedChildren = Children.toArray(children)
     .filter((child): child is React.ReactElement => isValidElement(child))
     .map((child, index) => {
@@ -288,8 +325,24 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
         ? existingKey 
         : `floating-item-${index}`;
       
-      // Clone with the key
-      return cloneElement(child, { key } as any);
+      // Clone with the key and ensure onClick handlers work
+      const childProps = child.props as any;
+      const originalOnClick = childProps?.onClick;
+      
+      return cloneElement(child, { 
+        key,
+        onClick: (e: React.MouseEvent) => {
+          // Stop propagation to prevent parent handlers
+          e.stopPropagation();
+          // Call original onClick if it exists
+          if (originalOnClick) {
+            originalOnClick(e);
+          }
+          // Close the menu after click
+          setIsOpen(false);
+        },
+        style: { ...childProps?.style, pointerEvents: 'auto' as const }
+      } as any);
     });
 
   // Calculate position style
@@ -351,59 +404,93 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
       const touch = e.touches[0];
       if (!touch) return;
       
-      e.preventDefault();
-      e.stopPropagation();
+      // Record touch start time and position for click detection
+      clickStartTime.current = Date.now();
+      clickStartPosition.current = { x: touch.clientX, y: touch.clientY };
+      setInitialPosition(position);
       
-      setIsDragging(true);
+      // Don't set isDragging immediately - wait to see if user actually moves
+      // This allows taps to work properly
       setDragStart({
         x: touch.clientX - (position.x || 0),
         y: touch.clientY - (position.y || 0)
       });
-      setInitialPosition(position);
     };
 
     touchMoveRef.current = (e: TouchEvent) => {
-      if (!isDragging || !draggable) return;
-      
-      e.preventDefault();
-      e.stopPropagation();
+      if (!draggable) return;
       
       const touch = e.touches[0];
       if (!touch) return;
       
-      const newX = touch.clientX - dragStart.x;
-      const newY = touch.clientY - dragStart.y;
-
-      // Constrain to viewport bounds
-      const buttonWidth = ref.current?.offsetWidth || 48;
-      const buttonHeight = ref.current?.offsetHeight || 48;
-      const maxX = window.innerWidth - buttonWidth;
-      const maxY = window.innerHeight - buttonHeight;
-
-      setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY))
-      });
-    };
-
-    touchEndRef.current = (e: TouchEvent) => {
+      // Check if user actually moved (drag threshold)
+      const movedDistance = Math.abs(touch.clientX - clickStartPosition.current.x) > 5 ||
+                          Math.abs(touch.clientY - clickStartPosition.current.y) > 5;
+      
+      // Only start dragging if user actually moved
+      if (movedDistance && !isDragging) {
+        setIsDragging(true);
+        // Prevent scrolling while dragging
+        document.body.style.overflow = 'hidden';
+        document.body.style.touchAction = 'none';
+      }
+      
       if (isDragging) {
         e.preventDefault();
         e.stopPropagation();
         
-        const moved = Math.abs(position.x - initialPosition.x) > 10 || Math.abs(position.y - initialPosition.y) > 10;
+        const newX = touch.clientX - dragStart.x;
+        const newY = touch.clientY - dragStart.y;
+
+        // Constrain to viewport bounds
+        const buttonWidth = ref.current?.offsetWidth || 48;
+        const buttonHeight = ref.current?.offsetHeight || 48;
+        const maxX = window.innerWidth - buttonWidth;
+        const maxY = window.innerHeight - buttonHeight;
+
+        setPosition({
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY))
+        });
+      }
+    };
+
+    touchEndRef.current = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      
+      if (isDragging) {
+        // This was a drag
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!touch) {
+          setIsDragging(false);
+          document.body.style.overflow = '';
+          document.body.style.touchAction = '';
+          return;
+        }
+        
+        const moved = Math.abs(position.x - initialPosition.x) > 5 || 
+                      Math.abs(position.y - initialPosition.y) > 5;
         
         if (moved) {
           setHasUserDragged(true);
         }
         
         setIsDragging(false);
+        // Re-enable scrolling
+        document.body.style.overflow = '';
+        document.body.style.touchAction = '';
+      } else if (touch) {
+        // This was a tap (not a drag) - let it trigger click naturally
+        // The click handler will handle opening the menu
+        const clickDuration = Date.now() - clickStartTime.current;
+        const movedDistance = Math.abs(touch.clientX - clickStartPosition.current.x) > 5 ||
+                            Math.abs(touch.clientY - clickStartPosition.current.y) > 5;
         
-        // If moved significantly, it was a drag, not a click
-        if (!moved) {
-          setTimeout(() => {
-            setIsOpen(!isOpen);
-          }, 50);
+        // If it was a quick tap without movement, it's a click
+        if (!movedDistance && clickDuration < 300) {
+          // Let the click event handle it - don't prevent default
         }
       }
     };
@@ -455,8 +542,9 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
           variants={btn}
           animate={isOpen ? 'visible' : 'hidden'}
           onClick={handleTriggerClick}
+          data-floating-trigger
           className={`relative z-10 ${draggable && !isDragging ? 'cursor-grab active:cursor-grabbing' : ''}`}
-          style={{ userSelect: 'none' }}>
+          style={{ userSelect: 'none', pointerEvents: 'auto' }}>
           {triggerContent}
         </motion.div>
       </AnimatePresence>
