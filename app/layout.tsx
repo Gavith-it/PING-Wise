@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { FooterVisibilityProvider } from '@/contexts/FooterVisibilityContext';
 import NotificationToast from '@/components/NotificationToast';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -32,9 +33,10 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <NotificationProvider>
-              {children}
-              <NotificationToast />
-              <Toaster
+              <FooterVisibilityProvider>
+                {children}
+                <NotificationToast />
+                <Toaster
             position="top-right"
             toastOptions={{
               duration: 3000,
@@ -58,6 +60,7 @@ export default function RootLayout({
               },
             }}
           />
+              </FooterVisibilityProvider>
             </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>

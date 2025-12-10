@@ -10,7 +10,7 @@ import BulkUploadModal from '@/components/modals/BulkUploadModal';
 import FilterModal, { FilterOptions } from '@/components/modals/FilterModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import BottomNav from '@/components/BottomNav';
+import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
 import { Patient } from '@/types';
 
 // Cache for patients data to enable instant navigation
@@ -52,6 +52,8 @@ export default function CRMPage() {
   const limit = 10;
   const menuRef = useRef<HTMLDivElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const { setIsVisible: setFooterVisible } = useFooterVisibility();
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     // Create filter key to check cache
@@ -97,6 +99,54 @@ export default function CRMPage() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle scroll visibility for footer on patient list container
+  useEffect(() => {
+    const container = listContainerRef.current;
+    if (!container) return;
+
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = container.scrollTop;
+          
+          // Show footer when at top of list
+          if (currentScrollY < 10) {
+            setFooterVisible(true);
+            lastScrollY.current = currentScrollY;
+            ticking = false;
+            return;
+          }
+          
+          // Calculate scroll direction
+          const scrollDifference = currentScrollY - lastScrollY.current;
+          
+          // Hide footer when scrolling down (after 20px threshold)
+          if (scrollDifference > 5 && currentScrollY > 20) {
+            setFooterVisible(false);
+          } 
+          // Show footer when scrolling up
+          else if (scrollDifference < -5) {
+            setFooterVisible(true);
+          }
+          
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    container.addEventListener('touchmove', handleScroll, { passive: true });
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('touchmove', handleScroll);
+    };
   }, []);
 
   const loadPatients = async (reset = false, skipLoadingSpinner = false) => {
@@ -221,7 +271,7 @@ export default function CRMPage() {
   return (
     <PrivateRoute>
       <Layout>
-        <div className="flex flex-col h-full min-h-0">
+        <div className="flex flex-col h-full min-h-0 pb-16 md:pb-0">
           {/* Fixed Header Section - Search, Filters, and Actions */}
           <div className="flex-shrink-0 space-y-4 md:space-y-6 pb-4 md:pb-6 bg-gray-50">
             <div>
@@ -318,14 +368,14 @@ export default function CRMPage() {
               </div>
             ) : isEmpty ? (
             /* Empty State or No Search Results */
-            <div className="bg-white rounded-2xl p-8 md:p-12 text-center">
+            <div className="bg-white rounded-2xl p-6 md:p-8 text-center">
               {isSearchResult ? (
                 <>
-                  <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
+                  <Search className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-3 md:mb-4" />
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-1.5 md:mb-2">
                     No matches found for your search.
                   </h3>
-                  <p className="text-sm md:text-base text-gray-500 mb-6">
+                  <p className="text-xs md:text-sm text-gray-500 mb-4 md:mb-6">
                     Try adjusting your search terms or filters.
                   </p>
                   <button
@@ -339,18 +389,18 @@ export default function CRMPage() {
                         ageRange: { min: '', max: '' },
                       });
                     }}
-                    className="bg-primary text-white px-6 py-2 rounded-xl font-medium hover:bg-primary-dark transition-colors"
+                    className="bg-primary text-white px-4 py-2 md:px-6 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:bg-primary-dark transition-colors"
                   >
                     Clear Filters
                   </button>
                 </>
               ) : (
                 <>
-                  <Users className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
+                  <Users className="w-14 h-14 md:w-20 md:h-20 text-gray-300 mx-auto mb-3 md:mb-4" />
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-1.5 md:mb-2">
                     No customers yet.
                   </h3>
-                  <p className="text-sm md:text-base text-gray-500 mb-6">
+                  <p className="text-xs md:text-sm text-gray-500 mb-4 md:mb-6">
                     Add new customers to start managing your network.
                   </p>
                   <button
@@ -358,9 +408,9 @@ export default function CRMPage() {
                       setSelectedPatient(null);
                       setShowAddModal(true);
                     }}
-                    className="bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-dark transition-colors shadow-md hover:shadow-lg flex items-center space-x-2 mx-auto"
+                    className="bg-primary text-white px-4 py-2.5 md:px-6 md:py-3 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:bg-primary-dark transition-colors shadow-md hover:shadow-lg flex items-center space-x-2 mx-auto"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4 md:w-5 md:h-5" />
                     <span>Add New Customer</span>
                   </button>
                 </>
@@ -410,10 +460,6 @@ export default function CRMPage() {
                 </div>
               )}
 
-              {/* Footer - Scrolls with content */}
-              <div className="md:hidden mt-4">
-                <BottomNav />
-              </div>
             </>
           )}
           </div>
