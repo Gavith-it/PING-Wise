@@ -10,6 +10,17 @@ import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import { Appointment } from '@/types';
 
+// Cache for appointments data to enable instant navigation
+const appointmentsCache: {
+  appointments: Record<string, Appointment[]>;
+  timestamp: number;
+} = {
+  appointments: {},
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
 export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -18,21 +29,46 @@ export default function AppointmentsPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
-    loadAppointments();
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const cachedAppointments = appointmentsCache.appointments[dateStr] || [];
+    const cacheAge = Date.now() - appointmentsCache.timestamp;
+    const isCacheValid = cachedAppointments.length > 0 && cacheAge < CACHE_DURATION;
+    
+    if (isCacheValid) {
+      // Use cached data immediately
+      setAppointments(cachedAppointments);
+      setLoading(false);
+      // Refresh in background
+      loadAppointments(false);
+    } else {
+      // No cache, load normally
+      setLoading(true);
+      loadAppointments(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
-  const loadAppointments = async () => {
+  const loadAppointments = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const response = await appointmentService.getAppointments({ date: dateStr });
-      setAppointments(response.data || []);
+      const newAppointments = response.data || [];
+      
+      // Update cache
+      appointmentsCache.appointments[dateStr] = newAppointments;
+      appointmentsCache.timestamp = Date.now();
+      
+      setAppointments(newAppointments);
     } catch (error) {
       toast.error('Failed to load appointments');
       console.error('Load appointments error:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 

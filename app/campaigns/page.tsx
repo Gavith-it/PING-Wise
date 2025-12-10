@@ -10,10 +10,24 @@ import TagSelectorModal from '@/components/modals/TagSelectorModal';
 import ScheduleModal from '@/components/modals/ScheduleModal';
 import { Campaign } from '@/types';
 
+// Cache for campaigns data to enable instant navigation
+const campaignsCache: {
+  campaigns: Campaign[];
+  timestamp: number;
+} = {
+  campaigns: [],
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
+
 export default function CampaignsPage() {
   const [campaignTitle, setCampaignTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  // Initialize with cached data if available
+  const cacheAge = Date.now() - campaignsCache.timestamp;
+  const isCacheValid = campaignsCache.campaigns.length > 0 && cacheAge < CACHE_DURATION;
+  const [campaigns, setCampaigns] = useState<Campaign[]>(isCacheValid ? campaignsCache.campaigns : []);
   const [loading, setLoading] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -27,7 +41,14 @@ export default function CampaignsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadCampaigns();
+    // If we have cached data, use it immediately and refresh in background
+    if (isCacheValid && campaigns.length === 0) {
+      setCampaigns(campaignsCache.campaigns);
+      loadCampaigns(false);
+    } else {
+      loadCampaigns(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Clean up image previews when component unmounts
@@ -92,10 +113,16 @@ export default function CampaignsPage() {
     setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = async (showLoading = false) => {
     try {
       const response = await campaignService.getCampaigns();
-      setCampaigns(response.data || []);
+      const newCampaigns = response.data || [];
+      
+      // Update cache
+      campaignsCache.campaigns = newCampaigns;
+      campaignsCache.timestamp = Date.now();
+      
+      setCampaigns(newCampaigns);
     } catch (error) {
       console.error('Load campaigns error:', error);
     }

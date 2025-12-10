@@ -42,10 +42,23 @@ const generateAvatarColor = (name: string, index: number): string => {
   return colors[index % colors.length];
 };
 
+// Cache for team data to enable instant navigation
+const teamCache: {
+  teamMembers: User[];
+  filters: string;
+  timestamp: number;
+} = {
+  teamMembers: [],
+  filters: '',
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
+
 export default function TeamPage() {
-  const [teamMembers, setTeamMembers] = useState<User[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [teamMembers, setTeamMembers] = useState<User[]>(teamCache.teamMembers);
+  const [filteredMembers, setFilteredMembers] = useState<User[]>(teamCache.teamMembers);
+  const [loading, setLoading] = useState(teamCache.teamMembers.length === 0); // Only show loading if no cached data
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [filters, setFilters] = useState({ status: 'all', department: 'all' });
@@ -56,7 +69,22 @@ export default function TeamPage() {
   const [appointmentCounts, setAppointmentCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    loadTeamMembers();
+    const filterKey = JSON.stringify({ filter, filters });
+    const cacheAge = Date.now() - teamCache.timestamp;
+    const isCacheValid = teamCache.teamMembers.length > 0 && 
+                        teamCache.filters === filterKey && 
+                        cacheAge < CACHE_DURATION;
+    
+    if (isCacheValid && teamMembers.length === 0) {
+      // Use cached data immediately
+      setTeamMembers(teamCache.teamMembers);
+      setFilteredMembers(teamCache.teamMembers);
+      setLoading(false);
+      // Refresh in background
+      loadTeamMembers(false);
+    } else {
+      loadTeamMembers(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, filters]);
 
@@ -70,9 +98,11 @@ export default function TeamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamMembers]);
 
-  const loadTeamMembers = async () => {
+  const loadTeamMembers = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const params: any = {};
       
       if (filters.status !== 'all') {
@@ -105,13 +135,21 @@ export default function TeamPage() {
         };
       });
       
+      // Update cache
+      const filterKey = JSON.stringify({ filter, filters });
+      teamCache.teamMembers = processedMembers;
+      teamCache.filters = filterKey;
+      teamCache.timestamp = Date.now();
+      
       setTeamMembers(processedMembers);
       setFilteredMembers(processedMembers);
     } catch (error) {
       toast.error('Failed to load team members');
       console.error('Load team error:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 

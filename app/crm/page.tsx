@@ -13,9 +13,24 @@ import PrivateRoute from '@/components/PrivateRoute';
 import BottomNav from '@/components/BottomNav';
 import { Patient } from '@/types';
 
+// Cache for patients data to enable instant navigation
+const patientsCache: {
+  patients: Patient[];
+  total: number;
+  filters: string;
+  timestamp: number;
+} = {
+  patients: [],
+  total: 0,
+  filters: '',
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
 export default function CRMPage() {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [patients, setPatients] = useState<Patient[]>(patientsCache.patients);
+  const [loading, setLoading] = useState(patientsCache.patients.length === 0); // Only show loading if no cached data
   const [loadingMore, setLoadingMore] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,7 +41,7 @@ export default function CRMPage() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(patientsCache.total);
   const [hasMore, setHasMore] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({
     status: 'all',
@@ -39,14 +54,38 @@ export default function CRMPage() {
   const listContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Create filter key to check cache
+    const filterKey = JSON.stringify({ searchTerm, statusFilter, advancedFilters });
+    const cacheAge = Date.now() - patientsCache.timestamp;
+    const isCacheValid = patientsCache.patients.length > 0 && 
+                        patientsCache.filters === filterKey && 
+                        cacheAge < CACHE_DURATION;
+    
     // Only show loading on initial load, not on filter changes
     const isInitialLoad = patients.length === 0 && loading;
-    if (!isInitialLoad) {
-      setIsFiltering(true);
+    
+    if (isCacheValid && isInitialLoad) {
+      // Use cached data immediately
+      setPatients(patientsCache.patients);
+      setTotal(patientsCache.total);
+      setLoading(false);
+      setIsFiltering(false);
+      // Refresh in background
+      loadPatients(true, true);
+    } else if (isCacheValid && patientsCache.filters === filterKey) {
+      // Same filters, cache is valid - use it immediately
+      setPatients(patientsCache.patients);
+      setTotal(patientsCache.total);
+      setLoading(false);
+      setIsFiltering(false);
+    } else {
+      // Filters changed or cache invalid - keep current data visible, fetch in background
+      setPage(1);
+      setIsFiltering(false); // Don't show filtering state - keep UI smooth
+      // Don't clear patients - keep showing current data while fetching
+      // Don't show loading spinner on filter changes
+      loadPatients(true, true); // Always skip loading spinner on filter changes
     }
-    setPage(1);
-    setPatients([]);
-    loadPatients(true, !isInitialLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, statusFilter, advancedFilters]);
 
@@ -62,14 +101,17 @@ export default function CRMPage() {
 
   const loadPatients = async (reset = false, skipLoadingSpinner = false) => {
     try {
-      if (reset && !skipLoadingSpinner) {
+      // Only show loading spinner on initial load (when no data exists)
+      if (reset && !skipLoadingSpinner && patients.length === 0) {
         setLoading(true);
         setPage(1);
       } else if (reset && skipLoadingSpinner) {
-        // Filter change - don't show loading spinner
-        setIsFiltering(true);
+        // Filter change - don't show loading spinner or filtering state
+        // Keep current patients visible while fetching
         setPage(1);
-      } else {
+        setIsFiltering(false); // Ensure no filtering state
+      } else if (!reset) {
+        // Loading more - show loading more indicator
         setLoadingMore(true);
       }
 
@@ -88,15 +130,24 @@ export default function CRMPage() {
 
       const response = await patientService.getPatients(params);
       const newPatients = response.data || [];
+      const newTotal = response.total || 0;
       
       if (reset) {
+        // Update patients immediately - smooth transition
         setPatients(newPatients);
+        // Update cache
+        const filterKey = JSON.stringify({ searchTerm, statusFilter, advancedFilters });
+        patientsCache.patients = newPatients;
+        patientsCache.total = newTotal;
+        patientsCache.filters = filterKey;
+        patientsCache.timestamp = Date.now();
       } else {
+        // Append for pagination
         setPatients([...patients, ...newPatients]);
       }
       
-      setTotal(response.total || 0);
-      setHasMore((currentPage * limit) < (response.total || 0));
+      setTotal(newTotal);
+      setHasMore((currentPage * limit) < newTotal);
       if (!reset) {
         setPage(currentPage + 1);
       }
@@ -159,7 +210,9 @@ export default function CRMPage() {
     }
   };
 
-  const isEmpty = !loading && patients.length === 0;
+  // Only show empty state when not loading and no patients
+  // During filter changes, we keep showing current patients until new data arrives
+  const isEmpty = !loading && patients.length === 0 && !isFiltering;
   const isSearchResult = isEmpty && (searchTerm || statusFilter !== 'all' || 
     advancedFilters.dateRange.start || advancedFilters.dateRange.end ||
     advancedFilters.ageRange.min || advancedFilters.ageRange.max ||
@@ -258,12 +311,12 @@ export default function CRMPage() {
             className="flex-1 overflow-y-auto min-h-0 pr-1"
             style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
           >
-            {/* Loading State - Only on initial load */}
+            {/* Loading State - Only on initial load when no data exists */}
             {loading && patients.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : isEmpty && !isFiltering ? (
+            ) : isEmpty ? (
             /* Empty State or No Search Results */
             <div className="bg-white rounded-2xl p-8 md:p-12 text-center">
               {isSearchResult ? (

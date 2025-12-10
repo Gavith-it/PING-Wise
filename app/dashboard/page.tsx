@@ -148,14 +148,29 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
 }
 
 
+// Cache for dashboard data to enable instant navigation
+const dashboardCache: {
+  stats: any;
+  activity: any;
+  todayAppointments: Appointment[];
+  timestamp: number;
+} = {
+  stats: null,
+  activity: null,
+  todayAppointments: [],
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { addNotification } = useNotifications();
-  const [stats, setStats] = useState<any>(null);
-  const [activity, setActivity] = useState<any>(null);
-  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(dashboardCache.stats);
+  const [activity, setActivity] = useState<any>(dashboardCache.activity);
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>(dashboardCache.todayAppointments);
+  const [loading, setLoading] = useState(!dashboardCache.stats); // Only show loading if no cached data
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
 
@@ -163,7 +178,21 @@ export default function DashboardPage() {
     // Only load data once when authentication is complete
     // PrivateRoute already handles authentication check, so we can trust isAuthenticated
     if (!authLoading && isAuthenticated && user) {
-      loadDashboardData();
+      const cacheAge = Date.now() - dashboardCache.timestamp;
+      const isCacheValid = dashboardCache.stats && cacheAge < CACHE_DURATION;
+      
+      // If we have valid cached data, use it immediately and refresh in background
+      if (isCacheValid) {
+        setStats(dashboardCache.stats);
+        setActivity(dashboardCache.activity);
+        setTodayAppointments(dashboardCache.todayAppointments);
+        setLoading(false);
+        // Refresh in background
+        loadDashboardData(false);
+      } else {
+        // No cache or expired, load normally
+        loadDashboardData(true);
+      }
     } else if (!authLoading) {
       // Not authenticated or still loading - stop loading
       // PrivateRoute will handle redirect if needed
@@ -171,18 +200,31 @@ export default function DashboardPage() {
     }
   }, [authLoading, isAuthenticated, user]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const [statsData, activityData, appointmentsData] = await Promise.all([
         dashboardService.getStats(),
         dashboardService.getActivity(),
         dashboardService.getTodayAppointments(),
       ]);
 
-      setStats(statsData.data);
-      setActivity(activityData.data);
-      setTodayAppointments(appointmentsData.data || []);
+      const newStats = statsData.data;
+      const newActivity = activityData.data;
+      const newAppointments = appointmentsData.data || [];
+
+      // Update cache
+      dashboardCache.stats = newStats;
+      dashboardCache.activity = newActivity;
+      dashboardCache.todayAppointments = newAppointments;
+      dashboardCache.timestamp = Date.now();
+
+      // Update state
+      setStats(newStats);
+      setActivity(newActivity);
+      setTodayAppointments(newAppointments);
     } catch (error: any) {
       // Handle 401 errors silently - PrivateRoute will redirect
       if (error?.response?.status !== 401) {
@@ -192,7 +234,9 @@ export default function DashboardPage() {
         }
       }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
