@@ -262,7 +262,7 @@ export default function TeamPage() {
             </div>
 
             {/* Search and Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mb-4">
+            <div className="flex items-center gap-2 mb-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
                 <input
@@ -275,10 +275,9 @@ export default function TeamPage() {
               </div>
               <button
                 onClick={() => setShowFilterModal(true)}
-                className="flex items-center justify-center gap-1.5 px-2.5 py-2 md:px-3 md:py-2 bg-white border border-gray-300 rounded-lg md:rounded-xl hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-center p-2 bg-white border border-gray-300 rounded-lg md:rounded-xl hover:bg-gray-50 transition-colors flex-shrink-0"
               >
-                <Filter className="w-4 h-4 md:w-4 md:h-4 text-gray-600" />
-                <span className="hidden sm:inline text-sm text-gray-700">Filter</span>
+                <Filter className="w-4 h-4 text-gray-600" />
               </button>
             </div>
           </div>

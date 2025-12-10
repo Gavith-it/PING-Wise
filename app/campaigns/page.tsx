@@ -528,10 +528,10 @@ export default function CampaignsPage() {
               <button
                 onClick={handleSend}
                 disabled={isSendDisabled}
-                className="flex-[2] bg-primary text-white py-2 px-3 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5 shadow-md hover:shadow-lg text-xs md:text-sm"
+                className="flex-[2] bg-primary text-white py-2 px-3 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5 shadow-md hover:shadow-lg"
               >
-                <Send className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                <span>{loading ? 'Sending...' : 'Send Campaign'}</span>
+                <Send className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" />
+                <span className="hidden md:inline">{loading ? 'Sending...' : 'Send Campaign'}</span>
               </button>
               <button 
                 onClick={() => setShowScheduleModal(true)}
