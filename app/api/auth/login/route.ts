@@ -1,103 +1,74 @@
 /**
  * Login API Route
  * POST /api/auth/login
+ * 
+ * Proxies login requests to the backend API to avoid CORS issues
+ * Backend: https://pw-crm-gateway-1.onrender.com/login
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/database';
-import UserModel from '@/lib/models/User';
-import { mockApi } from '@/lib/mockApi';
-import jwt from 'jsonwebtoken';
-import { LoginRequest, AuthResponse } from '@/types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
-const USE_MOCK_API = process.env.USE_MOCK_API === 'true' || !process.env.MONGODB_URI || process.env.MONGODB_URI === '';
-
-function generateToken(userId: string): string {
-  return jwt.sign(
-    { id: userId },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRE } as jwt.SignOptions
-  );
-}
+const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
 
 export async function POST(req: NextRequest) {
   try {
     const body: any = await req.json();
-    // Accept both email and user_name (user_name can be email)
-    const email = body.email || body.user_name;
-    const password = body.password;
+    const { user_name, email, password } = body;
 
-    // Use mock API if MongoDB is not configured
-    if (USE_MOCK_API) {
-      return NextResponse.json(await mockApi.auth.login(email, password));
-    }
+    // Use user_name if provided, otherwise use email
+    const username = user_name || email;
 
-    try {
-      await connectDB();
-    } catch (error) {
-      // If MongoDB connection fails, fall back to mock API
-      console.log('MongoDB connection failed, using mock data');
-      return NextResponse.json(await mockApi.auth.login(email, password));
-    }
-
-    if (!email || !password) {
+    if (!username || !password) {
       return NextResponse.json(
         { success: false, message: 'Username/Email and password are required' },
         { status: 400 }
       );
     }
 
-    const user = await UserModel.findOne({ email }).select('+password');
-    if (!user) {
+    // Call backend API from server-side (no CORS issues)
+    const response = await fetch(`${BACKEND_API_BASE_URL}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_name: username,
+        password: password,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
       return NextResponse.json(
-        { success: false, message: 'Invalid email or password' },
-        { status: 401 }
+        { 
+          success: false, 
+          message: errorData.message || 'Login failed',
+          error: response.status === 401 ? 'Invalid credentials' : 'Server error'
+        },
+        { status: response.status }
       );
     }
 
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
+    const data = await response.json();
 
-    if (user.status !== 'active') {
-      return NextResponse.json(
-        { success: false, message: 'Account is inactive. Please contact administrator.' },
-        { status: 403 }
-      );
-    }
-
-    const token = generateToken(user._id.toString());
-
-    const response: AuthResponse = {
+    // Return response in format expected by frontend
+    // Backend returns: { access_token, expires_at, role }
+    return NextResponse.json({
       success: true,
       message: 'Login successful',
-      token,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        specialization: user.specialization,
-        experience: user.experience,
-        phone: user.phone,
-        status: user.status,
-        initials: user.initials,
-        avatarColor: user.avatarColor
-      }
-    };
-
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error('Login error:', error);
+      access_token: data.access_token,
+      expires_at: data.expires_at,
+      role: data.role,
+      // Also include token for compatibility with existing code
+      token: data.access_token,
+    });
+  } catch (error: any) {
+    console.error('Login API error:', error);
     return NextResponse.json(
-      { success: false, message: 'Server error during login' },
+      { 
+        success: false, 
+        message: error.message || 'Failed to connect to backend API' 
+      },
       { status: 500 }
     );
   }

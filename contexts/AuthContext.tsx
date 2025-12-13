@@ -10,7 +10,6 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types';
-import { crmApi } from '@/lib/services/crmApi';
 
 interface AuthContextType {
   user: User | null;
@@ -62,9 +61,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       sessionStorage.setItem('crm_access_token', storedToken);
       sessionStorage.setItem('access_token', storedToken);
 
-      // Validate token using CRM API /checkAuth endpoint
+      // Validate token using backend /checkAuth endpoint
       try {
-        await crmApi.checkAuth();
+        const backendUrl = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
+        const checkAuthResponse = await fetch(`${backendUrl}/checkAuth`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${storedToken}`,
+          },
+        });
+        
+        if (!checkAuthResponse.ok) {
+          throw new Error('Token validation failed');
+        }
         
         // Token is valid, restore user from sessionStorage if available
         const storedUser = sessionStorage.getItem('user');
@@ -110,31 +120,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (userName: string, password: string): Promise<boolean> => {
     try {
-      // Login to CRM API directly (this is the main authentication)
-      const crmResponse = await crmApi.login({
-        user_name: userName,
-        password: password,
+      // Login through Next.js API route (avoids CORS issues)
+      // This proxies to the backend: https://pw-crm-gateway-1.onrender.com/login
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_name: userName,
+          password: password,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Login failed: ${response.status}`);
+      }
+
+      const data = await response.json();
       
-      if (crmResponse.access_token) {
-        // CRM token is automatically stored by crmApi.login()
-        const token = crmResponse.access_token;
+      // Handle both access_token (from backend) and token (for compatibility)
+      const token = data.access_token || data.token;
+      
+      if (token) {
         
-        // Create user object from the CRM response
+        // Create user object from the backend response
         const nameParts = userName.includes('@') ? userName.split('@')[0] : userName;
         const firstName = nameParts.split('.')[0] || nameParts;
         const user: User = {
           id: userName, // Use userName as ID
           name: firstName.charAt(0).toUpperCase() + firstName.slice(1), // Capitalize first letter
           email: userName.includes('@') ? userName : `${userName}@pingwise.in`,
-          role: (crmResponse.role as 'admin' | 'doctor' | 'staff') || 'staff',
+          role: (data.role as 'admin' | 'doctor' | 'staff') || 'staff',
           status: 'active',
           initials: firstName.charAt(0).toUpperCase(),
         };
         
-        // Store tokens in all places (for compatibility)
+        // Store token - this token works for both app auth and CRM data
         sessionStorage.setItem('token', token);
-        sessionStorage.setItem('crm_access_token', token);
+        sessionStorage.setItem('crm_access_token', token); // Same token for CRM endpoints
         sessionStorage.setItem('access_token', token);
         sessionStorage.setItem('user', JSON.stringify(user));
         localStorage.removeItem('token');
@@ -151,7 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please check your credentials.';
+      const errorMessage = error.message || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
       return false;
     }
@@ -167,8 +192,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem('user');
     // Also clear localStorage token if it exists (cleanup)
     localStorage.removeItem('token');
-    // Clear CRM API token
-    crmApi.logout();
+    // Token clearing is done above in sessionStorage.removeItem calls
     toast.success('Logged out successfully');
     router.push('/login');
   };
