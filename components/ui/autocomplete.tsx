@@ -175,7 +175,6 @@ export default function Autocomplete({
           disabled={disabled || loading}
           placeholder={loading ? 'Loading...' : placeholder}
           className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-          style={required && !value ? { borderColor: '#ef4444' } : undefined}
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
           {value && !disabled && (

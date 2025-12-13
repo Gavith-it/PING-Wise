@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Filter, Upload, Users } from 'lucide-react';
-import { patientService } from '@/lib/services/api';
+import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
-import PatientModal from '@/components/modals/PatientModal';
+import CRMPatientModal from '@/components/modals/CRMPatientModal';
 import PatientDetailsModal from '@/components/modals/PatientDetailsModal';
-import BulkUploadModal from '@/components/modals/BulkUploadModal';
+// Bulk upload not supported by CRM API
+// import BulkUploadModal from '@/components/modals/BulkUploadModal';
 import FilterModal, { FilterOptions } from '@/components/modals/FilterModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
@@ -37,7 +38,8 @@ export default function CRMPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  // Bulk upload not supported by CRM API
+  // const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [page, setPage] = useState(1);
@@ -178,7 +180,7 @@ export default function CRMPage() {
         ...(advancedFilters.assignedDoctor && { doctor: advancedFilters.assignedDoctor }),
       };
 
-      const response = await patientService.getPatients(params);
+      const response = await crmPatientService.getPatients(params);
       const newPatients = response.data || [];
       const newTotal = response.total || 0;
       
@@ -221,7 +223,7 @@ export default function CRMPage() {
     }
 
     try {
-      await patientService.deletePatient(id);
+      await crmPatientService.deletePatient(id);
       toast.success('Patient deleted successfully');
       loadPatients(true);
     } catch (error) {
@@ -235,10 +237,11 @@ export default function CRMPage() {
     loadPatients(true);
   };
 
-  const handleBulkUploadSuccess = () => {
-    setShowBulkUploadModal(false);
-    loadPatients(true);
-  };
+  // Bulk upload not supported by CRM API
+  // const handleBulkUploadSuccess = () => {
+  //   toast.error('Bulk upload is not supported by CRM API');
+  //   setShowBulkUploadModal(false);
+  // };
 
   const handleFilterApply = (filters: FilterOptions) => {
     setAdvancedFilters(filters);
@@ -297,7 +300,7 @@ export default function CRMPage() {
                     className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 bg-white rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base"
                   />
                 </div>
-                {/* Action Buttons - Add Patient (left) and Upload (right) */}
+                {/* Action Buttons - Add Patient */}
                 <div className="flex gap-2 md:gap-2.5">
                   <button
                     onClick={() => {
@@ -309,13 +312,7 @@ export default function CRMPage() {
                     <Plus className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                     <span className="truncate">Add Patient</span>
                   </button>
-                  <button
-                    onClick={() => setShowBulkUploadModal(true)}
-                    className="bg-white text-gray-700 py-2 px-3 md:py-2.5 md:px-4 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1.5 border border-gray-200 shadow-sm hover:shadow-md text-xs md:text-sm"
-                  >
-                    <Upload className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                    <span className="truncate">Upload</span>
-                  </button>
+                  {/* Bulk upload not supported by CRM API - hidden */}
                 </div>
               </div>
             </div>
@@ -466,7 +463,7 @@ export default function CRMPage() {
 
           {/* Modals */}
           {showAddModal && (
-            <PatientModal
+            <CRMPatientModal
               patient={selectedPatient}
               onClose={() => {
                 setShowAddModal(false);
@@ -490,12 +487,13 @@ export default function CRMPage() {
             />
           )}
 
-          {showBulkUploadModal && (
+          {/* Bulk upload not supported by CRM API */}
+          {/* {showBulkUploadModal && (
             <BulkUploadModal
               onClose={() => setShowBulkUploadModal(false)}
               onSuccess={handleBulkUploadSuccess}
             />
-          )}
+          )} */}
 
           {showFilterModal && (
             <FilterModal

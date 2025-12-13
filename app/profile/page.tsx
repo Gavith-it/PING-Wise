@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, User, Mail, Phone, Building, Award, Calendar } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Building, Award, Calendar, Edit, UserCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
+import { format } from 'date-fns';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,6 +16,26 @@ export default function ProfilePage() {
     if (!name) return 'U';
     const names = name.split(' ');
     return names.map(n => n.charAt(0).toUpperCase()).join('');
+  };
+
+  const formatAccountType = (role?: string) => {
+    if (!role) return 'User';
+    const roleMap: Record<string, string> = {
+      'admin': 'Administrator',
+      'doctor': 'Doctor',
+      'staff': 'Staff Member',
+    };
+    return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1);
+  };
+
+  const formatMemberSince = (date?: Date | string) => {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      return format(dateObj, 'MMMM yyyy');
+    } catch {
+      return 'N/A';
+    }
   };
 
   return (
@@ -63,20 +84,34 @@ export default function ProfilePage() {
               <div className="flex items-start space-x-4">
                 <Mail className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Email Address</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Email</p>
                   <p className="text-base text-gray-900 dark:text-white">{user?.email || 'N/A'}</p>
                 </div>
               </div>
 
-              {user?.phone && (
-                <div className="flex items-start space-x-4">
-                  <Phone className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Phone Number</p>
-                    <p className="text-base text-gray-900 dark:text-white">{user.phone}</p>
-                  </div>
+              <div className="flex items-start space-x-4">
+                <Phone className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Phone</p>
+                  <p className="text-base text-gray-900 dark:text-white">{user?.phone || 'N/A'}</p>
                 </div>
-              )}
+              </div>
+
+              <div className="flex items-start space-x-4">
+                <Calendar className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Member Since</p>
+                  <p className="text-base text-gray-900 dark:text-white">{formatMemberSince(user?.createdAt)}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-4">
+                <UserCircle className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Account Type</p>
+                  <p className="text-base text-gray-900 dark:text-white">{formatAccountType(user?.role)}</p>
+                </div>
+              </div>
 
               {user?.department && (
                 <div className="flex items-start space-x-4">
@@ -109,6 +144,19 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+
+          {/* Edit Profile Button */}
+          <button
+            onClick={() => {
+              // TODO: Implement edit profile functionality
+              // For now, just show a message
+              alert('Edit Profile functionality will be available soon!');
+            }}
+            className="w-full bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-dark transition-colors shadow-md hover:shadow-lg flex items-center justify-center space-x-2"
+          >
+            <Edit className="w-5 h-5" />
+            <span>Edit Profile</span>
+          </button>
         </div>
       </Layout>
     </PrivateRoute>

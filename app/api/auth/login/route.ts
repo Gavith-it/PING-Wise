@@ -24,8 +24,10 @@ function generateToken(userId: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: LoginRequest = await req.json();
-    const { email, password } = body;
+    const body: any = await req.json();
+    // Accept both email and user_name (user_name can be email)
+    const email = body.email || body.user_name;
+    const password = body.password;
 
     // Use mock API if MongoDB is not configured
     if (USE_MOCK_API) {
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: 'Email and password are required' },
+        { success: false, message: 'Username/Email and password are required' },
         { status: 400 }
       );
     }

@@ -428,8 +428,12 @@ function TeamMemberCard({
 
   useOnClickOutside(menuRef, () => setShowMenu(false));
 
+  // Format role and department - if role contains "Chief" or similar, use it as primary role
+  const displayRole = member.role || 'Team Member';
+  const displayDepartment = member.department || 'General';
+
   return (
-    <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative mb-2">
       <div className="flex items-start justify-between gap-2 md:gap-4">
         <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0">
           <div 
@@ -439,87 +443,79 @@ function TeamMemberCard({
           >
             {member.initials || generateInitials(member.name)}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 md:gap-2 mb-1 flex-wrap">
-              <p className="font-semibold text-sm md:text-base text-gray-900 truncate">{member.name}</p>
-              <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2.5 py-0.5 rounded-full border ${getStatusColor(member.status)} flex-shrink-0`}>
-                {member.status === 'active' ? 'Active' : member.status === 'leave' ? 'On Leave' : 'Inactive'}
-              </span>
-            </div>
-            <p className="text-xs md:text-sm text-gray-600 mb-1 truncate">
-              {member.role} • {member.department || 'General'}
+          <div className="flex-1 flex flex-col min-w-0">
+            <p className="font-semibold text-sm md:text-base text-gray-900 mb-1">{member.name}</p>
+            <p className="text-xs md:text-sm text-gray-600 mb-1">
+              {displayRole} • {displayDepartment}
             </p>
-            <p className="text-[10px] md:text-xs text-gray-500 truncate mb-1 md:mb-2">
+            <p className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4">
               {member.email} • {member.phone || 'N/A'}
             </p>
             
-            {/* Rating and Appointment Count */}
-            <div className="flex items-center gap-3 md:gap-4 flex-wrap">
-              {member.rating && (
-                <div className="flex items-center gap-1">
-                  <StarRating rating={member.rating} size="sm" />
-                </div>
-              )}
-              <div className="flex items-center gap-1 text-[10px] md:text-xs text-gray-500">
-                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                <span>{appointmentCount} Appointments</span>
-              </div>
+            {/* Experience and Specialization at bottom - horizontally aligned, full text visible */}
+            <div className="flex items-center justify-between gap-4 md:gap-6 text-[10px] md:text-xs text-gray-500 mt-auto">
+              <span className="whitespace-nowrap">{member.experience ? `Experience: ${member.experience}` : 'Experience: N/A'}</span>
+              <span className="whitespace-nowrap">{member.specialization ? `Specialization: ${member.specialization}` : 'Specialization: N/A'}</span>
             </div>
-
-            {/* Experience and Specialization */}
-            {(member.experience || member.specialization) && (
-              <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs text-gray-500 mt-1 flex-wrap">
-                {member.experience && <span>Experience: {member.experience}</span>}
-                {member.specialization && <span>Specialization: {member.specialization}</span>}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Menu Button */}
-        <div className="relative flex-shrink-0" ref={menuRef}>
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-1.5 md:p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <MoreVertical className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
-          </button>
+        {/* Status and Menu - Top Right */}
+        <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0">
+          {/* Status Tag */}
+          <span className={`text-[10px] md:text-xs font-medium px-2 md:px-2.5 py-0.5 rounded-full border ${getStatusColor(member.status)}`}>
+            {member.status === 'active' ? 'Active' : member.status === 'leave' ? 'On Leave' : 'Inactive'}
+          </span>
+          
+          {/* Menu Button */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className={`p-1.5 md:p-2 rounded-lg transition-colors focus:outline-none ${
+                showMenu ? 'bg-gray-100' : 'hover:bg-gray-100'
+              }`}
+              type="button"
+              aria-label="More options"
+            >
+              <MoreVertical className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
+            </button>
 
-          {/* Dropdown Menu */}
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-40 md:w-48 bg-white rounded-lg md:rounded-xl shadow-lg border border-gray-200 z-10 py-1">
-              <button
-                onClick={() => {
-                  onView();
-                  setShowMenu(false);
-                }}
-                className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Eye className="w-4 h-4" />
-                <span>View</span>
-              </button>
-              <button
-                onClick={() => {
-                  onEdit();
-                  setShowMenu(false);
-                }}
-                className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={() => {
-                  onDelete();
-                  setShowMenu(false);
-                }}
-                className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete</span>
-              </button>
-            </div>
-          )}
+            {/* Dropdown Menu - Opens downward */}
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 w-40 md:w-48 bg-white rounded-lg md:rounded-xl shadow-lg border border-gray-200 z-[9999] py-1">
+                <button
+                  onClick={() => {
+                    onView();
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>View</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onEdit();
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onDelete();
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

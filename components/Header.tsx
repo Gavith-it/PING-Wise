@@ -22,8 +22,7 @@ export default function Header() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Fetch wallet balance
-  useEffect(() => {
-    const fetchWalletBalance = async () => {
+  const fetchWalletBalance = async () => {
       // Wait for user to be authenticated
       if (!user) {
         setWalletBalance(0);
@@ -77,6 +76,7 @@ export default function Header() {
       }
     };
 
+  useEffect(() => {
     fetchWalletBalance();
   }, [user]);
 
@@ -183,15 +183,14 @@ export default function Header() {
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-3">
-          {/* Wallet Icon - Icon only on all screen sizes */}
-          <div className="relative">
-            <button
-              className="p-1.5 md:p-2 text-gray-900 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              title={`Wallet Balance: ₹${walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
-            >
-              <Wallet className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-          </div>
+          {/* Wallet Icon - Navigate to wallet page */}
+          <button
+            onClick={() => router.push('/wallet')}
+            className="p-1.5 md:p-2 text-gray-900 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title={`Wallet Balance: ₹${walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+          >
+            <Wallet className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
 
           <div className="relative" ref={notificationRef}>
             <button

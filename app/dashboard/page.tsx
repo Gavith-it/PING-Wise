@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus, ChevronRight } from 'lucide-react';
+import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus, ChevronRight, Wallet } from 'lucide-react';
 
 // Custom Rupee Icon Component to replace DollarSign
 const RupeeIcon = ({ className }: { className?: string }) => (
@@ -25,14 +25,14 @@ const RupeeIcon = ({ className }: { className?: string }) => (
     </text>
   </svg>
 );
-import { dashboardService } from '@/lib/services/api';
+import { dashboardService, patientService, teamService, walletService } from '@/lib/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import CountUp from 'react-countup';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import ActivityChart from '@/components/charts/ActivityChart';
-import AppointmentModal from '@/components/modals/AppointmentModal';
+import AppointmentModal, { preloadFormData } from '@/components/modals/AppointmentModal';
 import PatientModal from '@/components/modals/PatientModal';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Appointment } from '@/types';
@@ -173,6 +173,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(!dashboardCache.stats); // Only show loading if no cached data
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
 
   useEffect(() => {
     // Only load data once when authentication is complete
@@ -193,12 +195,32 @@ export default function DashboardPage() {
         // No cache or expired, load normally
         loadDashboardData(true);
       }
+      
+      // Preload patients and doctors data for appointment modal (in background)
+      preloadFormData();
+      
+      // Load wallet balance
+      loadWalletBalance();
     } else if (!authLoading) {
       // Not authenticated or still loading - stop loading
       // PrivateRoute will handle redirect if needed
       setLoading(false);
     }
   }, [authLoading, isAuthenticated, user]);
+
+  const loadWalletBalance = async () => {
+    try {
+      setLoadingBalance(true);
+      const response = await walletService.getBalance();
+      setWalletBalance(response.data?.balance || 0);
+    } catch (error: any) {
+      // Silently fail - wallet balance is optional
+      const balance = (user as any)?.walletBalance || 0;
+      setWalletBalance(balance);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
   const loadDashboardData = async (showLoading = true) => {
     try {
@@ -306,13 +328,24 @@ export default function DashboardPage() {
               change={stats?.followUps?.change || 0}
               trend={stats?.followUps?.trend}
             />
-            <KPICard
-              icon={RupeeIcon}
-              value={0}
-              label="Revenue"
-              isCurrency={false}
-              isComingSoon={true}
-            />
+            <button
+              onClick={() => router.push('/wallet')}
+              className="bg-white rounded-lg p-2 md:p-6 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow text-left w-full"
+            >
+              <div className="flex items-center justify-between mb-1.5 md:mb-4">
+                <div className="w-8 h-8 md:w-14 md:h-14 bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-lg md:rounded-xl flex items-center justify-center">
+                  <Wallet className="w-4 h-4 md:w-7 md:h-7 text-blue-600" />
+                </div>
+              </div>
+              <div className="text-lg md:text-3xl font-bold text-gray-900 mb-0.5 md:mb-2">
+                {loadingBalance ? (
+                  <span className="text-sm md:text-lg text-gray-400">Loading...</span>
+                ) : (
+                  `₹${walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                )}
+              </div>
+              <p className="text-[10px] md:text-sm text-gray-600 font-medium">Wallet Balance</p>
+            </button>
           </div>
 
           <button

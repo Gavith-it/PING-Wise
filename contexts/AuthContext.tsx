@@ -10,12 +10,13 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types';
+import { crmApi } from '@/lib/services/crmApi';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (userName: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (userData: RegisterRequest) => Promise<boolean>;
   isAuthenticated: boolean;
@@ -54,47 +55,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Token exists - set it first so it's available immediately
-      // Then validate in background
+      // Then validate in background using CRM API /checkAuth
       setToken(storedToken);
+      
+      // Also set in CRM API service to ensure it's available
+      sessionStorage.setItem('crm_access_token', storedToken);
+      sessionStorage.setItem('access_token', storedToken);
 
-      // Validate token in background (don't block rendering)
+      // Validate token using CRM API /checkAuth endpoint
       try {
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${storedToken}`
-          },
-          // Add cache control to prevent stale responses
-          cache: 'no-store'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.user) {
-            // Valid token and user, set authenticated state
-            setUser(data.user);
-            // Token already set above
-          } else {
-            // Invalid response, clear token
-            sessionStorage.removeItem('token');
-            setToken(null);
-            setUser(null);
+        await crmApi.checkAuth();
+        
+        // Token is valid, restore user from sessionStorage if available
+        const storedUser = sessionStorage.getItem('user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch {
+            // If parsing fails, token is valid but no user info - that's ok
+            // User will be created on next login
           }
-        } else {
-          // API error (401, etc.), clear token
-          sessionStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
         }
       } catch (error) {
-        // Network error - keep token but don't set user
-        // This allows offline access if token was valid before
-        // Only log errors in development
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Auth validation error:', error);
-        }
-        // Don't clear token on network errors - might just be temporary
-        // setToken(null);
-        // setUser(null);
+        // Token validation failed (401, network error, etc.)
+        console.error('Token validation error:', error);
+        // Clear all tokens on validation failure
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('crm_access_token');
+        sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -117,36 +108,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (userName: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      // Login to CRM API directly (this is the main authentication)
+      const crmResponse = await crmApi.login({
+        user_name: userName,
+        password: password,
       });
-
-      const data: AuthResponse = await response.json();
-
-      if (data.success && data.token && data.user) {
-        // Update sessionStorage (session-based, expires when tab closes)
-        sessionStorage.setItem('token', data.token);
-        // Clear any old localStorage token
+      
+      if (crmResponse.access_token) {
+        // CRM token is automatically stored by crmApi.login()
+        const token = crmResponse.access_token;
+        
+        // Create user object from the CRM response
+        const nameParts = userName.includes('@') ? userName.split('@')[0] : userName;
+        const firstName = nameParts.split('.')[0] || nameParts;
+        const user: User = {
+          id: userName, // Use userName as ID
+          name: firstName.charAt(0).toUpperCase() + firstName.slice(1), // Capitalize first letter
+          email: userName.includes('@') ? userName : `${userName}@pingwise.in`,
+          role: (crmResponse.role as 'admin' | 'doctor' | 'staff') || 'staff',
+          status: 'active',
+          initials: firstName.charAt(0).toUpperCase(),
+        };
+        
+        // Store tokens in all places (for compatibility)
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('crm_access_token', token);
+        sessionStorage.setItem('access_token', token);
+        sessionStorage.setItem('user', JSON.stringify(user));
         localStorage.removeItem('token');
-        // Update state - React will batch these updates
-        setToken(data.token);
-        setUser(data.user);
+        
+        // Update state
+        setToken(token);
+        setUser(user);
+        
         toast.success('Login successful!');
-        // Return true after state is set
         return true;
       } else {
-        toast.error(data.message || 'Login failed');
+        toast.error('Login failed - No access token received');
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      toast.error('Login failed. Please try again.');
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please check your credentials.';
+      toast.error(errorMessage);
       return false;
     }
   };
@@ -154,9 +160,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
+    // Clear all tokens from sessionStorage
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('crm_access_token');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('user');
     // Also clear localStorage token if it exists (cleanup)
     localStorage.removeItem('token');
+    // Clear CRM API token
+    crmApi.logout();
     toast.success('Logged out successfully');
     router.push('/login');
   };

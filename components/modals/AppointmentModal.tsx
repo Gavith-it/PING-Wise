@@ -15,6 +15,41 @@ interface AppointmentModalProps {
   onSuccess: () => void;
 }
 
+// Cache for patients and doctors data to avoid loading delay
+const formDataCache: {
+  patients: Patient[];
+  doctors: User[];
+  timestamp: number;
+} = {
+  patients: [],
+  doctors: [],
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Export function to preload and cache form data
+export async function preloadFormData() {
+  const cacheAge = Date.now() - formDataCache.timestamp;
+  const isCacheValid = formDataCache.patients.length > 0 && 
+                      formDataCache.doctors.length > 0 && 
+                      cacheAge < CACHE_DURATION;
+  
+  if (!isCacheValid) {
+    try {
+      const [patientsRes, doctorsRes] = await Promise.all([
+        patientService.getPatients({ limit: 100 }),
+        teamService.getTeamMembers({ role: 'doctor' }),
+      ]);
+      formDataCache.patients = patientsRes.data || [];
+      formDataCache.doctors = doctorsRes.data || [];
+      formDataCache.timestamp = Date.now();
+    } catch (error) {
+      // Silently fail - cache will be loaded when modal opens
+    }
+  }
+}
+
 export default function AppointmentModal({ appointment, selectedDate, onClose, onSuccess }: AppointmentModalProps) {
   const [formData, setFormData] = useState({
     patient: '',
@@ -24,8 +59,23 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     type: '',
     reason: '',
   });
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [doctors, setDoctors] = useState<User[]>([]);
+  // Initialize with cached data if available
+  const [patients, setPatients] = useState<Patient[]>(() => {
+    const cacheAge = Date.now() - formDataCache.timestamp;
+    if (formDataCache.patients.length > 0 && cacheAge < CACHE_DURATION) {
+      return formDataCache.patients;
+    }
+    return [];
+  });
+  
+  const [doctors, setDoctors] = useState<User[]>(() => {
+    const cacheAge = Date.now() - formDataCache.timestamp;
+    if (formDataCache.doctors.length > 0 && cacheAge < CACHE_DURATION) {
+      return formDataCache.doctors;
+    }
+    return [];
+  });
+  
   const [loading, setLoading] = useState(false);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
@@ -33,8 +83,22 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
 
   useEffect(() => {
-    // Load data in background after modal opens
-    loadFormData();
+    // Check cache first
+    const cacheAge = Date.now() - formDataCache.timestamp;
+    const isCacheValid = formDataCache.patients.length > 0 && 
+                        formDataCache.doctors.length > 0 && 
+                        cacheAge < CACHE_DURATION;
+    
+    if (isCacheValid) {
+      // Use cached data immediately
+      setPatients(formDataCache.patients);
+      setDoctors(formDataCache.doctors);
+      // Refresh in background
+      loadFormData(false);
+    } else {
+      // No cache, load data
+      loadFormData(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -67,50 +131,104 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     }
   }, [appointment, patients, doctors]);
 
-  const loadFormData = async () => {
+  const loadFormData = async (showLoading = false) => {
     try {
-      setLoadingPatients(true);
-      setLoadingDoctors(true);
+      if (showLoading) {
+        setLoadingPatients(true);
+        setLoadingDoctors(true);
+      }
       const [patientsRes, doctorsRes] = await Promise.all([
         patientService.getPatients({ limit: 100 }),
         teamService.getTeamMembers({ role: 'doctor' }),
       ]);
-      setPatients(patientsRes.data || []);
-      setDoctors(doctorsRes.data || []);
+      const newPatients = patientsRes.data || [];
+      const newDoctors = doctorsRes.data || [];
+      
+      // Update cache
+      formDataCache.patients = newPatients;
+      formDataCache.doctors = newDoctors;
+      formDataCache.timestamp = Date.now();
+      
+      // Update state
+      setPatients(newPatients);
+      setDoctors(newDoctors);
     } catch (error) {
       toast.error('Failed to load form data');
     } finally {
-      setLoadingPatients(false);
-      setLoadingDoctors(false);
+      if (showLoading) {
+        setLoadingPatients(false);
+        setLoadingDoctors(false);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!formData.patient) {
+    // Validate required fields with detailed error messages
+    if (!formData.patient || formData.patient.trim() === '') {
       toast.error('Please select a patient');
       return;
     }
-    if (!formData.doctor) {
+    
+    if (!formData.doctor || formData.doctor.trim() === '') {
       toast.error('Please select a doctor');
       return;
     }
-    if (!formData.date) {
+    
+    if (!formData.date || formData.date.trim() === '') {
       toast.error('Please select a date');
       return;
     }
-    if (!formData.time) {
+    
+    // Validate date is not in the past
+    const selectedDate = new Date(formData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      toast.error('Please select a date that is today or in the future');
+      return;
+    }
+    
+    if (!formData.time || formData.time.trim() === '') {
       toast.error('Please select a time');
       return;
     }
-    if (!formData.type) {
+    
+    // Validate time format (HH:MM)
+    const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(formData.time)) {
+      toast.error('Please select a valid time');
+      return;
+    }
+    
+    // Validate appointment date and time combination is in the future
+    const appointmentDateTime = new Date(`${formData.date}T${formData.time}`);
+    if (appointmentDateTime <= new Date()) {
+      toast.error('Please select a date and time in the future');
+      return;
+    }
+    
+    if (!formData.type || formData.type.trim() === '') {
       toast.error('Please select an appointment type');
       return;
     }
-    if (!formData.reason) {
+    
+    if (!formData.reason || formData.reason.trim() === '') {
       toast.error('Please provide a reason for the visit');
+      return;
+    }
+    
+    // Validate reason has minimum length
+    if (formData.reason.trim().length < 3) {
+      toast.error('Reason for visit must be at least 3 characters long');
+      return;
+    }
+    
+    if (formData.reason.trim().length > 500) {
+      toast.error('Reason for visit must be less than 500 characters');
       return;
     }
 
@@ -225,9 +343,9 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 value={formData.patient}
                 onChange={(value) => setFormData({ ...formData, patient: value })}
                 onSelect={(option) => setSelectedPatient(option as Patient | null)}
-                placeholder={loadingPatients ? 'Loading patients...' : 'Type to search patients...'}
-                disabled={loadingPatients}
-                loading={loadingPatients}
+                placeholder="Type to search patients..."
+                disabled={false}
+                loading={false}
                 required
                 name="patient"
                 getOptionLabel={(option) => option.label}
@@ -248,9 +366,9 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 value={formData.doctor}
                 onChange={(value) => setFormData({ ...formData, doctor: value })}
                 onSelect={(option) => setSelectedDoctor(option as User | null)}
-                placeholder={loadingDoctors ? 'Loading doctors...' : 'Type to search doctors...'}
-                disabled={loadingDoctors}
-                loading={loadingDoctors}
+                placeholder="Type to search doctors..."
+                disabled={false}
+                loading={false}
                 required
                 name="doctor"
                 getOptionLabel={(option) => option.label}

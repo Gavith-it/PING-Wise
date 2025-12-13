@@ -8,7 +8,7 @@ import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isVisible: crmFooterVisible } = useFooterVisibility();
+  const { isVisible: footerContextVisible } = useFooterVisibility();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -30,15 +30,16 @@ export default function BottomNav() {
     lastScrollY.current = 0;
   }, [pathname]);
 
-  // For CRM page, use the visibility from context (controlled by patient list scroll)
-  const finalVisibility = pathname === '/crm' ? crmFooterVisible : isVisible;
+  // Use context visibility (controlled by SettingsMenu for menu state, or CRM page for scroll)
+  // If context says hide (menu open), always hide. Otherwise use scroll-based visibility for non-CRM pages
+  const finalVisibility = footerContextVisible ? (pathname === '/crm' ? true : isVisible) : false;
 
   // Sync CRM footer visibility with context
   useEffect(() => {
     if (pathname === '/crm') {
-      setIsVisible(crmFooterVisible);
+      setIsVisible(footerContextVisible);
     }
-  }, [pathname, crmFooterVisible]);
+  }, [pathname, footerContextVisible]);
 
   useEffect(() => {
     // Skip if CRM page (handled by context above)
@@ -93,7 +94,7 @@ export default function BottomNav() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('touchmove', handleScroll);
     };
-  }, [pathname, crmFooterVisible]);
+  }, [pathname, footerContextVisible]);
 
   // Check if we're on CRM page (footer should be fixed at bottom, not scrollable)
   const isScrollableFooter = pathname === '/crm';

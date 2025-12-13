@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
+import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Crown, Gift } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
 
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ export default function SettingsMenu() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { setIsVisible: setFooterVisible } = useFooterVisibility();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -23,6 +25,11 @@ export default function SettingsMenu() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Hide footer when menu is open
+  useEffect(() => {
+    setFooterVisible(!isOpen);
+  }, [isOpen, setFooterVisible]);
 
   const handleNavigation = (path: string) => {
     router.push(path);
@@ -109,6 +116,28 @@ export default function SettingsMenu() {
                   <div className="flex items-center space-x-3">
                     <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
                     <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Settings</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+
+                <button
+                  onClick={() => handleNavigation('/settings/premium')}
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Crown className="w-5 h-5 text-yellow-500 dark:text-yellow-400 group-hover:text-yellow-600" />
+                    <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Get Premium</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+
+                <button
+                  onClick={() => handleNavigation('/settings/refer-and-win')}
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Gift className="w-5 h-5 text-purple-500 dark:text-purple-400 group-hover:text-purple-600" />
+                    <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Refer and Win</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>

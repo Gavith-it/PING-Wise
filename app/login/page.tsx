@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
@@ -22,13 +22,13 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!userName || !password) {
       toast.error('Please fill in all fields');
       return;
     }
 
     setLoading(true);
-    const success = await login(email, password);
+    const success = await login(userName, password);
     setLoading(false);
 
     if (success) {
@@ -65,16 +65,16 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
+              <label htmlFor="userName" className="block text-sm font-medium text-gray-700 mb-2">
+                Username
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="userName"
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                placeholder="doctor@clinic.com"
+                placeholder="aprameya@pingwise.in"
                 required
               />
             </div>
@@ -105,8 +105,7 @@ export default function LoginPage() {
 
           <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-100">
             <p className="text-sm text-green-800">
-              <strong>Demo Mode:</strong> Use any email and password to test the application.
-              In production, this will connect to your authentication system.
+              <strong>Login Credentials:</strong> Use your username (e.g., aprameya@pingwise.in) and password to access the application.
             </p>
           </div>
         </div>

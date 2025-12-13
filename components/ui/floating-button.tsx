@@ -51,6 +51,7 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
   const [hasUserDragged, setHasUserDragged] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [isInitialized, setIsInitialized] = useState(false);
   
@@ -159,6 +160,44 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
   }, [position, storageKey, draggable, isInitialized, isDragging, hasUserDragged]);
 
   useOnClickOutside(ref, () => setIsOpen(false));
+
+  // Detect when modals are open by checking for modal backdrop elements
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkForModal = () => {
+      // Check for elements with modal backdrop classes (fixed inset-0 z-50)
+      // These are the modal overlay/backdrop elements
+      const modalBackdrops = document.querySelectorAll('.fixed.inset-0.z-50');
+      const hasModal = modalBackdrops.length > 0;
+      setIsModalOpen(hasModal);
+      
+      // Also close the floating button menu if a modal opens
+      if (hasModal && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    // Check immediately
+    checkForModal();
+
+    // Use MutationObserver to watch for DOM changes (modals being added/removed)
+    const observer = new MutationObserver(checkForModal);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also check periodically as a fallback (in case MutationObserver misses something)
+    const interval = setInterval(checkForModal, 200);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+    };
+  }, [isOpen]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!draggable) {
@@ -379,10 +418,13 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
       right: 'auto',
       bottom: 'auto',
       cursor: (isDragging ? 'grabbing' : 'grab') as React.CSSProperties['cursor'],
-      zIndex: 9999, // Ensure it's above everything including bottom nav
-      pointerEvents: 'auto' as React.CSSProperties['pointerEvents'], // Ensure it's clickable
+      zIndex: isModalOpen ? 30 : 9999, // Lower z-index when modal is open, high when not
+      opacity: isModalOpen ? 0 : 1, // Hide when modal is open
+      visibility: isModalOpen ? ('hidden' as const) : ('visible' as const), // Hide when modal is open
+      pointerEvents: (isModalOpen ? 'none' : 'auto') as React.CSSProperties['pointerEvents'], // Disable interaction when modal is open
       touchAction: 'none' as React.CSSProperties['touchAction'], // Prevent touch scrolling while dragging
       userSelect: 'none' as React.CSSProperties['userSelect'], // Prevent text selection while dragging
+      transition: 'opacity 0.2s ease-in-out, visibility 0.2s ease-in-out', // Smooth transition
     };
   };
 
@@ -519,8 +561,6 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
       className={`flex flex-col items-center ${draggable ? 'fixed' : 'relative'} ${draggable ? 'select-none' : ''} ${!draggable ? className || '' : ''}`}
       style={{
         ...positionStyle,
-        // Ensure visibility
-        visibility: 'visible' as const,
         display: 'flex',
       } as React.CSSProperties}
       onMouseDown={handleMouseDown}

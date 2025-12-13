@@ -163,7 +163,8 @@ export interface JWTPayload {
 
 // Request Types
 export interface LoginRequest {
-  email: string;
+  email?: string;
+  user_name?: string;
   password: string;
 }
 
