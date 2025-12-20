@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useRef, useState, useEffect, Children, cloneElement, isValidElement } from 'react';
+import { ReactNode, useRef, useState, useEffect, Children, cloneElement, isValidElement, useMemo, useCallback, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useOnClickOutside } from 'usehooks-ts';
 

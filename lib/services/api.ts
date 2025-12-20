@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { logger } from '@/lib/utils/logger';
 import { 
   LoginRequest, 
   RegisterRequest, 
@@ -60,19 +61,16 @@ api.interceptors.request.use(
         
         // Log the actual headers being sent (for debugging)
         const method = (config.method || 'get').toUpperCase();
-        // Only log in development mode to reduce console noise
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Token added to ${method} request:`, {
-            url: config.url,
-            method: method,
-            hasToken: true,
-            tokenPreview: token.substring(0, 20) + '...',
-            headersSet: {
-              Authorization: config.headers['Authorization'] ? '✓' : '✗',
-              authorization: config.headers['authorization'] ? '✓' : '✗'
-            }
-          });
-        }
+        logger.debug(`Token added to ${method} request`, {
+          url: config.url,
+          method: method,
+          hasToken: true,
+          tokenPreview: token.substring(0, 20) + '...',
+          headersSet: {
+            Authorization: config.headers['Authorization'] ? '✓' : '✗',
+            authorization: config.headers['authorization'] ? '✓' : '✗'
+          }
+        });
       } else {
         // Only warn for protected routes that typically require auth
         // Don't warn for public routes like /auth/login, /auth/register, etc.
@@ -84,7 +82,7 @@ api.interceptors.request.use(
         if (!isPublicRoute) {
           const isClient = typeof window !== 'undefined';
           if (isClient) {
-            console.warn('No token found in sessionStorage for request:', {
+            logger.warn('No token found in sessionStorage for request', {
               url: config.url,
               method: config.method,
               hasToken: false
@@ -95,10 +93,10 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    console.error('Request interceptor error:', error);
-    return Promise.reject(error);
-  }
+      (error) => {
+        logger.error('Request interceptor error', error);
+        return Promise.reject(error);
+      }
 );
 
 // Response Interceptor
@@ -124,7 +122,7 @@ api.interceptors.response.use(
       // Only clear tokens if it's a clear authentication error, not a validation error
       if (isAuthError && !isValidationError) {
         // Log the error for debugging
-        console.warn('Authentication error detected:', {
+        logger.warn('Authentication error detected', {
           message: errorMessage,
           url: error.config?.url,
           method: error.config?.method,

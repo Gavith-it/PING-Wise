@@ -29,19 +29,20 @@ export default function LoginPage() {
 
     setLoading(true);
     const success = await login(userName, password);
-    setLoading(false);
-
+    
     if (success) {
-      // Use replace instead of push to avoid back button issues
-      // Small delay to ensure state is updated
-      setTimeout(() => {
-        router.replace('/dashboard');
-      }, 50);
+      // Instantly redirect - no loading message, no delay
+      // Dashboard will show immediately with optimistic UI
+      // State is already updated in AuthContext, so dashboard can render immediately
+      router.replace('/dashboard');
+      // Don't reset loading - let redirect happen instantly
+    } else {
+      setLoading(false);
     }
   };
 
-  // Show loading while checking authentication
-  if (authLoading) {
+  // Show loading only while checking initial authentication (not during login)
+  if (authLoading && !loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -49,8 +50,11 @@ export default function LoginPage() {
     );
   }
 
-  // Don't render login form if already authenticated
+  // If authenticated (after login or from session), redirect instantly
+  // Don't show any "Redirecting..." message - just redirect
   if (isAuthenticated) {
+    // Redirect happens via router.replace in handleSubmit or useEffect
+    // Return null to avoid showing login form
     return null;
   }
 

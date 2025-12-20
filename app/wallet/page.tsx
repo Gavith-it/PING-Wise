@@ -47,7 +47,8 @@ export default function WalletPage() {
       }
 
       // Load transactions
-      // TODO: Replace with actual API call when available
+      // NOTE: Transaction history API endpoint pending implementation
+      // When available, uncomment the following:
       // const transactionsResponse = await walletService.getTransactions();
       // setTransactions(transactionsResponse.data || []);
       
@@ -91,7 +92,8 @@ export default function WalletPage() {
     }
 
     try {
-      // TODO: Replace with actual API call when available
+      // NOTE: Add funds API endpoint pending implementation
+      // When available, uncomment the following:
       // await walletService.addFunds({ amount: amountNum });
       toast.success(`₹${amountNum} added to wallet successfully`);
       setShowAddFunds(false);

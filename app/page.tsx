@@ -19,6 +19,7 @@ export default function Home() {
       const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
       
       if (token && isAuthenticated) {
+        // Use replace for instant navigation (no back button history)
         router.replace('/dashboard');
       } else {
         // Always redirect to login if not authenticated

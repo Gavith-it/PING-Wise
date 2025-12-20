@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Send, Clock, Tag, Sparkles, Stethoscope, Heart, Percent, Snowflake, Image as ImageIcon, X } from 'lucide-react';
-import { campaignService } from '@/lib/services/api';
+import { campaignApi } from '@/lib/services/campaignApi';
+import { templateApi } from '@/lib/services/templateApi';
+import { crmCampaignsToCampaigns, campaignToCrmCampaign } from '@/lib/utils/campaignAdapter';
+import { crmTemplatesToTemplates, crmTemplateToTemplate } from '@/lib/utils/templateAdapter';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import TagSelectorModal from '@/components/modals/TagSelectorModal';
 import ScheduleModal from '@/components/modals/ScheduleModal';
 import { Campaign } from '@/types';
+import { Template } from '@/lib/utils/templateAdapter';
 
 // Cache for campaigns data to enable instant navigation
 const campaignsCache: {
@@ -29,6 +33,8 @@ export default function CampaignsPage() {
   const isCacheValid = campaignsCache.campaigns.length > 0 && cacheAge < CACHE_DURATION;
   const [campaigns, setCampaigns] = useState<Campaign[]>(isCacheValid ? campaignsCache.campaigns : []);
   const [loading, setLoading] = useState(false);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [scheduledDate, setScheduledDate] = useState<string>('');
@@ -48,6 +54,8 @@ export default function CampaignsPage() {
     } else {
       loadCampaigns(true);
     }
+    // Load templates from API
+    loadTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -115,8 +123,11 @@ export default function CampaignsPage() {
 
   const loadCampaigns = async (showLoading = false) => {
     try {
-      const response = await campaignService.getCampaigns();
-      const newCampaigns = response.data || [];
+      if (showLoading) setLoading(true);
+      
+      // Fetch campaigns from CRM API
+      const crmCampaigns = await campaignApi.getCampaigns();
+      const newCampaigns = crmCampaignsToCampaigns(crmCampaigns);
       
       // Update cache
       campaignsCache.campaigns = newCampaigns;
@@ -125,6 +136,26 @@ export default function CampaignsPage() {
       setCampaigns(newCampaigns);
     } catch (error) {
       console.error('Load campaigns error:', error);
+      toast.error('Failed to load campaigns');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      
+      // Fetch templates from API
+      const crmTemplates = await templateApi.getTemplates();
+      const newTemplates = crmTemplatesToTemplates(crmTemplates);
+      
+      setTemplates(newTemplates);
+    } catch (error) {
+      console.error('Load templates error:', error);
+      // Don't show error toast, just use empty array (fallback to hardcoded templates)
+    } finally {
+      setLoadingTemplates(false);
     }
   };
 
@@ -159,47 +190,67 @@ export default function CampaignsPage() {
     );
   };
 
-  const templates = [
+  // Fallback templates (if API doesn't return any)
+  const fallbackTemplates: Template[] = [
     { 
+      id: '1',
       name: 'Festival Promotions', 
-      subtitle: 'Seasonal',
-      icon: Sparkles, 
-      gradient: 'from-purple-500 to-blue-500',
-      message: '🎉 Happy Festival! We\'re offering special health checkup packages this festive season. Book your appointment today and avail exclusive discounts!'
+      content: ['🎉 Happy Festival! We\'re offering special health checkup packages this festive season. Book your appointment today and avail exclusive discounts!']
     },
     { 
+      id: '2',
       name: 'Pre-Surgery', 
-      subtitle: 'Medical',
-      icon: Stethoscope, 
-      gradient: 'from-pink-500 to-orange-500',
-      message: '📋 Pre-Surgery Reminder: Your surgery is scheduled soon. Please follow the pre-surgery guidelines provided. Contact us if you have any questions.'
+      content: ['📋 Pre-Surgery Reminder: Your surgery is scheduled soon. Please follow the pre-surgery guidelines provided. Contact us if you have any questions.']
     },
     { 
+      id: '3',
       name: 'Post-Surgery', 
-      subtitle: 'Recovery',
-      icon: Heart, 
-      gradient: 'from-blue-500 to-cyan-500',
-      message: '💚 Post-Surgery Care: Hope you\'re recovering well! Remember to follow your post-surgery care instructions. Schedule a follow-up if needed.'
+      content: ['💚 Post-Surgery Care: Hope you\'re recovering well! Remember to follow your post-surgery care instructions. Schedule a follow-up if needed.']
     },
     { 
+      id: '4',
       name: 'Special Offers', 
-      subtitle: 'Offers',
-      icon: Percent, 
-      gradient: 'from-green-500 to-teal-500',
-      message: '🎁 Special Offer: Limited time discount on health packages! Book your appointment now and save up to 30%. Offer valid until month end.'
+      content: ['🎁 Special Offer: Limited time discount on health packages! Book your appointment now and save up to 30%. Offer valid until month end.']
     },
     { 
+      id: '5',
       name: 'Seasonal Offers', 
-      subtitle: 'Seasonal',
-      icon: Snowflake, 
-      gradient: 'from-cyan-500 to-blue-500',
-      message: '❄️ Seasonal Health Checkup: Stay healthy this season! Book your seasonal health checkup package and get comprehensive health screening at special rates.'
+      content: ['❄️ Seasonal Health Checkup: Stay healthy this season! Book your seasonal health checkup package and get comprehensive health screening at special rates.']
     },
   ];
 
-  const handleTemplateClick = (template: typeof templates[0]) => {
-    setMessage(template.message);
-    setSelectedTemplate(template.name);
+  // Use API templates if available, otherwise use fallback
+  const displayTemplates = templates.length > 0 ? templates : fallbackTemplates;
+
+  // Template icon mapping
+  const getTemplateIcon = (templateName: string) => {
+    const lowerName = templateName.toLowerCase();
+    if (lowerName.includes('festival') || lowerName.includes('promotion')) return Sparkles;
+    if (lowerName.includes('pre-surgery')) return Stethoscope;
+    if (lowerName.includes('post-surgery') || lowerName.includes('care')) return Heart;
+    if (lowerName.includes('offer')) return Percent;
+    if (lowerName.includes('seasonal')) return Snowflake;
+    return Sparkles;
+  };
+
+  // Template gradient mapping
+  const getTemplateGradient = (templateName: string) => {
+    const lowerName = templateName.toLowerCase();
+    if (lowerName.includes('festival') || lowerName.includes('promotion')) return 'from-purple-500 to-blue-500';
+    if (lowerName.includes('pre-surgery')) return 'from-pink-500 to-orange-500';
+    if (lowerName.includes('post-surgery') || lowerName.includes('care')) return 'from-blue-500 to-cyan-500';
+    if (lowerName.includes('offer')) return 'from-green-500 to-teal-500';
+    if (lowerName.includes('seasonal')) return 'from-cyan-500 to-blue-500';
+    return 'from-purple-500 to-blue-500';
+  };
+
+  const handleTemplateClick = (template: Template) => {
+    // Use first content item as message (templates have content as array)
+    const templateMessage = template.content && template.content.length > 0 
+      ? template.content[0] 
+      : '';
+    setMessage(templateMessage);
+    setSelectedTemplate(template.id);
   };
 
   const handleTagApply = (tags: string[]) => {
@@ -295,22 +346,21 @@ export default function CampaignsPage() {
         title: campaignTitle.trim() || undefined,
         message: message.trim(),
         recipientTags: selectedTags,
-        template: selectedTemplate || '',
+        // Template reference removed - not sent in CRM API request
       };
 
-      // If scheduled date/time is set and in future, add scheduling
-      if (scheduledDate && scheduledTime) {
-        const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
-        const now = new Date();
-        
-        if (scheduledDateTime > now) {
-          campaignData.scheduledDate = scheduledDate;
-          campaignData.scheduledTime = scheduledTime;
-          campaignData.status = 'scheduled';
-        }
-      }
+      // Convert to CRM Campaign format using adapter
+      const crmCampaignData = campaignToCrmCampaign({
+        title: campaignTitle.trim(),
+        message: message.trim(),
+        recipientTags: selectedTags,
+        scheduledDate: scheduledDate && scheduledTime 
+          ? new Date(`${scheduledDate}T${scheduledTime}`)
+          : undefined,
+      });
 
-      await campaignService.createCampaign(campaignData);
+      // Create campaign via API
+      await campaignApi.createCampaign(crmCampaignData);
       toast.success(scheduledDate && scheduledTime ? 'Campaign scheduled successfully' : 'Campaign sent successfully');
       
       // Reset form
@@ -413,8 +463,12 @@ export default function CampaignsPage() {
                 value={message}
                 onChange={(e) => {
                   setMessage(e.target.value);
-                  if (e.target.value !== templates.find(t => t.name === selectedTemplate)?.message) {
-                    setSelectedTemplate(null);
+                  // Clear template selection if message is manually edited
+                  if (selectedTemplate && displayTemplates.find(t => t.id === selectedTemplate)) {
+                    const selectedTemp = displayTemplates.find(t => t.id === selectedTemplate);
+                    if (selectedTemp && selectedTemp.content[0] !== e.target.value) {
+                      setSelectedTemplate(null);
+                    }
                   }
                   if (errors.message) {
                     setErrors({ ...errors, message: '' });
@@ -568,30 +622,30 @@ export default function CampaignsPage() {
                 {/* First 4 templates in centered 2x2 grid */}
                 <div className="flex-shrink-0 snap-start w-full flex justify-center px-4">
                   <div className="grid grid-cols-2 gap-4 w-full max-w-[600px]">
-                    {templates.slice(0, 4).map((template) => (
+                    {displayTemplates.slice(0, 4).map((template) => (
                       <TemplateCard
-                        key={template.name}
-                        icon={template.icon}
+                        key={template.id}
+                        icon={getTemplateIcon(template.name)}
                         title={template.name}
-                        subtitle={template.subtitle}
-                        gradientClasses={template.gradient}
-                        isSelected={selectedTemplate === template.name}
+                        subtitle="Template"
+                        gradientClasses={getTemplateGradient(template.name)}
+                        isSelected={selectedTemplate === template.id}
                         onClick={() => handleTemplateClick(template)}
                       />
                     ))}
                   </div>
                 </div>
                 {/* 5th template - accessible by scrolling */}
-                {templates.length > 4 && (
+                {displayTemplates.length > 4 && (
                   <div className="flex-shrink-0 snap-start w-full flex justify-center px-4">
                     <div className="grid grid-cols-2 gap-4 w-full max-w-[600px]">
                       <TemplateCard
-                        icon={templates[4].icon}
-                        title={templates[4].name}
-                        subtitle={templates[4].subtitle}
-                        gradientClasses={templates[4].gradient}
-                        isSelected={selectedTemplate === templates[4].name}
-                        onClick={() => handleTemplateClick(templates[4])}
+                        icon={getTemplateIcon(displayTemplates[4].name)}
+                        title={displayTemplates[4].name}
+                        subtitle="Template"
+                        gradientClasses={getTemplateGradient(displayTemplates[4].name)}
+                        isSelected={selectedTemplate === displayTemplates[4].id}
+                        onClick={() => handleTemplateClick(displayTemplates[4])}
                       />
                       <div></div> {/* Empty space to maintain grid */}
                     </div>
@@ -601,14 +655,14 @@ export default function CampaignsPage() {
             </div>
             {/* Desktop: All cards in a single row */}
             <div className="hidden md:grid md:grid-cols-5 gap-4">
-              {templates.map((template) => (
+              {displayTemplates.map((template) => (
                 <TemplateCard
-                  key={template.name}
-                  icon={template.icon}
+                  key={template.id}
+                  icon={getTemplateIcon(template.name)}
                   title={template.name}
-                  subtitle={template.subtitle}
-                  gradientClasses={template.gradient}
-                  isSelected={selectedTemplate === template.name}
+                  subtitle="Template"
+                  gradientClasses={getTemplateGradient(template.name)}
+                  isSelected={selectedTemplate === template.id}
                   onClick={() => handleTemplateClick(template)}
                 />
               ))}

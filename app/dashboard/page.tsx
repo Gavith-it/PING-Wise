@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus, ChevronRight, Wallet } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus, ChevronRight, DollarSign } from 'lucide-react';
 
 // Custom Rupee Icon Component to replace DollarSign
 const RupeeIcon = ({ className }: { className?: string }) => (
@@ -31,13 +32,47 @@ import CountUp from 'react-countup';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import ActivityChart from '@/components/charts/ActivityChart';
-import AppointmentModal, { preloadFormData } from '@/components/modals/AppointmentModal';
-import PatientModal from '@/components/modals/PatientModal';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Appointment } from '@/types';
-import { FloatingButton, FloatingButtonItem } from '@/components/ui/floating-button';
 import { cn } from '@/lib/utils';
+
+// Lazy load heavy components
+const ActivityChart = dynamic(() => import('@/components/charts/ActivityChart'), {
+  loading: () => <div className="h-40 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>,
+  ssr: false
+});
+
+const AppointmentModal = dynamic(() => import('@/components/modals/AppointmentModal').then(mod => ({ default: mod.default })), {
+  loading: () => null,
+  ssr: false
+});
+
+const PatientModal = dynamic(() => import('@/components/modals/PatientModal'), {
+  loading: () => null,
+  ssr: false
+});
+
+const FloatingButton = dynamic(() => import('@/components/ui/floating-button').then(mod => ({ default: mod.FloatingButton })), {
+  loading: () => null,
+  ssr: false
+});
+
+const FloatingButtonItem = dynamic(() => import('@/components/ui/floating-button').then(mod => ({ default: mod.FloatingButtonItem })), {
+  loading: () => null,
+  ssr: false
+});
+
+// Preload function helper
+const loadPreloadFunction = async () => {
+  try {
+    const mod = await import('@/components/modals/AppointmentModal');
+    if (mod.preloadFormData) {
+      await mod.preloadFormData();
+    }
+  } catch (error) {
+    // Silently fail - preloading is optional
+  }
+};
 
 interface KPICardProps {
   icon: React.ElementType;
@@ -49,23 +84,27 @@ interface KPICardProps {
   isComingSoon?: boolean;
 }
 
-function KPICard({ icon: Icon, value, label, change, trend, isCurrency, isComingSoon }: KPICardProps) {
+const KPICard = memo(function KPICard({ icon: Icon, value, label, change, trend, isCurrency, isComingSoon }: KPICardProps) {
   const isPositive = trend === 'up';
   const changeColor = isPositive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
   const changeSymbol = isPositive ? '+' : '';
   const trendIcon = isPositive ? '↑' : '↓';
 
-  let numericValue = 0;
-  let suffix = '';
-  let prefix = '';
-  
-  if (isCurrency && !isComingSoon) {
-    numericValue = typeof value === 'number' ? value / 1000 : parseFloat(String(value)) / 1000 || 0;
-    prefix = '₹';
-    suffix = 'K';
-  } else if (!isComingSoon) {
-    numericValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
-  }
+  const { numericValue, prefix, suffix } = useMemo(() => {
+    let numValue = 0;
+    let pre = '';
+    let suf = '';
+    
+    if (isCurrency && !isComingSoon) {
+      numValue = typeof value === 'number' ? value / 1000 : parseFloat(String(value)) / 1000 || 0;
+      pre = '₹';
+      suf = 'K';
+    } else if (!isComingSoon) {
+      numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+    }
+    
+    return { numericValue: numValue, prefix: pre, suffix: suf };
+  }, [value, isCurrency, isComingSoon]);
 
   return (
     <div className="bg-white rounded-lg p-2 md:p-6 shadow-sm border border-gray-100">
@@ -109,13 +148,14 @@ function KPICard({ icon: Icon, value, label, change, trend, isCurrency, isComing
       <p className="text-[10px] md:text-sm text-gray-600 font-medium">{label}</p>
     </div>
   );
-}
+});
 
-function AppointmentCard({ appointment }: { appointment: Appointment }) {
+const AppointmentCard = memo(function AppointmentCard({ appointment }: { appointment: Appointment }) {
   const patient = typeof appointment.patient === 'object' ? appointment.patient : null;
   const doctor = typeof appointment.doctor === 'object' ? appointment.doctor : null;
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  
+  const statusColor = useMemo(() => {
+    switch (appointment.status) {
       case 'confirmed':
         return 'bg-green-100 text-green-700';
       case 'pending':
@@ -125,7 +165,7 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
       default:
         return 'bg-gray-100 text-gray-700';
     }
-  };
+  }, [appointment.status]);
 
   return (
     <div className="w-full p-3 md:p-4 flex items-center justify-between text-left">
@@ -140,12 +180,12 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
           </p>
         </div>
       </div>
-      <span className={`text-[10px] md:text-xs font-medium px-2 md:px-3 py-0.5 md:py-1 rounded-full border ${getStatusColor(appointment.status)} flex-shrink-0 ml-2`}>
+      <span className={`text-[10px] md:text-xs font-medium px-2 md:px-3 py-0.5 md:py-1 rounded-full border ${statusColor} flex-shrink-0 ml-2`}>
         {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
       </span>
     </div>
   );
-}
+});
 
 
 // Cache for dashboard data to enable instant navigation
@@ -165,68 +205,27 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, token } = useAuth();
   const { addNotification } = useNotifications();
   const [stats, setStats] = useState<any>(dashboardCache.stats);
   const [activity, setActivity] = useState<any>(dashboardCache.activity);
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>(dashboardCache.todayAppointments);
-  const [loading, setLoading] = useState(!dashboardCache.stats); // Only show loading if no cached data
+  // Start with false loading - show page immediately, load data in background
+  const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(!dashboardCache.stats); // Track if data is loading
+  const [dataLoaded, setDataLoaded] = useState(!!dashboardCache.stats); // Track if data has been loaded at least once
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [loadingBalance, setLoadingBalance] = useState(true);
 
-  useEffect(() => {
-    // Only load data once when authentication is complete
-    // PrivateRoute already handles authentication check, so we can trust isAuthenticated
-    if (!authLoading && isAuthenticated && user) {
-      const cacheAge = Date.now() - dashboardCache.timestamp;
-      const isCacheValid = dashboardCache.stats && cacheAge < CACHE_DURATION;
-      
-      // If we have valid cached data, use it immediately and refresh in background
-      if (isCacheValid) {
-        setStats(dashboardCache.stats);
-        setActivity(dashboardCache.activity);
-        setTodayAppointments(dashboardCache.todayAppointments);
-        setLoading(false);
-        // Refresh in background
-        loadDashboardData(false);
-      } else {
-        // No cache or expired, load normally
-        loadDashboardData(true);
+  const loadDashboardData = useCallback(async (showLoadingSpinner = false) => {
+    try {
+      // Only show spinner if explicitly requested (for refresh actions)
+      // Don't block UI on initial load
+      if (showLoadingSpinner) {
+        setDataLoading(true);
       }
       
-      // Preload patients and doctors data for appointment modal (in background)
-      preloadFormData();
-      
-      // Load wallet balance
-      loadWalletBalance();
-    } else if (!authLoading) {
-      // Not authenticated or still loading - stop loading
-      // PrivateRoute will handle redirect if needed
-      setLoading(false);
-    }
-  }, [authLoading, isAuthenticated, user]);
-
-  const loadWalletBalance = async () => {
-    try {
-      setLoadingBalance(true);
-      const response = await walletService.getBalance();
-      setWalletBalance(response.data?.balance || 0);
-    } catch (error: any) {
-      // Silently fail - wallet balance is optional
-      const balance = (user as any)?.walletBalance || 0;
-      setWalletBalance(balance);
-    } finally {
-      setLoadingBalance(false);
-    }
-  };
-
-  const loadDashboardData = async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setLoading(true);
-      }
       const [statsData, activityData, appointmentsData] = await Promise.all([
         dashboardService.getStats(),
         dashboardService.getActivity(),
@@ -243,10 +242,12 @@ export default function DashboardPage() {
       dashboardCache.todayAppointments = newAppointments;
       dashboardCache.timestamp = Date.now();
 
-      // Update state
+      // Update state - this will trigger re-render with real data
       setStats(newStats);
       setActivity(newActivity);
       setTodayAppointments(newAppointments);
+      // Mark data as loaded (even if empty) so we show proper empty state
+      setDataLoaded(true);
     } catch (error: any) {
       // Handle 401 errors silently - PrivateRoute will redirect
       if (error?.response?.status !== 401) {
@@ -255,14 +256,99 @@ export default function DashboardPage() {
           console.error('Dashboard load error:', error);
         }
       }
+      // Mark as loaded even on error so we don't show loading forever
+      setDataLoaded(true);
     } finally {
-      if (showLoading) {
-        setLoading(false);
+      if (showLoadingSpinner) {
+        setDataLoading(false);
+      } else {
+        // If not showing spinner, still mark loading as false after data arrives
+        setDataLoading(false);
       }
     }
-  };
+  }, []);
 
-  const handleAppointmentSuccess = () => {
+  useEffect(() => {
+    // Trust login state - if we have token and user, we're authenticated
+    // Don't wait for authLoading if we just logged in (token exists = authenticated)
+    // This allows instant dashboard display after login
+    const hasToken = typeof window !== 'undefined' && sessionStorage.getItem('token');
+    const isAuthenticatedNow = (token && user) || (hasToken && user);
+    const shouldLoad = isAuthenticatedNow || (!authLoading && isAuthenticated && user);
+    
+    if (shouldLoad) {
+      const cacheAge = Date.now() - dashboardCache.timestamp;
+      const isCacheValid = dashboardCache.stats && cacheAge < CACHE_DURATION;
+      
+      // If we have valid cached data, use it immediately (instant display)
+      if (isCacheValid) {
+        setStats(dashboardCache.stats);
+        setActivity(dashboardCache.activity);
+        setTodayAppointments(dashboardCache.todayAppointments);
+        setDataLoading(false);
+        setDataLoaded(true); // Mark as loaded since we have cached data
+        // Refresh in background without blocking UI
+        loadDashboardData(false);
+      } else {
+        // No cache or expired - load in background without blocking UI
+        // Show page structure immediately with skeleton, fill data as it arrives
+        setDataLoading(true);
+        setDataLoaded(false); // Not loaded yet
+        loadDashboardData(false); // Don't show spinner, just load data in background
+      }
+      
+      // Preload patients and doctors data for appointment modal (in background)
+      loadPreloadFunction();
+    }
+  }, [authLoading, isAuthenticated, user, token, loadDashboardData]);
+
+  // Fetch wallet balance only on Dashboard page
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      // Wait for user to be authenticated
+      if (!user || !isAuthenticated) {
+        return;
+      }
+      
+      // Check if token exists in sessionStorage before making request
+      if (typeof window !== 'undefined') {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+          return;
+        }
+      }
+      
+      try {
+        // Try to fetch from API, fallback to user object or default
+        try {
+          const response = await walletService.getBalance();
+          setWalletBalance(response.data?.balance || 0);
+        } catch (apiError: any) {
+          // Silently handle auth errors (401) - user might not be fully authenticated yet
+          // If API endpoint doesn't exist yet (404), silently use default
+          const status = apiError?.response?.status;
+          if (status === 401 || status === 404) {
+            // Silent fail for auth errors and missing endpoints
+            const balance = (user as any)?.walletBalance || 0;
+            setWalletBalance(balance);
+          } else {
+            // Check user object or use default
+            const balance = (user as any)?.walletBalance || 0;
+            setWalletBalance(balance);
+          }
+        }
+      } catch (error) {
+        // Silent fail - wallet balance is optional
+        setWalletBalance(0);
+      }
+    };
+
+    if (!authLoading && isAuthenticated && user) {
+      fetchWalletBalance();
+    }
+  }, [user, isAuthenticated, authLoading]);
+
+  const handleAppointmentSuccess = useCallback(() => {
     setShowAppointmentModal(false);
     addNotification({
       type: 'appointment',
@@ -270,9 +356,9 @@ export default function DashboardPage() {
       message: 'A new appointment has been successfully scheduled.',
     });
     loadDashboardData();
-  };
+  }, [addNotification, loadDashboardData]);
 
-  const handlePatientSuccess = () => {
+  const handlePatientSuccess = useCallback(() => {
     setShowPatientModal(false);
     addNotification({
       type: 'patient',
@@ -280,19 +366,56 @@ export default function DashboardPage() {
       message: 'A new patient has been successfully added to the system.',
     });
     loadDashboardData();
-  };
+  }, [addNotification, loadDashboardData]);
 
-  if (loading) {
-    return (
-      <PrivateRoute>
-        <Layout>
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-        </Layout>
-      </PrivateRoute>
-    );
-  }
+  // Memoize KPI cards to prevent unnecessary re-renders
+  const kpiCards = useMemo(() => (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+      <KPICard
+        icon={CalendarCheck}
+        value={stats?.totalBookings?.value || 0}
+        label="Total Bookings"
+        change={stats?.totalBookings?.change || 0}
+        trend={stats?.totalBookings?.trend}
+      />
+      <KPICard
+        icon={Users}
+        value={stats?.totalPatients?.value || 0}
+        label="Total Patients"
+        change={stats?.totalPatients?.change || 0}
+        trend={stats?.totalPatients?.trend}
+      />
+      <KPICard
+        icon={Clock}
+        value={stats?.followUps?.value || 0}
+        label="Follow-ups"
+        change={stats?.followUps?.change || 0}
+        trend={stats?.followUps?.trend}
+      />
+      <KPICard
+        icon={RupeeIcon}
+        value={stats?.revenue?.value || 0}
+        label="Revenue"
+        change={stats?.revenue?.change || 0}
+        trend={stats?.revenue?.trend}
+        isCurrency={true}
+      />
+    </div>
+  ), [stats]);
+
+  // Memoize appointment cards list
+  const appointmentCards = useMemo(() => (
+    todayAppointments.map((appointment) => (
+      <AppointmentCard
+        key={appointment.id}
+        appointment={appointment}
+      />
+    ))
+  ), [todayAppointments]);
+
+  // Never show full-page loading spinner - always show page structure
+  // This ensures instant display like big apps (optimistic UI)
+  // Data will load in background and fill in as it arrives
 
   return (
     <PrivateRoute>
@@ -306,47 +429,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
-            <KPICard
-              icon={CalendarCheck}
-              value={stats?.totalBookings?.value || 0}
-              label="Total Bookings"
-              change={stats?.totalBookings?.change || 0}
-              trend={stats?.totalBookings?.trend}
-            />
-            <KPICard
-              icon={Users}
-              value={stats?.totalPatients?.value || 0}
-              label="Total Patients"
-              change={stats?.totalPatients?.change || 0}
-              trend={stats?.totalPatients?.trend}
-            />
-            <KPICard
-              icon={Clock}
-              value={stats?.followUps?.value || 0}
-              label="Follow-ups"
-              change={stats?.followUps?.change || 0}
-              trend={stats?.followUps?.trend}
-            />
-            <button
-              onClick={() => router.push('/wallet')}
-              className="bg-white rounded-lg p-2 md:p-6 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow text-left w-full"
-            >
-              <div className="flex items-center justify-between mb-1.5 md:mb-4">
-                <div className="w-8 h-8 md:w-14 md:h-14 bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-lg md:rounded-xl flex items-center justify-center">
-                  <Wallet className="w-4 h-4 md:w-7 md:h-7 text-blue-600" />
+          {/* Show KPI cards - use cached data or show skeleton if loading */}
+          {stats ? kpiCards : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
                 </div>
-              </div>
-              <div className="text-lg md:text-3xl font-bold text-gray-900 mb-0.5 md:mb-2">
-                {loadingBalance ? (
-                  <span className="text-sm md:text-lg text-gray-400">Loading...</span>
-                ) : (
-                  `₹${walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                )}
-              </div>
-              <p className="text-[10px] md:text-sm text-gray-600 font-medium">Wallet Balance</p>
-            </button>
-          </div>
+              ))}
+            </div>
+          )}
 
           <button
             onClick={() => router.push('/reports')}
@@ -359,7 +452,11 @@ export default function DashboardPage() {
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
             </div>
-            {activity && <ActivityChart data={activity} />}
+            {activity ? <ActivityChart data={activity} /> : (
+              <div className="h-40 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            )}
           </button>
 
           <div className="mb-4 md:mb-6">
@@ -373,16 +470,26 @@ export default function DashboardPage() {
               </button>
             </div>
             <div className="bg-white rounded-lg md:rounded-xl shadow-sm border border-gray-100 overflow-hidden max-h-[400px] overflow-y-auto">
-              {todayAppointments.length > 0 ? (
-                <div className="divide-y divide-gray-100">
-                  {todayAppointments.map((appointment) => (
-                    <AppointmentCard
-                      key={appointment.id}
-                      appointment={appointment}
-                    />
+              {!dataLoaded && dataLoading ? (
+                // Show skeleton only while initial data is loading
+                <div className="p-4 md:p-6 space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center space-x-3 animate-pulse">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
                   ))}
                 </div>
+              ) : todayAppointments.length > 0 ? (
+                // Show appointments if we have any
+                <div className="divide-y divide-gray-100">
+                  {appointmentCards}
+                </div>
               ) : (
+                // Show proper empty state once data has loaded (even if empty)
                 <div className="p-6 md:p-8 text-center">
                   <CalendarCheck className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mx-auto mb-2 md:mb-3" />
                   <p className="text-sm md:text-base text-gray-500 font-medium">No appointments scheduled for today</p>

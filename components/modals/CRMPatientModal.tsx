@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { X } from 'lucide-react';
 import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
@@ -16,7 +16,7 @@ import { patientToCrmCustomer, crmCustomerToPatient } from '@/lib/utils/crmAdapt
 interface CRMPatientModalProps {
   patient?: Patient | null;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (updatedPatient?: Patient) => void;
 }
 
 export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPatientModalProps) {
@@ -50,7 +50,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
     }
   }, [patient]);
 
-  const validateForm = (): boolean => {
+  const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
@@ -83,9 +83,26 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Optimized field update handler - only updates specific field
+  const handleFieldChange = useCallback((field: keyof typeof formData) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setFormData(prev => ({ ...prev, [field]: value }));
+      // Clear error for this field if it exists
+      setErrors(prev => {
+        if (prev[field]) {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        }
+        return prev;
+      });
+    };
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -109,21 +126,32 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
       };
       
       if (patient) {
-        await crmPatientService.updatePatient(patient.id, patientData);
+        const response = await crmPatientService.updatePatient(patient.id, patientData);
         toast.success('Patient updated successfully');
+        onSuccess(response.data); // Pass updated patient data
       } else {
-        await crmPatientService.createPatient(patientData);
+        const response = await crmPatientService.createPatient(patientData);
         toast.success('Patient created successfully');
+        onSuccess(response.data); // Pass created patient data
       }
-      onSuccess();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to save patient';
-      toast.error(errorMessage);
-      console.error('Error saving patient:', error);
+      // Handle 401 Unauthorized specifically
+      if (error.response?.status === 401) {
+        toast.error('Your session has expired. Please log in again.');
+        // Close modal and redirect to login after a short delay
+        setTimeout(() => {
+          onClose();
+          window.location.href = '/login';
+        }, 2000);
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to save patient';
+        toast.error(errorMessage);
+        console.error('Error saving patient:', error);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, patient, validateForm, onClose, onSuccess]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -150,10 +178,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value });
-                  if (errors.name) setErrors({ ...errors, name: '' });
-                }}
+                onChange={handleFieldChange('name')}
                 className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
                   errors.name ? 'border-red-300' : 'border-gray-300'
                 }`}
@@ -175,10 +200,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                   min="1"
                   max="120"
                   value={formData.age}
-                  onChange={(e) => {
-                    setFormData({ ...formData, age: e.target.value });
-                    if (errors.age) setErrors({ ...errors, age: '' });
-                  }}
+                  onChange={handleFieldChange('age')}
                   className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
                     errors.age ? 'border-red-300' : 'border-gray-300'
                   }`}
@@ -195,7 +217,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 </label>
                 <select
                   value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  onChange={handleFieldChange('gender')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Select</option>
@@ -214,10 +236,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 type="tel"
                 required
                 value={formData.phone}
-                onChange={(e) => {
-                  setFormData({ ...formData, phone: e.target.value });
-                  if (errors.phone) setErrors({ ...errors, phone: '' });
-                }}
+                onChange={handleFieldChange('phone')}
                 className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
                   errors.phone ? 'border-red-300' : 'border-gray-300'
                 }`}
@@ -236,10 +255,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 type="email"
                 required
                 value={formData.email}
-                onChange={(e) => {
-                  setFormData({ ...formData, email: e.target.value });
-                  if (errors.email) setErrors({ ...errors, email: '' });
-                }}
+                onChange={handleFieldChange('email')}
                 className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
                   errors.email ? 'border-red-300' : 'border-gray-300'
                 }`}
@@ -257,7 +273,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <input
                 type="text"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onChange={handleFieldChange('address')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="Street address"
               />
@@ -269,7 +285,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               </label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={handleFieldChange('status')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="active">Active</option>
@@ -285,7 +301,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               </label>
               <textarea
                 value={formData.medicalNotes}
-                onChange={(e) => setFormData({ ...formData, medicalNotes: e.target.value })}
+                onChange={handleFieldChange('medicalNotes')}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="Additional medical information..."

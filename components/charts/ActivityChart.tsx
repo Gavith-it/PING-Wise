@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
+import { useState, useMemo, memo } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import CountUp from 'react-countup';
 
 interface ActivityData {
@@ -24,10 +24,10 @@ interface ActivityChartProps {
   data: ActivityData;
 }
 
-export default function ActivityChart({ data }: ActivityChartProps) {
+const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const chartData = [
+  const chartData = useMemo(() => [
     {
       name: 'Active',
       value: data.active?.count || 0,
@@ -46,7 +46,7 @@ export default function ActivityChart({ data }: ActivityChartProps) {
       percentage: data.followUp?.percentage || 0,
       color: '#14b8a6', // Teal green
     },
-  ];
+  ], [data]);
 
   const onPieEnter = (_: unknown, index: number) => {
     setActiveIndex(index);
@@ -158,4 +158,6 @@ export default function ActivityChart({ data }: ActivityChartProps) {
       </div>
     </div>
   );
-}
+});
+
+export default ActivityChart;

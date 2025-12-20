@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent, useMemo, useCallback } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 
 interface AutocompleteOption {
@@ -46,14 +46,30 @@ export default function Autocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Find selected option
-  const selectedOption = options.find(opt => getOptionValue(opt) === value);
+  const selectedOption = useMemo(() => 
+    options.find(opt => getOptionValue(opt) === value),
+    [options, value, getOptionValue]
+  );
 
-  // Filter options based on input
-  const filteredOptions = options.filter(option => {
+  // Debounced filter - only filter when input hasn't changed for 150ms
+  const [debouncedInput, setDebouncedInput] = useState(inputValue);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedInput(inputValue);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
+  // Filter options based on debounced input
+  const filteredOptions = useMemo(() => {
+    if (!debouncedInput) return options;
+    const searchTerm = debouncedInput.toLowerCase();
+    return options.filter(option => {
     const label = getOptionLabel(option).toLowerCase();
-    const searchTerm = inputValue.toLowerCase();
     return label.includes(searchTerm);
   });
+  }, [options, debouncedInput, getOptionLabel]);
 
   // Update input value when selected option changes
   useEffect(() => {

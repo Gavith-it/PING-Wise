@@ -134,24 +134,13 @@ export const crmPatientService = {
 
   /**
    * Update patient (customer)
+   * Optimized: Directly updates without fetching existing data first
    */
   async updatePatient(id: string, patientData: Partial<CreatePatientRequest>): Promise<ApiResponse<Patient>> {
     try {
-      // First get existing patient to merge data
-      const existingCustomer = await crmApi.getCustomer(id);
-      const existingPatient = crmCustomerToPatient(existingCustomer);
-      
-      if (!existingPatient) {
-        throw new Error('Patient not found');
-      }
-      
-      // Merge with updates
-      const updatedPatient: Patient = {
-        ...existingPatient,
-        ...patientData,
-      };
-      
-      const customerRequest = patientToCrmCustomer(updatedPatient);
+      // Convert patient data directly to customer request format
+      // No need to fetch existing data - just send the update
+      const customerRequest = patientToCrmCustomer(patientData as CreatePatientRequest);
       const customer = await crmApi.updateCustomer(id, customerRequest);
       const patient = crmCustomerToPatient(customer);
       

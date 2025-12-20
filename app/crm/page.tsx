@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Filter, Upload, Users } from 'lucide-react';
 import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
@@ -30,11 +30,14 @@ const patientsCache: {
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 export default function CRMPage() {
+  // Initialize with cached data for instant display
   const [patients, setPatients] = useState<Patient[]>(patientsCache.patients);
   const [loading, setLoading] = useState(patientsCache.patients.length === 0); // Only show loading if no cached data
   const [loadingMore, setLoadingMore] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Initialize debouncedSearchTerm with searchTerm to prevent initial unnecessary update
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -56,25 +59,54 @@ export default function CRMPage() {
   const listContainerRef = useRef<HTMLDivElement>(null);
   const { setIsVisible: setFooterVisible } = useFooterVisibility();
   const lastScrollY = useRef(0);
+  const hasInitialized = useRef(false);
+  const previousFilters = useRef<string>('');
+  const isLoadingRef = useRef(false); // Track if API call is in progress
 
+  // Debounce search term to avoid excessive API calls
+  // Only update if value actually changed
+  useEffect(() => {
+    if (searchTerm === debouncedSearchTerm) {
+      return; // No change, skip update
+    }
+    
+    const timer = setTimeout(() => {
+      // Only update if value is different
+      if (searchTerm !== debouncedSearchTerm) {
+        setDebouncedSearchTerm(searchTerm);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, debouncedSearchTerm]);
+
+  // Main effect to load patients - optimized to prevent duplicate calls
   useEffect(() => {
     // Create filter key to check cache
-    const filterKey = JSON.stringify({ searchTerm, statusFilter, advancedFilters });
+    const filterKey = JSON.stringify({ searchTerm: debouncedSearchTerm, statusFilter, advancedFilters });
+    
+    // Prevent duplicate calls - check if filters actually changed
+    if (hasInitialized.current && previousFilters.current === filterKey) {
+      return; // Filters haven't changed, skip
+    }
+    
+    previousFilters.current = filterKey;
     const cacheAge = Date.now() - patientsCache.timestamp;
     const isCacheValid = patientsCache.patients.length > 0 && 
                         patientsCache.filters === filterKey && 
                         cacheAge < CACHE_DURATION;
     
     // Only show loading on initial load, not on filter changes
-    const isInitialLoad = patients.length === 0 && loading;
+    const isInitialLoad = !hasInitialized.current && patients.length === 0;
+    const isReturningToPage = !hasInitialized.current && patientsCache.patients.length > 0;
     
     if (isCacheValid && isInitialLoad) {
-      // Use cached data immediately
+      // Use cached data immediately for fast display
       setPatients(patientsCache.patients);
       setTotal(patientsCache.total);
       setLoading(false);
       setIsFiltering(false);
-      // Refresh in background
+      hasInitialized.current = true;
+      // Always refresh in background to get fresh data (e.g., if patient added from dashboard)
       loadPatients(true, true);
     } else if (isCacheValid && patientsCache.filters === filterKey) {
       // Same filters, cache is valid - use it immediately
@@ -82,16 +114,24 @@ export default function CRMPage() {
       setTotal(patientsCache.total);
       setLoading(false);
       setIsFiltering(false);
+      hasInitialized.current = true;
+      
+      // IMPORTANT: Always refresh in background when returning to page
+      // This ensures fresh data is fetched (e.g., if patient was added from dashboard)
+      // Only refresh if not already loading to prevent duplicate calls
+      if (!isLoadingRef.current) {
+        loadPatients(true, true);
+      }
     } else {
       // Filters changed or cache invalid - keep current data visible, fetch in background
       setPage(1);
-      setIsFiltering(false); // Don't show filtering state - keep UI smooth
-      // Don't clear patients - keep showing current data while fetching
-      // Don't show loading spinner on filter changes
-      loadPatients(true, true); // Always skip loading spinner on filter changes
+      setIsFiltering(false);
+      hasInitialized.current = true;
+      // Load new data
+      loadPatients(true, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, statusFilter, advancedFilters]);
+  }, [debouncedSearchTerm, statusFilter, advancedFilters]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -152,7 +192,14 @@ export default function CRMPage() {
   }, []);
 
   const loadPatients = async (reset = false, skipLoadingSpinner = false) => {
+    // Prevent concurrent calls - use a ref to track if a call is in progress
+    if (isLoadingRef.current) {
+      return; // Already loading, skip duplicate call
+    }
+    
     try {
+      isLoadingRef.current = true;
+      
       // Only show loading spinner on initial load (when no data exists)
       if (reset && !skipLoadingSpinner && patients.length === 0) {
         setLoading(true);
@@ -172,7 +219,7 @@ export default function CRMPage() {
         page: currentPage,
         limit,
         ...(statusFilter !== 'all' && { status: statusFilter }),
-        ...(searchTerm && { search: searchTerm }),
+        ...(debouncedSearchTerm && { search: debouncedSearchTerm }),
         ...(advancedFilters.dateRange.start && { dateStart: advancedFilters.dateRange.start }),
         ...(advancedFilters.dateRange.end && { dateEnd: advancedFilters.dateRange.end }),
         ...(advancedFilters.ageRange.min && { ageMin: advancedFilters.ageRange.min }),
@@ -210,6 +257,7 @@ export default function CRMPage() {
       setLoading(false);
       setLoadingMore(false);
       setIsFiltering(false);
+      isLoadingRef.current = false; // Reset flag
     }
   };
 
@@ -223,18 +271,66 @@ export default function CRMPage() {
     }
 
     try {
+      // Optimistic update: Remove from list immediately
+      setPatients(prevPatients => prevPatients.filter(p => p.id !== id));
+      setTotal(prevTotal => Math.max(0, prevTotal - 1));
+      
+      // Update cache
+      patientsCache.patients = patientsCache.patients.filter(p => p.id !== id);
+      patientsCache.total = Math.max(0, patientsCache.total - 1);
+      
+      // Delete in background
       await crmPatientService.deletePatient(id);
       toast.success('Patient deleted successfully');
-      loadPatients(true);
+      
+      // Optionally refresh in background to ensure sync (non-blocking)
+      loadPatients(true, true).catch(() => {
+        // Silent fail - we already updated optimistically
+      });
     } catch (error) {
+      // Revert optimistic update on error
+      loadPatients(true, true);
       toast.error('Failed to delete patient');
     }
   };
 
-  const handlePatientCreated = () => {
+  const handlePatientCreated = (newPatient?: Patient) => {
     setShowAddModal(false);
     setSelectedPatient(null);
-    loadPatients(true);
+    
+    if (newPatient) {
+      // Optimistic update: Add/update patient in list immediately
+      setPatients(prevPatients => {
+        const existingIndex = prevPatients.findIndex(p => p.id === newPatient.id);
+        if (existingIndex >= 0) {
+          // Update existing patient
+          const updated = [...prevPatients];
+          updated[existingIndex] = newPatient;
+          return updated;
+        } else {
+          // Add new patient at the beginning
+          return [newPatient, ...prevPatients];
+        }
+      });
+      
+      // Update total if it's a new patient
+      if (!patients.find(p => p.id === newPatient.id)) {
+        setTotal(prevTotal => prevTotal + 1);
+        patientsCache.total = (patientsCache.total || 0) + 1;
+      }
+      
+      // Update cache
+      patientsCache.patients = [newPatient, ...patientsCache.patients.filter(p => p.id !== newPatient.id)];
+      patientsCache.timestamp = Date.now();
+      
+      // Optionally refresh in background to ensure sync (non-blocking)
+      loadPatients(true, true).catch(() => {
+        // Silent fail - we already updated optimistically
+      });
+    } else {
+      // Fallback: Reload if no patient data provided
+      loadPatients(true, true);
+    }
   };
 
   // Bulk upload not supported by CRM API

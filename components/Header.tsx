@@ -7,8 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 import SettingsMenu from '@/components/SettingsMenu';
-import { walletService } from '@/lib/services/api';
-
 export default function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -16,69 +14,8 @@ export default function Header() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [loadingBalance, setLoadingBalance] = useState(true);
   const notificationRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Fetch wallet balance
-  const fetchWalletBalance = async () => {
-      // Wait for user to be authenticated
-      if (!user) {
-        setWalletBalance(0);
-        setLoadingBalance(false);
-        return;
-      }
-      
-      // Check if token exists in sessionStorage before making request
-      if (typeof window !== 'undefined') {
-        const token = sessionStorage.getItem('token');
-        if (!token) {
-          setWalletBalance(0);
-          setLoadingBalance(false);
-          return;
-        }
-      }
-      
-      try {
-        setLoadingBalance(true);
-        // Try to fetch from API, fallback to user object or default
-        try {
-          const response = await walletService.getBalance();
-          setWalletBalance(response.data?.balance || 0);
-        } catch (apiError: any) {
-          // Silently handle auth errors (401) - user might not be fully authenticated yet
-          // If API endpoint doesn't exist yet (404), silently use default
-          // Don't log errors for missing endpoints or auth errors to avoid console spam
-          const status = apiError?.response?.status;
-          if (status === 401 || status === 404) {
-            // Silent fail for auth errors and missing endpoints
-            const balance = (user as any)?.walletBalance || 0;
-            setWalletBalance(balance);
-          } else if (status) {
-            // Only log non-auth, non-404 errors
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error fetching wallet balance:', apiError);
-            }
-            const balance = (user as any)?.walletBalance || 0;
-            setWalletBalance(balance);
-          } else {
-            // Check user object or use default
-            const balance = (user as any)?.walletBalance || 0;
-            setWalletBalance(balance);
-          }
-        }
-      } catch (error) {
-        // Silent fail - wallet balance is optional
-        setWalletBalance(0);
-      } finally {
-        setLoadingBalance(false);
-      }
-    };
-
-  useEffect(() => {
-    fetchWalletBalance();
-  }, [user]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -187,7 +124,7 @@ export default function Header() {
           <button
             onClick={() => router.push('/wallet')}
             className="p-1.5 md:p-2 text-gray-900 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title={`Wallet Balance: ₹${walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+            title="Wallet"
           >
             <Wallet className="w-4 h-4 md:w-5 md:h-5" />
           </button>

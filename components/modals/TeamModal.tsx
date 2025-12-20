@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
-import { teamService } from '@/lib/services/api';
+import { teamApi } from '@/lib/services/teamApi';
+import { userToCrmTeam } from '@/lib/utils/teamAdapter';
 import toast from 'react-hot-toast';
 import { User } from '@/types';
 
@@ -40,28 +41,43 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     }
   }, [teamMember]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Optimized field update handler
+  const handleFieldChange = useCallback((field: keyof typeof formData) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value = e.target.value;
+      setFormData(prev => ({ ...prev, [field]: value }));
+    };
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (teamMember) {
-        await teamService.updateTeamMember(teamMember.id, formData);
+      const crmTeamRequest = userToCrmTeam({
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        department: formData.department,
+        specialization: formData.specialization,
+        phone: formData.phone,
+        experience: formData.experience,
+      });
+
+      if (teamMember && teamMember.id) {
+        await teamApi.updateTeam(teamMember.id, crmTeamRequest);
         toast.success('Team member updated successfully');
       } else {
-        await teamService.createTeamMember({
-          ...formData,
-          password: formData.password || 'password123', // Default password, should be changed
-        });
+        await teamApi.createTeam(crmTeamRequest);
         toast.success('Team member created successfully');
       }
       onSuccess();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save team member');
+      toast.error(error.response?.data?.message || error.message || 'Failed to save team member');
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, teamMember, onSuccess]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -88,7 +104,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={handleFieldChange('name')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
@@ -102,7 +118,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                   type="email"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={handleFieldChange('email')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
@@ -115,7 +131,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                     type="password"
                     required
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={handleFieldChange('password')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
@@ -130,7 +146,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 <select
                   required
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'doctor' | 'staff' })}
+                  onChange={handleFieldChange('role')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="staff">Staff</option>
@@ -145,7 +161,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 <input
                   type="text"
                   value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  onChange={handleFieldChange('department')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="e.g., Cardiology"
                 />
@@ -160,7 +176,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 <input
                   type="text"
                   value={formData.specialization}
-                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                  onChange={handleFieldChange('specialization')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="e.g., Cardiologist"
                 />
@@ -175,7 +191,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={handleFieldChange('phone')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
@@ -187,7 +203,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                   <input
                     type="text"
                     value={formData.experience}
-                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                    onChange={handleFieldChange('experience')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="e.g., 5 years"
                   />

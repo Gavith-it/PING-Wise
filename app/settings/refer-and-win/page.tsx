@@ -20,7 +20,8 @@ export default function ReferAndWinPage() {
   };
 
   const handleShare = () => {
-    // TODO: Implement share functionality
+    // Share functionality using Web Share API (if available)
+    // Falls back to copying referral code if Web Share API is not supported
     if (navigator.share) {
       navigator.share({
         title: 'Join PingWise',

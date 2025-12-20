@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { appointmentService, patientService, teamService } from '@/lib/services/api';
 import { format } from 'date-fns';
@@ -82,6 +82,38 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
 
+  const loadFormData = useCallback(async (showLoading = false) => {
+    try {
+      if (showLoading) {
+        setLoadingPatients(true);
+        setLoadingDoctors(true);
+      }
+      // Load with pagination - start with 50 instead of 100 for better performance
+      const [patientsRes, doctorsRes] = await Promise.all([
+        patientService.getPatients({ limit: 50 }),
+        teamService.getTeamMembers({ role: 'doctor' }),
+      ]);
+      const newPatients = patientsRes.data || [];
+      const newDoctors = doctorsRes.data || [];
+      
+      // Update cache
+      formDataCache.patients = newPatients;
+      formDataCache.doctors = newDoctors;
+      formDataCache.timestamp = Date.now();
+      
+      // Update state
+      setPatients(newPatients);
+      setDoctors(newDoctors);
+    } catch (error) {
+      toast.error('Failed to load form data');
+    } finally {
+      if (showLoading) {
+        setLoadingPatients(false);
+        setLoadingDoctors(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     // Check cache first
     const cacheAge = Date.now() - formDataCache.timestamp;
@@ -99,7 +131,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       // No cache, load data
       loadFormData(true);
     }
-  }, []);
+  }, [loadFormData]);
 
   useEffect(() => {
     if (appointment) {
@@ -131,38 +163,32 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     }
   }, [appointment, patients, doctors]);
 
-  const loadFormData = async (showLoading = false) => {
-    try {
-      if (showLoading) {
-        setLoadingPatients(true);
-        setLoadingDoctors(true);
-      }
-      const [patientsRes, doctorsRes] = await Promise.all([
-        patientService.getPatients({ limit: 100 }),
-        teamService.getTeamMembers({ role: 'doctor' }),
-      ]);
-      const newPatients = patientsRes.data || [];
-      const newDoctors = doctorsRes.data || [];
-      
-      // Update cache
-      formDataCache.patients = newPatients;
-      formDataCache.doctors = newDoctors;
-      formDataCache.timestamp = Date.now();
-      
-      // Update state
-      setPatients(newPatients);
-      setDoctors(newDoctors);
-    } catch (error) {
-      toast.error('Failed to load form data');
-    } finally {
-      if (showLoading) {
-        setLoadingPatients(false);
-        setLoadingDoctors(false);
-      }
-    }
-  };
+  // Optimized field update handler
+  const handleFieldChange = useCallback((field: keyof typeof formData) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setFormData(prev => ({ ...prev, [field]: value }));
+    };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Optimized handlers for Autocomplete components
+  const handlePatientChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, patient: value }));
+  }, []);
+
+  const handlePatientSelect = useCallback((option: any) => {
+    setSelectedPatient(option as Patient | null);
+  }, []);
+
+  const handleDoctorChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, doctor: value }));
+  }, []);
+
+  const handleDoctorSelect = useCallback((option: any) => {
+    setSelectedDoctor(option as User | null);
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields with detailed error messages
@@ -314,7 +340,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, appointment, onClose, onSuccess]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -341,8 +367,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                   label: `${p.name} (${p.age} years)`,
                 }))}
                 value={formData.patient}
-                onChange={(value) => setFormData({ ...formData, patient: value })}
-                onSelect={(option) => setSelectedPatient(option as Patient | null)}
+                onChange={handlePatientChange}
+                onSelect={handlePatientSelect}
                 placeholder="Type to search patients..."
                 disabled={false}
                 loading={false}
@@ -364,8 +390,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                   label: `${d.name} - ${d.department || 'General'}`,
                 }))}
                 value={formData.doctor}
-                onChange={(value) => setFormData({ ...formData, doctor: value })}
-                onSelect={(option) => setSelectedDoctor(option as User | null)}
+                onChange={handleDoctorChange}
+                onSelect={handleDoctorSelect}
                 placeholder="Type to search doctors..."
                 disabled={false}
                 loading={false}
@@ -386,7 +412,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                   required
                   value={formData.date}
                   min={format(new Date(), 'yyyy-MM-dd')}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  onChange={handleFieldChange('date')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
@@ -398,7 +424,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                   type="time"
                   required
                   value={formData.time}
-                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  onChange={handleFieldChange('time')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
@@ -434,7 +460,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 required
                 rows={3}
                 value={formData.reason}
-                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                onChange={handleFieldChange('reason')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                 placeholder="Brief description of the reason for this appointment..."
               />

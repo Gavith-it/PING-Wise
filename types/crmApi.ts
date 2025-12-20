@@ -57,7 +57,7 @@ export interface CrmTeam {
   org_id?: string;
   role?: string;
   status?: string;
-  additional_info?: Record<string, any>;
+  additional_info?: string; // According to Swagger, it's a string
   created_at: string;
   updated_at: string;
 }
@@ -67,7 +67,7 @@ export interface CrmTeamRequest {
   org_id?: string;
   role?: string;
   status?: string;
-  additional_info?: Record<string, any>;
+  additional_info?: string;
 }
 
 // ==================== USER ====================
@@ -87,6 +87,31 @@ export interface CrmUserRequest {
   password: string;
   org_id?: string;
   role?: string;
+}
+
+// ==================== CAMPAIGN ====================
+
+export interface CrmCampaign {
+  id: string;
+  name: string;
+  message: string;
+  recipients: string[];
+  is_scheduled: boolean;
+  scheduled_at?: string;
+  status: string;
+  org_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrmCampaignRequest {
+  name: string;
+  message: string;
+  recipients?: string[];
+  tags?: string[];
+  is_scheduled?: boolean;
+  scheduled_at?: string;
+  status?: string;
 }
 
 // ==================== TEMPLATE ====================

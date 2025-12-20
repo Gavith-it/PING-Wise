@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Users, UserCheck, CalendarX, Building, Search, Filter, MoreVertical, Eye, Edit, Trash2, Calendar } from 'lucide-react';
-import { teamService, appointmentService } from '@/lib/services/api';
+import { appointmentService } from '@/lib/services/api';
+import { teamApi } from '@/lib/services/teamApi';
+import { crmTeamsToUsers, crmTeamToUser, userToCrmTeam } from '@/lib/utils/teamAdapter';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
@@ -115,12 +117,25 @@ export default function TeamPage() {
         params.status = filter;
       }
 
-      const response = await teamService.getTeamMembers(params);
-      const members = response.data || [];
+      // Fetch teams from Team API
+      const crmTeams = await teamApi.getTeams();
+      const members = crmTeamsToUsers(crmTeams);
+      
+      // Filter members based on UI filters (client-side filtering since API doesn't support it)
+      let filtered = members;
+      if (filters.status !== 'all') {
+        filtered = filtered.filter(m => m.status === filters.status);
+      }
+      if (filters.department !== 'all') {
+        filtered = filtered.filter(m => m.department === filters.department);
+      }
+      if (filter !== 'all') {
+        filtered = filtered.filter(m => m.status === filter);
+      }
       
       // Ensure each member has initials and unique avatarColor
       // Always generate unique colors based on name/index to ensure each member is different
-      const processedMembers = members.map((member: User, index: number) => {
+      const processedMembers = filtered.map((member: User, index: number) => {
         // Always generate initials if missing
         const memberInitials = member.initials || generateInitials(member.name);
         
@@ -209,13 +224,14 @@ export default function TeamPage() {
     }
 
     try {
-      await teamService.deleteTeamMember(id);
+      await teamApi.deleteTeam(id);
       toast.success('Team member deleted successfully');
       loadTeamMembers();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to delete team member');
+      toast.error(error.response?.data?.message || error.message || 'Failed to delete team member');
     }
   };
+
 
   const departments = Array.from(new Set(teamMembers.map(m => m.department).filter(Boolean))) as string[];
 
@@ -340,7 +356,7 @@ export default function TeamPage() {
           />
         )}
 
-        {showEditModal && selectedMember && (
+        {showEditModal && (
           <TeamModal
             teamMember={selectedMember}
             onClose={() => {

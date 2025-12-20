@@ -6,6 +6,12 @@
  * 
  * IMPORTANT: Set environment variable:
  * NEXT_PUBLIC_CRM_API_BASE_URL=https://pw-crm-gateway-1.onrender.com
+ * 
+ * ARCHITECTURE:
+ * - Tries direct backend call first (faster, requires CORS on backend)
+ * - Automatically falls back to Next.js proxy route if CORS error detected
+ * - Proxy route code is kept as fallback (not removed)
+ * - Server-side always uses direct calls (no CORS issues)
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -30,36 +36,62 @@ import {
 
 class CrmApiService {
   private api: AxiosInstance;
+  private proxyApi: AxiosInstance; // Fallback proxy API
+  private directApi: AxiosInstance; // Direct backend API
   private baseURL: string;
+  private directBaseURL: string;
+  private useDirectCall: boolean = true; // Try direct call first
 
   constructor() {
-    // Use Next.js API routes as proxy to avoid CORS issues
-    // The proxy routes call the CRM API server-side
     const isBrowser = typeof window !== 'undefined';
     
-    if (isBrowser) {
-      // In browser: use Next.js API proxy routes
-      this.baseURL = '/api/crm';
-    } else {
-      // In server: call CRM API directly
-      this.baseURL = 
-        process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
-        'https://pw-crm-gateway-1.onrender.com';
+    // Direct backend URL (from environment variable)
+    this.directBaseURL = 
+      process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
+      'https://pw-crm-gateway-1.onrender.com';
+    
+    // Proxy URL (Next.js API route)
+    this.baseURL = '/api/crm';
+    
+    if (!isBrowser) {
+      // In server: always use direct call
+      this.baseURL = this.directBaseURL;
     }
 
-    // Create axios instance
-    this.api = axios.create({
+    // Create direct API instance (for direct backend calls)
+    this.directApi = axios.create({
+      baseURL: this.directBaseURL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Create proxy API instance (fallback)
+    this.proxyApi = axios.create({
       baseURL: this.baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
+    // Set default API (will try direct first)
+    this.api = this.directApi;
+
+    // Setup interceptors for both APIs
+    this.setupInterceptors(this.directApi);
+    this.setupInterceptors(this.proxyApi);
+
+  }
+
+  /**
+   * Setup interceptors for an axios instance
+   */
+  private setupInterceptors(apiInstance: AxiosInstance): void {
     // Request interceptor - Add auth token to all requests
-    this.api.interceptors.request.use(
+    apiInstance.interceptors.request.use(
       (config) => {
         const token = this.getToken();
-        if (token) {
+        if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
           
           // Log token in development (only first few chars for security)
@@ -77,7 +109,7 @@ class CrmApiService {
     );
 
     // Response interceptor - Handle errors globally
-    this.api.interceptors.response.use(
+    apiInstance.interceptors.response.use(
       (response) => {
         // Log response in development
         if (process.env.NODE_ENV === 'development') {
@@ -106,14 +138,29 @@ class CrmApiService {
         // Handle 401 Unauthorized
         if (error.response?.status === 401) {
           console.warn('[CRM API] 401 Unauthorized - Token may be invalid or expired');
-          this.removeToken();
-          // Only redirect if we're not already on the login page
-          // This prevents redirect loops during token validation
-          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-            // Use setTimeout to allow error handling to complete first
-            setTimeout(() => {
-              window.location.href = '/login';
-            }, 100);
+          
+          // Don't redirect immediately for customer operations (create/update)
+          // This allows error messages to be shown in modals first
+          const url = error.config?.url || '';
+          const isCustomerOperation = url.includes('/customers') && 
+            (error.config?.method === 'POST' || error.config?.method === 'PUT');
+          
+          if (!isCustomerOperation) {
+            // For non-customer operations, remove token and redirect
+            this.removeToken();
+            if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+              setTimeout(() => {
+                if (!window.location.pathname.includes('/login')) {
+                  window.location.href = '/login';
+                }
+              }, 100);
+            }
+          } else {
+            // For customer operations, just remove token but don't redirect
+            // Let the modal/component handle the error and show appropriate message
+            // The user can manually navigate to login if needed
+            this.removeToken();
+            console.warn('[CRM API] 401 on customer operation - error will be handled by component');
           }
         }
         return Promise.reject(error);
@@ -121,11 +168,70 @@ class CrmApiService {
     );
   }
 
+  /**
+   * Check if error is a CORS error
+   */
+  private isCorsError(error: AxiosError): boolean {
+    // CORS errors typically have:
+    // - No response (network error)
+    // - Message containing "CORS" or "cross-origin"
+    // - Code like "ERR_NETWORK" or "ERR_FAILED"
+    if (!error.response) {
+      const message = error.message?.toLowerCase() || '';
+      const code = error.code?.toLowerCase() || '';
+      return (
+        message.includes('cors') ||
+        message.includes('cross-origin') ||
+        message.includes('network error') ||
+        code === 'err_network' ||
+        code === 'err_failed'
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Make API request with automatic fallback to proxy on CORS error
+   */
+  private async makeRequestWithFallback<T>(
+    requestFn: (api: AxiosInstance) => Promise<T>
+  ): Promise<T> {
+    const isBrowser = typeof window !== 'undefined';
+    
+    // In server-side, always use direct call
+    if (!isBrowser) {
+      return requestFn(this.directApi);
+    }
+
+    // In browser: try direct call first, fallback to proxy
+    if (this.useDirectCall) {
+      try {
+        return await requestFn(this.directApi);
+      } catch (error: any) {
+        // If CORS error, switch to proxy and retry
+        if (this.isCorsError(error as AxiosError)) {
+          console.warn('[CRM API] CORS error detected, falling back to proxy');
+          this.useDirectCall = false; // Disable direct calls for future requests
+          // Retry with proxy
+          return requestFn(this.proxyApi);
+        }
+        // If not CORS error, throw it
+        throw error;
+      }
+    } else {
+      // Already using proxy, use it directly
+      return requestFn(this.proxyApi);
+    }
+  }
+
   // ==================== TOKEN MANAGEMENT ====================
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('crm_access_token') || sessionStorage.getItem('access_token');
+    // Check all possible token keys for consistency across all services
+    return sessionStorage.getItem('token') || 
+           sessionStorage.getItem('crm_access_token') || 
+           sessionStorage.getItem('access_token');
   }
 
   private setToken(token: string): void {
@@ -149,48 +255,86 @@ class CrmApiService {
 
   /**
    * Login and obtain JWT token
-   * POST /api/crm/login (browser) or /login (server)
+   * POST /login (direct) or /api/crm/login (proxy fallback)
    */
   async login(credentials: CrmLoginRequest): Promise<CrmTokenResponse> {
     const isBrowser = typeof window !== 'undefined';
-    let response: any;
     
-    if (isBrowser) {
-      // In browser: call Next.js proxy route (avoids CORS)
-      response = await this.api.post<CrmTokenResponse>('/login', credentials) as unknown as CrmTokenResponse;
-    } else {
-      // In server: call CRM API directly
-      const directApi = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const apiResponse = await directApi.post<CrmTokenResponse>('/login', credentials);
-      response = apiResponse.data;
+    // In server: always use direct call
+    if (!isBrowser) {
+      const apiResponse = await this.directApi.post<CrmTokenResponse>('/login', credentials);
+      return apiResponse.data;
     }
     
-    // Store token automatically (only in browser)
-    if (response.access_token && isBrowser) {
-      this.setToken(response.access_token);
+    // In browser: try direct call first, fallback to proxy
+    try {
+      if (this.useDirectCall) {
+        try {
+          const apiResponse = await this.directApi.post<CrmTokenResponse>('/login', credentials);
+          const response = apiResponse.data;
+          // Store token automatically
+          if (response.access_token) {
+            this.setToken(response.access_token);
+          }
+          return response;
+        } catch (error: any) {
+          // If CORS error, fallback to proxy
+          if (this.isCorsError(error as AxiosError)) {
+            console.warn('[CRM API] CORS error on login, falling back to proxy');
+            this.useDirectCall = false;
+            const proxyResponse = await this.proxyApi.post<CrmTokenResponse>('/login', credentials);
+            const response = proxyResponse.data;
+            // Store token automatically
+            if (response.access_token) {
+              this.setToken(response.access_token);
+            }
+            return response;
+          }
+          throw error;
+        }
+      } else {
+        // Already using proxy
+        const proxyResponse = await this.proxyApi.post<CrmTokenResponse>('/login', credentials);
+        const response = proxyResponse.data;
+        // Store token automatically
+        if (response.access_token) {
+          this.setToken(response.access_token);
+        }
+        return response;
+      }
+    } catch (error: any) {
+      // Final fallback: try proxy if direct failed for any reason (non-CORS error)
+      if (this.useDirectCall) {
+        console.warn('[CRM API] Login failed, trying proxy fallback');
+        this.useDirectCall = false;
+        try {
+          const proxyResponse = await this.proxyApi.post<CrmTokenResponse>('/login', credentials);
+          const response = proxyResponse.data;
+          // Store token automatically
+          if (response.access_token) {
+            this.setToken(response.access_token);
+          }
+          return response;
+        } catch (proxyError) {
+          throw proxyError;
+        }
+      }
+      throw error;
     }
-    
-    return response;
   }
 
   /**
    * Validate token
-   * POST /api/crm/checkAuth (browser) or /checkAuth (server)
+   * POST /checkAuth (direct) or /api/crm/checkAuth (proxy fallback)
    */
   async checkAuth(): Promise<CrmApiStringResponse> {
     const isBrowser = typeof window !== 'undefined';
     
-    if (isBrowser) {
-      // In browser: call Next.js proxy route (token will be sent via interceptor)
-      return this.api.post<CrmApiStringResponse>('/checkAuth') as unknown as CrmApiStringResponse;
-    } else {
-      // In server: call CRM API directly
+    // In server: always use direct call
+    if (!isBrowser) {
       const token = this.getToken();
       const directApi = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com',
+        baseURL: this.directBaseURL,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
@@ -199,6 +343,11 @@ class CrmApiService {
       const response = await directApi.post('/checkAuth');
       return response.data as CrmApiStringResponse;
     }
+    
+    // In browser: try direct call first, fallback to proxy (token sent via interceptor)
+    return this.makeRequestWithFallback((api) => 
+      api.post<CrmApiStringResponse>('/checkAuth')
+    ) as unknown as CrmApiStringResponse;
   }
 
   /**
@@ -216,7 +365,9 @@ class CrmApiService {
    */
   async getCustomers(): Promise<CrmApiListResponse<CrmCustomer>> {
     try {
-      const response = await this.api.get<any>('/customers') as unknown as any;
+      const response = await this.makeRequestWithFallback((api) => 
+        api.get<any>('/customers')
+      ) as unknown as any;
       
       // Log response for debugging
       if (process.env.NODE_ENV === 'development') {
@@ -290,7 +441,9 @@ class CrmApiService {
    * GET /customers/{id}
    */
   async getCustomer(id: number | string): Promise<CrmApiSingleResponse<CrmCustomer>> {
-    return this.api.get<CrmCustomer>(`/customers/${id}`) as unknown as CrmCustomer;
+    return this.makeRequestWithFallback((api) => 
+      api.get<CrmCustomer>(`/customers/${id}`)
+    ) as unknown as CrmCustomer;
   }
 
   /**
@@ -298,7 +451,9 @@ class CrmApiService {
    * POST /customers
    */
   async createCustomer(data: CrmCustomerRequest): Promise<CrmApiSingleResponse<CrmCustomer>> {
-    return this.api.post<CrmCustomer>('/customers', data) as unknown as CrmCustomer;
+    return this.makeRequestWithFallback((api) => 
+      api.post<CrmCustomer>('/customers', data)
+    ) as unknown as CrmCustomer;
   }
 
   /**
@@ -306,7 +461,9 @@ class CrmApiService {
    * PUT /customers/{id}
    */
   async updateCustomer(id: number | string, data: CrmCustomerRequest): Promise<CrmApiSingleResponse<CrmCustomer>> {
-    return this.api.put<CrmCustomer>(`/customers/${id}`, data) as unknown as CrmCustomer;
+    return this.makeRequestWithFallback((api) => 
+      api.put<CrmCustomer>(`/customers/${id}`, data)
+    ) as unknown as CrmCustomer;
   }
 
   /**
@@ -314,7 +471,9 @@ class CrmApiService {
    * DELETE /customers/{id}
    */
   async deleteCustomer(id: number | string): Promise<CrmApiStringResponse> {
-    return this.api.delete<CrmApiStringResponse>(`/customers/${id}`) as unknown as CrmApiStringResponse;
+    return this.makeRequestWithFallback((api) => 
+      api.delete<CrmApiStringResponse>(`/customers/${id}`)
+    ) as unknown as CrmApiStringResponse;
   }
 
   // ==================== TEAMS ====================
@@ -324,7 +483,9 @@ class CrmApiService {
    * GET /teams
    */
   async getTeams(): Promise<CrmApiListResponse<CrmTeam>> {
-    const response = await this.api.get<CrmTeam | CrmTeam[]>('/teams') as unknown as CrmTeam | CrmTeam[];
+    const response = await this.makeRequestWithFallback((api) => 
+      api.get<CrmTeam | CrmTeam[]>('/teams')
+    ) as unknown as CrmTeam | CrmTeam[];
     if (Array.isArray(response)) {
       return response;
     }
@@ -336,7 +497,9 @@ class CrmApiService {
    * GET /teams/{id}
    */
   async getTeam(id: number | string): Promise<CrmApiSingleResponse<CrmTeam>> {
-    return this.api.get<CrmTeam>(`/teams/${id}`) as unknown as CrmTeam;
+    return this.makeRequestWithFallback((api) => 
+      api.get<CrmTeam>(`/teams/${id}`)
+    ) as unknown as CrmTeam;
   }
 
   /**
@@ -344,7 +507,9 @@ class CrmApiService {
    * POST /teams
    */
   async createTeam(data: CrmTeamRequest): Promise<CrmApiSingleResponse<CrmTeam>> {
-    return this.api.post<CrmTeam>('/teams', data) as unknown as CrmTeam;
+    return this.makeRequestWithFallback((api) => 
+      api.post<CrmTeam>('/teams', data)
+    ) as unknown as CrmTeam;
   }
 
   /**
@@ -352,7 +517,9 @@ class CrmApiService {
    * PUT /teams/{id}
    */
   async updateTeam(id: number | string, data: CrmTeamRequest): Promise<CrmApiSingleResponse<CrmTeam>> {
-    return this.api.put<CrmTeam>(`/teams/${id}`, data) as unknown as CrmTeam;
+    return this.makeRequestWithFallback((api) => 
+      api.put<CrmTeam>(`/teams/${id}`, data)
+    ) as unknown as CrmTeam;
   }
 
   /**
@@ -360,7 +527,9 @@ class CrmApiService {
    * DELETE /teams/{id}
    */
   async deleteTeam(id: number | string): Promise<CrmApiStringResponse> {
-    return this.api.delete<CrmApiStringResponse>(`/teams/${id}`) as unknown as CrmApiStringResponse;
+    return this.makeRequestWithFallback((api) => 
+      api.delete<CrmApiStringResponse>(`/teams/${id}`)
+    ) as unknown as CrmApiStringResponse;
   }
 
   // ==================== USERS ====================
@@ -370,7 +539,9 @@ class CrmApiService {
    * GET /users
    */
   async getUsers(): Promise<CrmApiListResponse<CrmUser>> {
-    const response = await this.api.get<CrmUser | CrmUser[]>('/users') as unknown as CrmUser | CrmUser[];
+    const response = await this.makeRequestWithFallback((api) => 
+      api.get<CrmUser | CrmUser[]>('/users')
+    ) as unknown as CrmUser | CrmUser[];
     if (Array.isArray(response)) {
       return response;
     }
@@ -382,7 +553,9 @@ class CrmApiService {
    * GET /users/{id}
    */
   async getUser(id: number | string): Promise<CrmApiSingleResponse<CrmUser>> {
-    return this.api.get<CrmUser>(`/users/${id}`) as unknown as CrmUser;
+    return this.makeRequestWithFallback((api) => 
+      api.get<CrmUser>(`/users/${id}`)
+    ) as unknown as CrmUser;
   }
 
   /**
@@ -390,7 +563,9 @@ class CrmApiService {
    * POST /users
    */
   async createUser(data: CrmUserRequest): Promise<CrmApiSingleResponse<CrmUser>> {
-    return this.api.post<CrmUser>('/users', data) as unknown as CrmUser;
+    return this.makeRequestWithFallback((api) => 
+      api.post<CrmUser>('/users', data)
+    ) as unknown as CrmUser;
   }
 
   /**
@@ -398,7 +573,9 @@ class CrmApiService {
    * PUT /users/{id}
    */
   async updateUser(id: number | string, data: CrmUserRequest): Promise<CrmApiSingleResponse<CrmUser>> {
-    return this.api.put<CrmUser>(`/users/${id}`, data) as unknown as CrmUser;
+    return this.makeRequestWithFallback((api) => 
+      api.put<CrmUser>(`/users/${id}`, data)
+    ) as unknown as CrmUser;
   }
 
   /**
@@ -406,7 +583,9 @@ class CrmApiService {
    * DELETE /users/{id}
    */
   async deleteUser(id: number | string): Promise<CrmApiStringResponse> {
-    return this.api.delete<CrmApiStringResponse>(`/users/${id}`) as unknown as CrmApiStringResponse;
+    return this.makeRequestWithFallback((api) => 
+      api.delete<CrmApiStringResponse>(`/users/${id}`)
+    ) as unknown as CrmApiStringResponse;
   }
 
   // ==================== TEMPLATES ====================
@@ -420,7 +599,9 @@ class CrmApiService {
     if (orgId) params.org_id = orgId;
     if (limit) params.limit = limit;
     
-    const response = await this.api.get<CrmTemplate | CrmTemplate[]>('/templates', { params }) as unknown as CrmTemplate | CrmTemplate[];
+    const response = await this.makeRequestWithFallback((api) => 
+      api.get<CrmTemplate | CrmTemplate[]>('/templates', { params })
+    ) as unknown as CrmTemplate | CrmTemplate[];
     if (Array.isArray(response)) {
       return response;
     }
@@ -432,7 +613,9 @@ class CrmApiService {
    * GET /templates/{id}
    */
   async getTemplate(id: number | string): Promise<CrmApiSingleResponse<CrmTemplate>> {
-    return this.api.get<CrmTemplate>(`/templates/${id}`) as unknown as CrmTemplate;
+    return this.makeRequestWithFallback((api) => 
+      api.get<CrmTemplate>(`/templates/${id}`)
+    ) as unknown as CrmTemplate;
   }
 
   /**
@@ -440,7 +623,9 @@ class CrmApiService {
    * POST /templates
    */
   async createTemplate(data: CrmTemplateRequest): Promise<CrmApiSingleResponse<CrmTemplate>> {
-    return this.api.post<CrmTemplate>('/templates', data) as unknown as CrmTemplate;
+    return this.makeRequestWithFallback((api) => 
+      api.post<CrmTemplate>('/templates', data)
+    ) as unknown as CrmTemplate;
   }
 
   /**
@@ -448,7 +633,9 @@ class CrmApiService {
    * PUT /templates/{id}
    */
   async updateTemplate(id: number | string, data: CrmTemplateRequest): Promise<CrmApiSingleResponse<CrmTemplate>> {
-    return this.api.put<CrmTemplate>(`/templates/${id}`, data) as unknown as CrmTemplate;
+    return this.makeRequestWithFallback((api) => 
+      api.put<CrmTemplate>(`/templates/${id}`, data)
+    ) as unknown as CrmTemplate;
   }
 
   /**
@@ -456,7 +643,9 @@ class CrmApiService {
    * DELETE /templates/{id}
    */
   async deleteTemplate(id: number | string): Promise<CrmApiStringResponse> {
-    return this.api.delete<CrmApiStringResponse>(`/templates/${id}`) as unknown as CrmApiStringResponse;
+    return this.makeRequestWithFallback((api) => 
+      api.delete<CrmApiStringResponse>(`/templates/${id}`)
+    ) as unknown as CrmApiStringResponse;
   }
 
   // ==================== REPORTS ====================
@@ -467,7 +656,9 @@ class CrmApiService {
    */
   async getDailyReport(date?: string): Promise<CrmDailyReport> {
     const params = date ? { date } : {};
-    return this.api.get<CrmDailyReport>('/reports/daily', { params }) as unknown as CrmDailyReport;
+    return this.makeRequestWithFallback((api) => 
+      api.get<CrmDailyReport>('/reports/daily', { params })
+    ) as unknown as CrmDailyReport;
   }
 }
 

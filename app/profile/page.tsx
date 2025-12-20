@@ -148,8 +148,9 @@ export default function ProfilePage() {
           {/* Edit Profile Button */}
           <button
             onClick={() => {
-              // TODO: Implement edit profile functionality
-              // For now, just show a message
+              // NOTE: Edit profile functionality pending implementation
+              // This will open a modal/form to edit user profile information
+              // For now, shows a placeholder message
               alert('Edit Profile functionality will be available soon!');
             }}
             className="w-full bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-dark transition-colors shadow-md hover:shadow-lg flex items-center justify-center space-x-2"

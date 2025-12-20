@@ -6,10 +6,11 @@
  * Provides authentication state and methods throughout the application.
  */
 
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types';
+import { logger } from '@/lib/utils/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -88,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
         // Token validation failed (401, network error, etc.)
-        console.error('Token validation error:', error);
+        logger.error('Token validation error', error);
         // Clear all tokens on validation failure
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('crm_access_token');
@@ -118,20 +119,95 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const login = async (userName: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (userName: string, password: string): Promise<boolean> => {
     try {
-      // Login through Next.js API route (avoids CORS issues)
-      // This proxies to the backend: https://pw-crm-gateway-1.onrender.com/login
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_name: userName,
-          password: password,
-        }),
-      });
+      // Get backend URL from environment variable (same as CRM API)
+      const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
+      const loginUrl = `${BACKEND_API_BASE_URL}/login`;
+      const proxyUrl = '/api/auth/login';
+      
+      // Try direct backend call first (faster if CORS is enabled)
+      // Fallback to proxy if CORS error occurs (same pattern as CRM API)
+      let response: Response;
+      let useDirectCall = true;
+      
+      // Check if we should try direct call (store preference in sessionStorage)
+      // This allows remembering if CORS is working or not
+      const directCallPreference = sessionStorage.getItem('use_direct_login');
+      if (directCallPreference === 'false') {
+        useDirectCall = false;
+      }
+      
+      try {
+        if (useDirectCall) {
+          // Try direct backend call
+          response = await fetch(loginUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_name: userName,
+              password: password,
+            }),
+          });
+          
+          // If successful, save preference
+          if (response.ok) {
+            sessionStorage.setItem('use_direct_login', 'true');
+          }
+        } else {
+          // Use proxy
+          response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_name: userName,
+              password: password,
+            }),
+          });
+        }
+      } catch (fetchError: any) {
+        // Check if it's a CORS error (fetch API errors don't have response property)
+        // CORS errors typically have no response and specific error messages
+        const errorMessage = fetchError?.message?.toLowerCase() || '';
+        const errorName = fetchError?.name?.toLowerCase() || '';
+        const isCorsError = 
+          errorMessage.includes('cors') ||
+          errorMessage.includes('cross-origin') ||
+          errorMessage.includes('network error') ||
+          errorMessage.includes('failed to fetch') ||
+          errorName === 'typeerror' ||
+          fetchError?.code === 'ERR_NETWORK' ||
+          fetchError?.code === 'ERR_FAILED';
+        
+        if (isCorsError && useDirectCall) {
+          // CORS error detected, fallback to proxy
+          console.warn('[Auth] CORS error on login, falling back to proxy');
+          sessionStorage.setItem('use_direct_login', 'false');
+          
+          try {
+            response = await fetch(proxyUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                user_name: userName,
+                password: password,
+              }),
+            });
+          } catch (proxyError) {
+            // If proxy also fails, throw original error
+            throw fetchError;
+          }
+        } else {
+          // Re-throw if not CORS error or already using proxy
+          throw fetchError;
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -175,14 +251,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      logger.error('Login error', error);
       const errorMessage = error.message || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
       return false;
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     setToken(null);
     // Clear all tokens from sessionStorage
@@ -195,9 +271,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Token clearing is done above in sessionStorage.removeItem calls
     toast.success('Logged out successfully');
     router.push('/login');
-  };
+  }, [router]);
 
-  const register = async (userData: RegisterRequest): Promise<boolean> => {
+  const register = useCallback(async (userData: RegisterRequest): Promise<boolean> => {
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -225,9 +301,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.error('Registration failed. Please try again.');
       return false;
     }
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  // Memoize context value to prevent unnecessary re-renders
+  const value: AuthContextType = useMemo(() => ({
     user,
     token,
     loading,
@@ -235,7 +312,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     register,
     isAuthenticated: !!token && !!user
-  };
+  }), [user, token, loading, login, logout, register]);
 
   return (
     <AuthContext.Provider value={value}>

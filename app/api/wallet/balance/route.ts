@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { logger } from '@/lib/utils/logger';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const USE_MOCK_API = process.env.USE_MOCK_API === 'true';
@@ -58,7 +59,8 @@ export async function GET(req: NextRequest) {
     }
 
     // For now, return a mock balance
-    // TODO: Replace with actual wallet balance from database
+    // NOTE: Wallet balance integration pending - will be replaced with actual database query
+    // when wallet service is fully implemented
     const balance = 0; // Default balance
 
     return NextResponse.json({
@@ -68,7 +70,7 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Wallet balance error:', error);
+    logger.error('Wallet balance error', error);
     // Return default balance on error instead of 500
     return NextResponse.json({
       success: true,

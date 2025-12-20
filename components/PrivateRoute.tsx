@@ -23,8 +23,19 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
     }
   }, [loading, isAuthenticated, router]);
 
-  // Show loading only while AuthContext is initializing
-  if (loading) {
+  // Optimistic rendering: If we have a token, trust it and render immediately
+  // This allows instant dashboard display after login (like big apps)
+  // Only show loading on initial app load when checking for existing session
+  const hasToken = typeof window !== 'undefined' && sessionStorage.getItem('token');
+  
+  // If we have a token, trust it and render immediately (optimistic rendering)
+  // This ensures instant display after login - no waiting for auth check
+  if (hasToken || isAuthenticated) {
+    return <>{children}</>;
+  }
+  
+  // Only show loading if we're checking auth AND no token exists (initial app load)
+  if (loading && !isAuthenticated && !hasToken) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
@@ -35,11 +46,12 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
     );
   }
 
-  // If not authenticated after loading, don't render (will redirect via useEffect)
+  // If not authenticated and no token, show nothing (will redirect via useEffect)
   if (!isAuthenticated) {
     return null;
   }
 
+  // Fallback: render children
   return <>{children}</>;
 }
 

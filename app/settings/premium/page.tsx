@@ -15,7 +15,8 @@ export default function PremiumPage() {
   const handleUpgrade = async () => {
     setLoading(true);
     try {
-      // TODO: Implement premium upgrade API call
+      // NOTE: Premium upgrade API endpoint pending implementation
+      // When available, uncomment the following:
       // await premiumService.upgrade(selectedPlan);
       toast.success('Premium upgrade functionality will be available soon!');
       // Simulate API call

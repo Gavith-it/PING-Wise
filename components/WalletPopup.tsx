@@ -44,7 +44,8 @@ export default function WalletPopup({ onClose, balance }: WalletPopupProps) {
   const loadTransactions = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call when available
+      // NOTE: Transaction history API endpoint pending implementation
+      // When available, uncomment the following:
       // const response = await walletService.getTransactions();
       // setTransactions(response.data || []);
       
@@ -88,7 +89,8 @@ export default function WalletPopup({ onClose, balance }: WalletPopupProps) {
     }
 
     try {
-      // TODO: Replace with actual API call when available
+      // NOTE: Add funds API endpoint pending implementation
+      // When available, uncomment the following:
       // await walletService.addFunds({ amount: amountNum });
       toast.success(`₹${amountNum} added to wallet successfully`);
       setShowAddFunds(false);

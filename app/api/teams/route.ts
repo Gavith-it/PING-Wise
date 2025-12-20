@@ -1,6 +1,6 @@
 /**
- * Campaign API Proxy Route - Base
- * Handles GET /api/campaigns and POST /api/campaigns
+ * Team API Proxy Route - Base
+ * Handles GET /api/teams and POST /api/teams
  * 
  * Proxies requests to the backend API to avoid CORS issues
  */
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
 async function handleBaseRequest(req: NextRequest, method: string) {
   try {
-    const path = '/campaigns';
+    const path = '/teams';
     
     // Get token from Authorization header (case-insensitive)
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
@@ -68,7 +68,7 @@ async function handleBaseRequest(req: NextRequest, method: string) {
 
       // Log request details in development
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[Campaign API Proxy Base] ${method} ${path} - Status: ${response.status}`, {
+        console.log(`[Team API Proxy Base] ${method} ${path} - Status: ${response.status}`, {
           url: url,
           hasAuth: !!authHeader,
           queryParams: queryString
@@ -86,24 +86,14 @@ async function handleBaseRequest(req: NextRequest, method: string) {
           // Keep as string if not JSON
         }
         
-        // Log request body for POST/PUT requests to help debug
-        let requestBody: any = undefined;
-        if ((method === 'POST' || method === 'PUT') && body) {
-          try {
-            requestBody = JSON.parse(body);
-          } catch {
-            requestBody = body;
-          }
-        }
-        
-        console.error(`[Campaign API Proxy Base] Error ${response.status}:`, {
+        console.error(`[Team API Proxy Base] Error ${response.status}:`, {
           status: response.status,
           statusText: response.statusText,
           error: errorData,
           errorText: errorText,
           url: url,
           hasAuth: !!authHeader,
-          requestBody: requestBody, // Log what we're sending
+          authHeaderPreview: authHeader ? authHeader.substring(0, 30) + '...' : 'none',
           path: path
         });
         
@@ -126,7 +116,7 @@ async function handleBaseRequest(req: NextRequest, method: string) {
         
         // Log raw response in development
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[Campaign API Proxy Base] Response body:`, responseText.substring(0, 200));
+          console.log(`[Team API Proxy Base] Response body:`, responseText.substring(0, 200));
         }
         
         if (contentType && contentType.includes('application/json')) {
@@ -148,14 +138,14 @@ async function handleBaseRequest(req: NextRequest, method: string) {
           }
         }
       } catch (parseError) {
-        console.error('[Campaign API Proxy Base] Error parsing response:', parseError);
+        console.error('[Team API Proxy Base] Error parsing response:', parseError);
         data = null;
       }
 
-      // Normalize null to empty array for GET /campaigns endpoint
+      // Normalize null to empty array for GET /teams endpoint
       if (method === 'GET' && (data === null || data === undefined)) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Campaign API Proxy Base] Normalizing null response to empty array');
+          console.log('[Team API Proxy Base] Normalizing null response to empty array');
         }
         data = [];
       }
@@ -172,7 +162,7 @@ async function handleBaseRequest(req: NextRequest, method: string) {
       
       // Handle timeout specifically
       if (fetchError.name === 'AbortError' || fetchError.code === 'UND_ERR_CONNECT_TIMEOUT') {
-        console.error(`Campaign API Proxy Base timeout (${method}):`, fetchError);
+        console.error(`Team API Proxy Base timeout (${method}):`, fetchError);
         return NextResponse.json(
           { 
             success: false, 
@@ -186,7 +176,7 @@ async function handleBaseRequest(req: NextRequest, method: string) {
       
       // Handle other connection errors
       if (fetchError.message?.includes('fetch failed') || fetchError.code === 'ECONNREFUSED') {
-        console.error(`Campaign API Proxy Base connection error (${method}):`, fetchError);
+        console.error(`Team API Proxy Base connection error (${method}):`, fetchError);
         return NextResponse.json(
           { 
             success: false, 
@@ -202,7 +192,7 @@ async function handleBaseRequest(req: NextRequest, method: string) {
       throw fetchError;
     }
   } catch (error: any) {
-    console.error(`Campaign API Proxy Base error (${method}):`, error);
+    console.error(`Team API Proxy Base error (${method}):`, error);
     return NextResponse.json(
       { 
         success: false, 
@@ -213,3 +203,4 @@ async function handleBaseRequest(req: NextRequest, method: string) {
     );
   }
 }
+
