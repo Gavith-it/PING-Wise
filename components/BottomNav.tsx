@@ -101,7 +101,7 @@ export default function BottomNav() {
 
   return (
     <nav 
-      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden shadow-lg safe-area-inset-bottom transition-transform duration-300 ease-in-out ${
+      className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40 md:hidden shadow-lg safe-area-inset-bottom transition-transform duration-300 ease-in-out ${
         finalVisibility ? 'translate-y-0' : 'translate-y-full'
       }`}
     >
@@ -116,12 +116,12 @@ export default function BottomNav() {
               onClick={() => router.push(item.path)}
               className={`flex flex-col items-center justify-center px-1.5 py-1 rounded-lg transition-all min-w-[50px] flex-1 ${
                 active
-                  ? 'text-primary bg-green-50'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-primary bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
-              <Icon className={`w-4 h-4 md:w-5 md:h-5 ${active ? 'text-primary' : 'text-gray-500'}`} />
-              <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 ${active ? 'font-semibold text-primary' : 'text-gray-500'}`}>
+              <Icon className={`w-4 h-4 md:w-5 md:h-5 ${active ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
+              <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 ${active ? 'font-semibold text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
                 {item.label}
               </span>
             </button>

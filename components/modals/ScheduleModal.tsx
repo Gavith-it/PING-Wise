@@ -110,15 +110,15 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
     const baseClasses = 'w-full py-1 text-xs md:text-sm rounded-lg transition-colors border-0 outline-none focus:outline-none focus:ring-0 shadow-none';
     
     if (!isSameMonth(date, currentMonth)) {
-      return `${baseClasses} text-gray-300 cursor-not-allowed bg-transparent`;
+      return `${baseClasses} text-gray-300 dark:text-gray-600 cursor-not-allowed bg-transparent`;
     }
     
     if (isToday(date)) {
-      return `${baseClasses} bg-gray-200 text-gray-700 font-medium cursor-pointer hover:bg-gray-300`;
+      return `${baseClasses} bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600`;
     }
     
     if (isDateBusy(date)) {
-      return `${baseClasses} bg-gray-800 text-white cursor-not-allowed`;
+      return `${baseClasses} bg-gray-800 dark:bg-gray-900 text-white cursor-not-allowed`;
     }
     
     if (selectedDate && isSameDay(date, selectedDate)) {
@@ -126,23 +126,23 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
     }
     
     if (isDateAvailable(date)) {
-      return `${baseClasses} bg-transparent text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-primary`;
+      return `${baseClasses} bg-transparent text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-primary`;
     }
     
-    return `${baseClasses} text-gray-400 cursor-not-allowed bg-transparent`;
+    return `${baseClasses} text-gray-400 dark:text-gray-600 cursor-not-allowed bg-transparent`;
   };
 
   const canSchedule = selectedDate && selectedTime;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3 md:p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="p-4 md:p-6">
           <div className="flex items-center justify-between mb-4 md:mb-6">
-            <h3 className="text-lg md:text-xl font-bold text-gray-900">Schedule Campaign</h3>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Schedule Campaign</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <X className="w-5 h-5 md:w-6 md:h-6" />
             </button>
@@ -151,15 +151,15 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
           <div className="space-y-4 md:space-y-6">
             {/* Campaign Preview */}
             {message && (
-              <div className="bg-gray-50 rounded-lg p-3 md:p-4 border border-gray-200">
-                <p className="text-xs md:text-sm text-gray-700 italic">{message}</p>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 md:p-4 border border-gray-200 dark:border-gray-700">
+                <p className="text-xs md:text-sm text-gray-700 dark:text-gray-300 italic">{message}</p>
               </div>
             )}
 
             {/* Date & Time Selection */}
             <div className="space-y-4 md:space-y-6">
               <div>
-                <h4 className="text-sm md:text-base font-semibold text-gray-900 mb-3 md:mb-4 flex items-center space-x-2">
+                <h4 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-3 md:mb-4 flex items-center space-x-2">
                   <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                   <span>Select Date & Time</span>
                 </h4>
@@ -167,30 +167,30 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
                   {/* Calendar */}
                   <div className="mb-3 md:mb-4">
                     <div className="flex items-center justify-between mb-3 md:mb-4">
-                      <h5 className="text-xs md:text-sm font-semibold text-gray-700">
+                      <h5 className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-300">
                         {format(currentMonth, 'MMMM yyyy')}
                       </h5>
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={prevMonth}
-                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                           type="button"
                         >
-                          <span className="text-gray-600 font-semibold">&lt;</span>
+                          <span className="text-gray-600 dark:text-gray-400 font-semibold">&lt;</span>
                         </button>
                         <button
                           onClick={nextMonth}
-                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                           type="button"
                         >
-                          <span className="text-gray-600 font-semibold">&gt;</span>
+                          <span className="text-gray-600 dark:text-gray-400 font-semibold">&gt;</span>
                         </button>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-7 gap-1.5 md:gap-2 mb-3">
                       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                        <div key={day} className="text-center text-[10px] md:text-xs font-medium text-gray-500 py-1 md:py-2">
+                        <div key={day} className="text-center text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400 py-1 md:py-2">
                           {day}
                         </div>
                       ))}
@@ -226,7 +226,7 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
                           className={`py-1.5 md:py-2 px-2 md:px-3 rounded-lg text-[10px] md:text-sm font-medium transition-colors ${
                             selectedTime === timeSlot
                               ? 'bg-primary text-white shadow-md'
-                              : 'bg-white text-gray-700 border border-gray-200 hover:border-primary hover:bg-blue-50'
+                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary hover:bg-blue-50 dark:hover:bg-blue-900/20'
                           }`}
                           type="button"
                         >
@@ -243,7 +243,7 @@ export default function ScheduleModal({ onClose, onSchedule, initialDate, initia
           <div className="flex space-x-2 md:space-x-3 pt-4 md:pt-6 mt-4 md:mt-6 border-t border-gray-200">
             <button
               onClick={onClose}
-              className="flex-1 bg-white text-gray-700 py-2.5 md:py-3 px-3 md:px-4 rounded-lg md:rounded-xl text-sm md:text-base font-medium hover:bg-gray-50 transition-colors border border-gray-200"
+              className="flex-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 md:py-3 px-3 md:px-4 rounded-lg md:rounded-xl text-sm md:text-base font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600"
               type="button"
             >
               Cancel

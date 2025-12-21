@@ -44,7 +44,7 @@ export default function LoginPage() {
   // Show loading only while checking initial authentication (not during login)
   if (authLoading && !loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -59,17 +59,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-primary mb-2">PingWise</h1>
-            <p className="text-gray-600">Medical Clinic Management System</p>
+            <p className="text-gray-600 dark:text-gray-400">Medical Clinic Management System</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="userName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="userName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Username
               </label>
               <input
@@ -77,14 +77,14 @@ export default function LoginPage() {
                 type="text"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 placeholder="aprameya@pingwise.in"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Password
               </label>
               <input
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 placeholder="Enter your password"
                 required
               />
@@ -107,8 +107,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-100">
-            <p className="text-sm text-green-800">
+          <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800">
+            <p className="text-sm text-green-800 dark:text-green-300">
               <strong>Login Credentials:</strong> Use your username (e.g., aprameya@pingwise.in) and password to access the application.
             </p>
           </div>

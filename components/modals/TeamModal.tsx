@@ -81,15 +81,15 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
               {teamMember ? 'Edit Team Member' : 'Add Team Member'}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <X className="w-6 h-6" />
             </button>
@@ -97,7 +97,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Full Name *
               </label>
               <input
@@ -111,7 +111,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email Address *
                 </label>
                 <input
@@ -119,12 +119,12 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                   required
                   value={formData.email}
                   onChange={handleFieldChange('email')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                 />
               </div>
               {!teamMember && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Password *
                   </label>
                   <input
@@ -132,7 +132,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                     required
                     value={formData.password}
                     onChange={handleFieldChange('password')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                   />
                 </div>
               )}
@@ -140,14 +140,14 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Role *
                 </label>
                 <select
                   required
                   value={formData.role}
                   onChange={handleFieldChange('role')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                 >
                   <option value="staff">Staff</option>
                   <option value="doctor">Doctor</option>
@@ -155,14 +155,14 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Department
                 </label>
                 <input
                   type="text"
                   value={formData.department}
                   onChange={handleFieldChange('department')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                   placeholder="e.g., Cardiology"
                 />
               </div>
@@ -170,14 +170,14 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
             {formData.role === 'doctor' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Specialization
                 </label>
                 <input
                   type="text"
                   value={formData.specialization}
                   onChange={handleFieldChange('specialization')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                   placeholder="e.g., Cardiologist"
                 />
               </div>
@@ -185,26 +185,26 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Phone Number
                 </label>
                 <input
                   type="tel"
                   value={formData.phone}
                   onChange={handleFieldChange('phone')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                 />
               </div>
               {formData.role === 'doctor' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Experience
                   </label>
                   <input
                     type="text"
                     value={formData.experience}
                     onChange={handleFieldChange('experience')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="e.g., 5 years"
                   />
                 </div>
@@ -215,7 +215,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>

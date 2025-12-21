@@ -122,6 +122,9 @@ export default function CustomerActivityTrendChart() {
     });
     maxValue *= 1.2;
 
+    // Check for dark mode once
+    const isDarkMode = document.documentElement.classList.contains('dark');
+
     // Draw grid lines
     for (let i = 0; i <= 5; i++) {
       const y = padding.top + (chartHeight / 5) * i;
@@ -130,7 +133,7 @@ export default function CustomerActivityTrendChart() {
       line.setAttribute('y1', y.toString());
       line.setAttribute('x2', (width - padding.right).toString());
       line.setAttribute('y2', y.toString());
-      line.setAttribute('stroke', '#E5E7EB');
+      line.setAttribute('stroke', isDarkMode ? '#374151' : '#E5E7EB');
       line.setAttribute('stroke-width', '1');
       line.setAttribute('stroke-dasharray', '4 4');
       svg.appendChild(line);
@@ -150,6 +153,9 @@ export default function CustomerActivityTrendChart() {
     // Draw bars
     const groupWidth = chartWidth / activityData.labels.length;
     const barWidth = groupWidth / (orderedDatasets.length + 1);
+
+    // Check for dark mode once (already defined above, but ensure it's available here)
+    const isDarkModeForLabels = document.documentElement.classList.contains('dark');
 
     activityData.labels.forEach((label, i) => {
       orderedDatasets.forEach((dataset, j) => {
@@ -288,14 +294,14 @@ export default function CustomerActivityTrendChart() {
   return (
     <>
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h2 className="text-lg font-semibold text-[#1F2937] m-0">Customer Activity Trend</h2>
-        <div className="flex bg-[#F3F4F6] rounded-lg p-1 gap-1 flex-wrap">
+        <h2 className="text-lg font-semibold text-[#1F2937] dark:text-white m-0">Customer Activity Trend</h2>
+        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-1 gap-1 flex-wrap">
           <button
             onClick={() => setCurrentPeriod('weekly')}
             className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
               currentPeriod === 'weekly'
-                ? 'bg-white text-[#6366F1] shadow-sm'
-                : 'bg-transparent text-[#6B7280] hover:text-[#6366F1]'
+                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
+                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
             }`}
           >
             Weekly
@@ -304,8 +310,8 @@ export default function CustomerActivityTrendChart() {
             onClick={() => setCurrentPeriod('monthly')}
             className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
               currentPeriod === 'monthly'
-                ? 'bg-white text-[#6366F1] shadow-sm'
-                : 'bg-transparent text-[#6B7280] hover:text-[#6366F1]'
+                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
+                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
             }`}
           >
             Monthly
@@ -314,8 +320,8 @@ export default function CustomerActivityTrendChart() {
             onClick={() => setCurrentPeriod('quarterly')}
             className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
               currentPeriod === 'quarterly'
-                ? 'bg-white text-[#6366F1] shadow-sm'
-                : 'bg-transparent text-[#6B7280] hover:text-[#6366F1]'
+                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
+                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
             }`}
           >
             Quarterly
@@ -324,8 +330,8 @@ export default function CustomerActivityTrendChart() {
             onClick={() => setCurrentPeriod('annually')}
             className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
               currentPeriod === 'annually'
-                ? 'bg-white text-[#6366F1] shadow-sm'
-                : 'bg-transparent text-[#6B7280] hover:text-[#6366F1]'
+                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
+                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
             }`}
           >
             Annually
@@ -356,19 +362,19 @@ export default function CustomerActivityTrendChart() {
       </div>
 
       <div className="flex justify-center gap-6 md:gap-8 mt-5 flex-wrap">
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
           <div className="w-4 h-4 rounded bg-[#9333EA]" />
           <span>New Customers</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
           <div className="w-4 h-4 rounded bg-[#EC4899]" />
           <span>Returning Customers</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
           <div className="w-4 h-4 rounded bg-[#3B82F6]" />
           <span>Churned Customers</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
           <div className="w-4 h-4 rounded bg-[#6366F1]" />
           <span>Active</span>
         </div>

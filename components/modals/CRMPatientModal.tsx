@@ -155,15 +155,15 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
               {patient ? 'Edit Patient' : 'Add New Patient'}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <X className="w-6 h-6" />
             </button>
@@ -171,7 +171,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Full Name *
               </label>
               <input
@@ -179,19 +179,19 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 required
                 value={formData.name}
                 onChange={handleFieldChange('name')}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
-                  errors.name ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                  errors.name ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="Enter patient's full name"
               />
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Age *
                 </label>
                 <input
@@ -201,9 +201,9 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                   max="120"
                   value={formData.age}
                   onChange={handleFieldChange('age')}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
-                    errors.age ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  errors.age ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
+                }`}
                   placeholder="Age"
                 />
                 {errors.age && (
@@ -212,13 +212,13 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Gender
                 </label>
                 <select
                   value={formData.gender}
                   onChange={handleFieldChange('gender')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="">Select</option>
                   <option value="male">Male</option>
@@ -229,7 +229,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Phone Number *
               </label>
               <input
@@ -237,8 +237,8 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 required
                 value={formData.phone}
                 onChange={handleFieldChange('phone')}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
-                  errors.phone ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                  errors.phone ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="+1 234 567 8900"
               />
@@ -248,7 +248,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address *
               </label>
               <input
@@ -256,8 +256,8 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 required
                 value={formData.email}
                 onChange={handleFieldChange('email')}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
-                  errors.email ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                  errors.email ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="patient@example.com"
               />
@@ -267,7 +267,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Address
               </label>
               <input
@@ -280,7 +280,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Status
               </label>
               <select
@@ -296,7 +296,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Medical Notes
               </label>
               <textarea
@@ -312,7 +312,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </button>

@@ -58,19 +58,19 @@ export default function NotificationToast() {
   const getColor = (type: NotificationType) => {
     switch (type) {
       case 'appointment':
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
       case 'patient':
-        return 'bg-green-50 border-green-200';
+        return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
       case 'campaign':
-        return 'bg-purple-50 border-purple-200';
+        return 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800';
       case 'whatsapp':
-        return 'bg-emerald-50 border-emerald-200';
+        return 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800';
       case 'team':
-        return 'bg-indigo-50 border-indigo-200';
+        return 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800';
       case 'reminder':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
       default:
-        return 'bg-gray-50 border-gray-200';
+        return 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -82,19 +82,19 @@ export default function NotificationToast() {
       <div className={`${colorClass} border rounded-lg md:rounded-xl shadow-lg p-3 md:p-4 max-w-[calc(100vw-1rem)] md:max-w-sm min-w-[280px] md:min-w-[320px]`}>
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <Icon className="w-5 h-5 md:w-6 md:h-6 text-gray-700" />
+            <Icon className="w-5 h-5 md:w-6 md:h-6 text-gray-700 dark:text-gray-300" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm md:text-base font-semibold text-gray-900 mb-0.5">
+            <h4 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-0.5">
               {visibleNotification.title}
             </h4>
-            <p className="text-xs md:text-sm text-gray-600 line-clamp-2">
+            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
               {visibleNotification.message}
             </p>
           </div>
           <button
             onClick={() => setVisibleNotification(null)}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+            className="flex-shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <X className="w-4 h-4" />
           </button>

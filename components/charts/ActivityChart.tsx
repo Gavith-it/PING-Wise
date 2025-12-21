@@ -95,7 +95,7 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
         
         {/* Center Label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-xl md:text-2xl font-bold text-gray-900">
+          <span className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
             <CountUp
               start={0}
               end={data.total || 0}
@@ -137,10 +137,10 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
               style={{ backgroundColor: entry.color }}
             />
             <div className="flex-1">
-              <div className="font-semibold text-xs md:text-sm text-gray-900">{entry.name}</div>
+              <div className="font-semibold text-xs md:text-sm text-gray-900 dark:text-white">{entry.name}</div>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-sm md:text-base font-bold text-gray-900">
+              <span className="text-sm md:text-base font-bold text-gray-900 dark:text-white">
                 <CountUp
                   start={0}
                   end={entry.value}

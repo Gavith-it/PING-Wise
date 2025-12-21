@@ -107,9 +107,9 @@ const KPICard = memo(function KPICard({ icon: Icon, value, label, change, trend,
   }, [value, isCurrency, isComingSoon]);
 
   return (
-    <div className="bg-white rounded-lg p-2 md:p-6 shadow-sm border border-gray-100">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-2 md:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
       <div className="flex items-center justify-between mb-1.5 md:mb-4">
-        <div className="w-8 h-8 md:w-14 md:h-14 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg md:rounded-xl flex items-center justify-center">
+        <div className="w-8 h-8 md:w-14 md:h-14 bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg md:rounded-xl flex items-center justify-center">
           <Icon className="w-4 h-4 md:w-7 md:h-7 text-primary" />
         </div>
         {change !== undefined && !isComingSoon && (
@@ -119,9 +119,9 @@ const KPICard = memo(function KPICard({ icon: Icon, value, label, change, trend,
           </div>
         )}
       </div>
-      <div className="text-lg md:text-3xl font-bold text-gray-900 mb-0.5 md:mb-2">
+      <div className="text-lg md:text-3xl font-bold text-gray-900 dark:text-white mb-0.5 md:mb-2">
         {isComingSoon ? (
-          <span className="text-sm md:text-lg text-gray-500 font-medium">Coming Soon</span>
+          <span className="text-sm md:text-lg text-gray-500 dark:text-gray-400 font-medium">Coming Soon</span>
         ) : isCurrency ? (
           <>
             {prefix}
@@ -145,7 +145,7 @@ const KPICard = memo(function KPICard({ icon: Icon, value, label, change, trend,
           />
         )}
       </div>
-      <p className="text-[10px] md:text-sm text-gray-600 font-medium">{label}</p>
+      <p className="text-[10px] md:text-sm text-gray-600 dark:text-gray-400 font-medium">{label}</p>
     </div>
   );
 });
@@ -174,8 +174,8 @@ const AppointmentCard = memo(function AppointmentCard({ appointment }: { appoint
           {patient?.initials || 'P'}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm md:text-base text-gray-900 truncate">{patient?.name || 'Unknown'}</p>
-          <p className="text-xs md:text-sm text-gray-600 truncate">
+          <p className="font-medium text-sm md:text-base text-gray-900 dark:text-white truncate">{patient?.name || 'Unknown'}</p>
+          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 truncate">
             {appointment.time} • {doctor?.name || 'Doctor'} • {appointment.type || 'Consultation'}
           </p>
         </div>
@@ -423,7 +423,7 @@ export default function DashboardPage() {
         <div className="space-y-4 md:space-y-6">
           <div className="mb-3 md:mb-4">
             <div className="flex-1">
-              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 md:mb-2">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2">
                 Welcome back, {user?.name || 'Doctor'}! 👋
               </h2>
             </div>
@@ -433,7 +433,7 @@ export default function DashboardPage() {
           {stats ? kpiCards : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 animate-pulse">
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 dark:border-gray-700 animate-pulse">
                   <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                   <div className="h-8 bg-gray-200 rounded w-1/2"></div>
                 </div>
@@ -443,12 +443,12 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/reports')}
-            className="bg-white rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 card-hover w-full text-left hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 dark:border-gray-700 card-hover w-full text-left hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between mb-2 md:mb-3">
               <div>
-                <h3 className="text-base md:text-lg font-bold text-gray-900">Patient Activity</h3>
-                <p className="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Distribution overview</p>
+                <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Patient Activity</h3>
+                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 md:mt-1">Distribution overview</p>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
             </div>
@@ -461,7 +461,7 @@ export default function DashboardPage() {
 
           <div className="mb-4 md:mb-6">
             <div className="flex items-center justify-between mb-3 md:mb-4">
-              <h3 className="text-base md:text-lg font-semibold text-gray-900">Today&apos;s Appointments</h3>
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Today&apos;s Appointments</h3>
               <button
                 onClick={() => router.push('/appointments')}
                 className="text-xs md:text-sm text-primary hover:text-primary-dark font-medium"
@@ -469,7 +469,7 @@ export default function DashboardPage() {
                 View All
               </button>
             </div>
-            <div className="bg-white rounded-lg md:rounded-xl shadow-sm border border-gray-100 overflow-hidden max-h-[400px] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden max-h-[400px] overflow-y-auto">
               {!dataLoaded && dataLoading ? (
                 // Show skeleton only while initial data is loading
                 <div className="p-4 md:p-6 space-y-3">

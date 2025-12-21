@@ -29,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.variable}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100`}>
         <ErrorBoundary>
           <ThemeProvider>
             <AuthProvider>
@@ -43,11 +43,12 @@ export default function RootLayout({
                     toastOptions={{
                       duration: 3000,
                       style: {
-                        background: '#fff',
-                        color: '#333',
+                        background: 'var(--toast-bg, #fff)',
+                        color: 'var(--toast-color, #333)',
                         borderRadius: '12px',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                       },
+                      className: 'dark:!bg-gray-800 dark:!text-gray-100',
                       success: {
                         iconTheme: {
                           primary: '#10b981',

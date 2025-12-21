@@ -157,12 +157,12 @@ export default function WalletPage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Wallet Balance</h1>
-              <p className="text-gray-600 mt-1">Manage your wallet and transactions</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Wallet Balance</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your wallet and transactions</p>
             </div>
             <button
               onClick={() => router.back()}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -180,9 +180,9 @@ export default function WalletPage() {
           </div>
 
           {/* Transactions Section */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">Recent Transactions</h2>
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
               <button
                 onClick={() => setShowAddFunds(true)}
                 className="flex items-center space-x-1.5 bg-primary text-white px-3 py-1.5 md:px-3.5 md:py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors shadow-sm hover:shadow-md"
@@ -195,26 +195,26 @@ export default function WalletPage() {
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-gray-500 mt-4">Loading transactions...</p>
+                <p className="text-gray-500 dark:text-gray-400 mt-4">Loading transactions...</p>
               </div>
             ) : transactions.length === 0 ? (
               <div className="text-center py-12">
-                <Wallet className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">No transactions yet</p>
-                <p className="text-sm text-gray-400 mt-2">Your transaction history will appear here</p>
+                <Wallet className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 font-medium">No transactions yet</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">Your transaction history will appear here</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {transactions.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0"
+                    className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-700 last:border-0"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-medium text-gray-900">
+                      <p className="text-base font-medium text-gray-900 dark:text-white">
                         {transaction.description}
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {format(new Date(transaction.date), 'MMM d, yyyy')}
                       </p>
                     </div>

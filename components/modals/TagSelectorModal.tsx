@@ -57,20 +57,20 @@ export default function TagSelectorModal({ onClose, onApply, selectedTags }: Tag
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">Select Tags</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Select Tags</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
           <div className="space-y-3 mb-6">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Select one or more tags to filter recipients for your campaign.
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -82,15 +82,15 @@ export default function TagSelectorModal({ onClose, onApply, selectedTags }: Tag
                     onClick={() => toggleTag(tag.id)}
                     className={`p-3 rounded-xl border-2 transition-all text-left ${
                       isSelected
-                        ? 'border-primary bg-primary/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        ? 'border-primary bg-primary/10 dark:bg-primary/20'
+                        : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <div className={`w-3 h-3 rounded-full ${tag.color}`}></div>
                         <span className={`font-medium text-sm ${
-                          isSelected ? 'text-primary' : 'text-gray-700'
+                          isSelected ? 'text-primary' : 'text-gray-700 dark:text-gray-300'
                         }`}>
                           {tag.label}
                         </span>

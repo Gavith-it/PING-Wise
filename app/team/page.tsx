@@ -69,9 +69,20 @@ export default function TeamPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [appointmentCounts, setAppointmentCounts] = useState<Record<string, number>>({});
+  
+  const hasInitialized = useRef(false);
+  const previousFilters = useRef<string>('');
+  const isLoadingRef = useRef(false); // Track if API call is in progress
 
   useEffect(() => {
     const filterKey = JSON.stringify({ filter, filters });
+    
+    // Prevent duplicate calls - check if filters actually changed
+    if (hasInitialized.current && previousFilters.current === filterKey) {
+      return; // Filters haven't changed, skip
+    }
+    
+    previousFilters.current = filterKey;
     const cacheAge = Date.now() - teamCache.timestamp;
     const isCacheValid = teamCache.teamMembers.length > 0 && 
                         teamCache.filters === filterKey && 
@@ -82,9 +93,25 @@ export default function TeamPage() {
       setTeamMembers(teamCache.teamMembers);
       setFilteredMembers(teamCache.teamMembers);
       setLoading(false);
-      // Refresh in background
-      loadTeamMembers(false);
+      hasInitialized.current = true;
+      // Refresh in background only if not already loading
+      if (!isLoadingRef.current) {
+        loadTeamMembers(false);
+      }
+    } else if (isCacheValid && teamCache.filters === filterKey) {
+      // Same filters, cache is valid - use it immediately
+      setTeamMembers(teamCache.teamMembers);
+      setFilteredMembers(teamCache.teamMembers);
+      setLoading(false);
+      hasInitialized.current = true;
+      
+      // Refresh in background only if not already loading
+      if (!isLoadingRef.current) {
+        loadTeamMembers(false);
+      }
     } else {
+      // Filters changed or cache invalid - load new data
+      hasInitialized.current = true;
       loadTeamMembers(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,7 +128,14 @@ export default function TeamPage() {
   }, [teamMembers]);
 
   const loadTeamMembers = async (showLoading = true) => {
+    // Prevent concurrent calls - use a ref to track if a call is in progress
+    if (isLoadingRef.current) {
+      return; // Already loading, skip duplicate call
+    }
+    
     try {
+      isLoadingRef.current = true;
+      
       if (showLoading) {
         setLoading(true);
       }
@@ -165,6 +199,7 @@ export default function TeamPage() {
       if (showLoading) {
         setLoading(false);
       }
+      isLoadingRef.current = false; // Reset flag
     }
   };
 
@@ -242,8 +277,8 @@ export default function TeamPage() {
           <div className="mb-4 md:mb-6">
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Team</h2>
-                <p className="text-sm md:text-base text-gray-600 mt-0.5 md:mt-1">Manage your team members</p>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Team</h2>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-0.5 md:mt-1">Manage your team members</p>
               </div>
             </div>
 
@@ -286,28 +321,28 @@ export default function TeamPage() {
                   placeholder="Search by staff name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 md:pl-11 pr-4 py-2 md:py-2.5 border border-gray-300 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base"
+                  className="w-full pl-9 md:pl-11 pr-4 py-2 md:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                 />
               </div>
               <button
                 onClick={() => setShowFilterModal(true)}
-                className="flex items-center justify-center p-2 bg-white border border-gray-300 rounded-lg md:rounded-xl hover:bg-gray-50 transition-colors flex-shrink-0"
+                className="flex items-center justify-center p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg md:rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex-shrink-0"
               >
-                <Filter className="w-4 h-4 text-gray-600" />
+                <Filter className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
           </div>
 
           {/* Team Members List */}
           <div>
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2 md:mb-3">Team Members</h3>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-2 md:mb-3">Team Members</h3>
             {loading ? (
               <div className="flex items-center justify-center py-8 md:py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : filteredMembers.length === 0 ? (
-              <div className="bg-white rounded-xl md:rounded-2xl p-8 md:p-12 text-center">
-                <p className="text-sm md:text-base text-gray-500">No team members found</p>
+              <div className="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl p-8 md:p-12 text-center">
+                <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">No team members found</p>
               </div>
             ) : (
               <div className="space-y-2 md:space-y-3">
@@ -402,22 +437,22 @@ function FilterCard({ icon: Icon, value, label, active, color = 'blue' }: {
   
   return (
     <div
-      className={`bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border-2 text-left transition-all ${
+      className={`bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border-2 text-left transition-all ${
         active
           ? `${borderColorClasses[color]} ${textColorClasses[color]} shadow-md`
-          : 'border-gray-100'
+          : 'border-gray-100 dark:border-gray-700'
       }`}
     >
       <div className="flex items-center justify-between mb-2 md:mb-3">
-        <div className={`w-10 h-10 md:w-12 md:h-12 ${active ? iconBgClasses[color] : 'bg-primary/10'} rounded-lg flex items-center justify-center`}>
+        <div className={`w-10 h-10 md:w-12 md:h-12 ${active ? iconBgClasses[color] : 'bg-primary/10 dark:bg-primary/20'} rounded-lg flex items-center justify-center`}>
           {/* Icon always stays primary color, doesn't change on click */}
           <Icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
         </div>
       </div>
-      <p className={`text-xl md:text-3xl font-bold mb-0.5 md:mb-1 ${active ? textColorClasses[color] : 'text-gray-900'}`}>
+      <p className={`text-xl md:text-3xl font-bold mb-0.5 md:mb-1 ${active ? textColorClasses[color] : 'text-gray-900 dark:text-white'}`}>
         {value}
       </p>
-      <p className="text-xs md:text-sm text-gray-600 font-medium">{label}</p>
+      <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-medium">{label}</p>
     </div>
   );
 }
@@ -449,7 +484,7 @@ function TeamMemberCard({
   const displayDepartment = member.department || 'General';
 
   return (
-    <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative mb-2">
+    <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow relative mb-2">
       <div className="flex items-start justify-between gap-2 md:gap-4">
         <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0">
           <div 
@@ -460,16 +495,16 @@ function TeamMemberCard({
             {member.initials || generateInitials(member.name)}
           </div>
           <div className="flex-1 flex flex-col min-w-0">
-            <p className="font-semibold text-sm md:text-base text-gray-900 mb-1">{member.name}</p>
-            <p className="text-xs md:text-sm text-gray-600 mb-1">
+            <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white mb-1">{member.name}</p>
+            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1">
               {displayRole} • {displayDepartment}
             </p>
-            <p className="text-[10px] md:text-xs text-gray-500 mb-3 md:mb-4">
+            <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mb-3 md:mb-4">
               {member.email} • {member.phone || 'N/A'}
             </p>
             
             {/* Experience and Specialization at bottom - horizontally aligned, full text visible */}
-            <div className="flex items-center justify-between gap-4 md:gap-6 text-[10px] md:text-xs text-gray-500 mt-auto">
+            <div className="flex items-center justify-between gap-4 md:gap-6 text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mt-auto">
               <span className="whitespace-nowrap">{member.experience ? `Experience: ${member.experience}` : 'Experience: N/A'}</span>
               <span className="whitespace-nowrap">{member.specialization ? `Specialization: ${member.specialization}` : 'Specialization: N/A'}</span>
             </div>
@@ -504,7 +539,7 @@ function TeamMemberCard({
                     onView();
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                   <span>View</span>
@@ -514,7 +549,7 @@ function TeamMemberCard({
                     onEdit();
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Edit</span>
@@ -524,7 +559,7 @@ function TeamMemberCard({
                     onDelete();
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-red-600 hover:bg-red-50 transition-colors"
+                  className="w-full flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-left text-sm md:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete</span>

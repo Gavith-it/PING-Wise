@@ -413,21 +413,21 @@ export default function CampaignsPage() {
           <div className="mb-4 md:mb-6">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Campaigns</h2>
-                <p className="text-sm md:text-base text-gray-600 mt-0.5 md:mt-1">Send messages to your patients</p>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Campaigns</h2>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-0.5 md:mt-1">Send messages to your patients</p>
               </div>
             </div>
           </div>
 
           {/* Create Campaign Section */}
-          <div className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 shadow-sm border border-gray-100 mb-4 md:mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-4 md:p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-4 md:mb-6">
             <div className="mb-3 md:mb-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base md:text-lg font-semibold text-gray-900">Create New Campaign</h3>
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Create New Campaign</h3>
               </div>
               {/* Campaign Title/Header Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Campaign Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -440,18 +440,18 @@ export default function CampaignsPage() {
                     }
                   }}
                   placeholder="Enter campaign title"
-                  className={`w-full p-2 md:p-2.5 border rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base ${
-                    errors.title ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                  className={`w-full p-2 md:p-2.5 border rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.title ? 'border-red-300 dark:border-red-600 focus:ring-red-500' : 'border-gray-200 dark:border-gray-600'
                   }`}
                   maxLength={100}
                   required
                 />
               </div>
               {errors.title && (
-                <p className="text-sm text-red-600 mt-1">{errors.title}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.title}</p>
               )}
               {campaignTitle.length > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {campaignTitle.length}/100 characters
                 </p>
               )}
@@ -475,8 +475,8 @@ export default function CampaignsPage() {
                   }
                 }}
                 placeholder="Write your message…"
-                className={`w-full h-24 md:h-32 p-3 md:p-4 border rounded-lg md:rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-1 text-sm md:text-base ${
-                  errors.message ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                className={`w-full h-24 md:h-32 p-3 md:p-4 border rounded-lg md:rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-1 text-sm md:text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                  errors.message ? 'border-red-300 dark:border-red-600 focus:ring-red-500' : 'border-gray-200 dark:border-gray-600'
                 }`}
                 maxLength={1000}
               />
@@ -492,10 +492,10 @@ export default function CampaignsPage() {
                 <p className="text-sm text-red-600 mb-2">{errors.message}</p>
               )}
               <div className="flex justify-between items-center mb-3 md:mb-4">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {message.length}/1000 characters
                   {message.trim().length < 10 && message.length > 0 && (
-                    <span className="text-red-500 ml-1">(minimum 10 characters required)</span>
+                    <span className="text-red-500 dark:text-red-400 ml-1">(minimum 10 characters required)</span>
                   )}
                 </p>
               </div>
@@ -509,7 +509,7 @@ export default function CampaignsPage() {
                         <img
                           src={preview}
                           alt={`Preview ${index + 1}`}
-                          className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-lg border border-gray-200"
+                          className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                         />
                         <button
                           type="button"
@@ -522,7 +522,7 @@ export default function CampaignsPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                     {images.length} image{images.length !== 1 ? 's' : ''} selected (max 5)
                   </p>
                 </div>
@@ -533,7 +533,7 @@ export default function CampaignsPage() {
             <div className="mb-3 md:mb-4">
               {selectedTags.length > 0 ? (
                 <>
-                  <p className="text-xs text-gray-500 mb-2">Selected tags:</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Selected tags:</p>
                   <div className="flex flex-wrap gap-2">
                     {selectedTags.map((tagId) => {
                       const tagLabels: Record<string, string> = {
@@ -557,22 +557,22 @@ export default function CampaignsPage() {
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-gray-500 mb-2">No tags selected</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">No tags selected</p>
               )}
               {errors.tags && (
-                <p className="text-sm text-red-600 mt-1">{errors.tags}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.tags}</p>
               )}
             </div>
 
             {/* Scheduled Info Display */}
             {scheduledDate && scheduledTime && (
               <div className="mb-3 md:mb-4">
-                <p className="text-xs text-gray-500 mb-1">Scheduled for:</p>
-                <p className={`text-sm ${errors.schedule ? 'text-red-600' : 'text-gray-700'}`}>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Scheduled for:</p>
+                <p className={`text-sm ${errors.schedule ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
                   {new Date(`${scheduledDate}T${scheduledTime}`).toLocaleString()}
                 </p>
                 {errors.schedule && (
-                  <p className="text-sm text-red-600 mt-1">{errors.schedule}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.schedule}</p>
                 )}
               </div>
             )}
@@ -589,14 +589,14 @@ export default function CampaignsPage() {
               </button>
               <button 
                 onClick={() => setShowScheduleModal(true)}
-                className="flex-1 bg-white text-gray-700 py-2 px-2 md:px-3 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1 border border-gray-200 shadow-sm hover:shadow-md text-xs"
+                className="flex-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-2 md:px-3 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center space-x-1 border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md text-xs"
               >
                 <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Schedule</span>
               </button>
               <button 
                 onClick={() => setShowTagModal(true)}
-                className="flex-1 bg-white text-gray-700 py-2 px-2 md:px-3 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1 border border-gray-200 shadow-sm hover:shadow-md text-xs"
+                className="flex-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-2 md:px-3 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center space-x-1 border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md text-xs"
               >
                 <Tag className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Tags</span>
@@ -604,7 +604,7 @@ export default function CampaignsPage() {
               <button 
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex-1 bg-white text-gray-700 py-2 px-2 md:px-3 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-1 border border-gray-200 shadow-sm hover:shadow-md text-xs"
+                className="flex-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-2 md:px-3 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center space-x-1 border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md text-xs"
                 title="Add images"
               >
                 <ImageIcon className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" />
@@ -615,7 +615,7 @@ export default function CampaignsPage() {
 
           {/* Templates Section */}
           <div className="mb-4 md:mb-6">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-4">Templates</h3>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-4 md:mb-4">Templates</h3>
             {/* Mobile: Horizontal scroll with centered 2x2 grid */}
             <div className="md:hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory">
               <div className="flex gap-0">
@@ -671,27 +671,27 @@ export default function CampaignsPage() {
 
           {/* Recent Campaigns Section */}
           <div>
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2 md:mb-3">Recent Campaigns</h3>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-2 md:mb-3">Recent Campaigns</h3>
             <div className="space-y-2 md:space-y-3 max-h-96 overflow-y-auto pr-2">
               {campaigns.length === 0 ? (
-                <div className="bg-white rounded-xl md:rounded-2xl p-6 md:p-8 text-center">
-                  <p className="text-sm md:text-base text-gray-500">No campaigns yet</p>
+                <div className="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl p-6 md:p-8 text-center">
+                  <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">No campaigns yet</p>
                 </div>
               ) : (
                 campaigns.map((campaign) => (
                   <div 
                     key={campaign.id} 
-                    className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100"
+                    className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 dark:border-gray-700"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm md:text-base text-gray-900 mb-1">
+                        <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white mb-1">
                           {campaign.name || campaign.title || 'Campaign'}
                         </p>
-                        <p className="text-xs md:text-sm text-gray-700 mb-2 line-clamp-2">
+                        <p className="text-xs md:text-sm text-gray-700 dark:text-gray-300 mb-2 line-clamp-2">
                           {campaign.message}
                         </p>
-                        <div className="flex items-center space-x-3 text-xs text-gray-500">
+                        <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400">
                           <span>{campaign.recipientCount || 0} patients</span>
                           <span>•</span>
                           <span>{campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : 'N/A'}</span>

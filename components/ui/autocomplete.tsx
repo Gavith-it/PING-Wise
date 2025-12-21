@@ -190,28 +190,28 @@ export default function Autocomplete({
           onKeyDown={handleKeyDown}
           disabled={disabled || loading}
           placeholder={loading ? 'Loading...' : placeholder}
-          className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full px-3 py-2 pr-20 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
           {value && !disabled && (
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
               tabIndex={-1}
             >
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           )}
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
             disabled={disabled || loading}
-            className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors disabled:opacity-50"
             tabIndex={-1}
           >
             <ChevronDown 
-              className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+              className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
             />
           </button>
         </div>
@@ -220,10 +220,10 @@ export default function Autocomplete({
       {isOpen && !disabled && !loading && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
+          className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-auto"
         >
           {filteredOptions.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-gray-500 text-center">
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
               No options found
             </div>
           ) : (
@@ -239,8 +239,8 @@ export default function Autocomplete({
                     onClick={() => handleSelect(option)}
                     className={`px-4 py-2 cursor-pointer transition-colors ${
                       isHighlighted || isSelected
-                        ? 'bg-primary/10 text-primary'
-                        : 'hover:bg-gray-50 text-gray-900'
+                        ? 'bg-primary/10 dark:bg-primary/20 text-primary'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white'
                     }`}
                     onMouseEnter={() => setHighlightedIndex(index)}
                   >

@@ -90,11 +90,11 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
+    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-100 dark:border-gray-700 sticky top-0 z-40">
       <div className="px-3 md:px-4 py-2 md:py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2 md:space-x-3">
           <SettingsMenu />
-          <h1 className="text-lg md:text-xl font-bold text-primary">PingWise</h1>
+          <h1 className="text-lg md:text-xl font-bold text-primary dark:text-primary">PingWise</h1>
           
           <nav className="hidden md:flex items-center space-x-1">
             {menuItems.map((item) => {
@@ -108,7 +108,7 @@ export default function Header() {
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                     active
                       ? 'bg-primary text-white'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-primary'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -137,7 +137,7 @@ export default function Header() {
                   markAllAsRead();
                 }
               }}
-              className="relative p-1.5 md:p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+              className="relative p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
               {unreadCount > 0 && (
@@ -150,7 +150,7 @@ export default function Header() {
 
           <button
             onClick={() => router.push(`/guide?page=${pathname}`)}
-            className="p-1.5 md:p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             title="Help & User Guide"
           >
             <HelpCircle className="w-4 h-4 md:w-5 md:h-5" />

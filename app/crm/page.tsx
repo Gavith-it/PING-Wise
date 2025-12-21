@@ -1,343 +1,55 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Filter, Upload, Users } from 'lucide-react';
-import { crmPatientService } from '@/lib/services/crmPatientService';
-import toast from 'react-hot-toast';
+import { useState, useRef } from 'react';
 import CRMPatientModal from '@/components/modals/CRMPatientModal';
 import PatientDetailsModal from '@/components/modals/PatientDetailsModal';
-// Bulk upload not supported by CRM API
-// import BulkUploadModal from '@/components/modals/BulkUploadModal';
 import FilterModal, { FilterOptions } from '@/components/modals/FilterModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
 import { Patient } from '@/types';
-
-// Cache for patients data to enable instant navigation
-const patientsCache: {
-  patients: Patient[];
-  total: number;
-  filters: string;
-  timestamp: number;
-} = {
-  patients: [],
-  total: 0,
-  filters: '',
-  timestamp: 0,
-};
-
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+import { useDebounce } from './hooks/useDebounce';
+import { usePatients } from './hooks/usePatients';
+import { useScrollFooter } from './hooks/useScrollFooter';
+import PatientSearchBar from './components/PatientSearchBar';
+import PatientStatusFilters from './components/PatientStatusFilters';
+import PatientList from './components/PatientList';
+import EmptyState from './components/EmptyState';
 
 export default function CRMPage() {
-  // Initialize with cached data for instant display
-  const [patients, setPatients] = useState<Patient[]>(patientsCache.patients);
-  const [loading, setLoading] = useState(patientsCache.patients.length === 0); // Only show loading if no cached data
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [isFiltering, setIsFiltering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  // Initialize debouncedSearchTerm with searchTerm to prevent initial unnecessary update
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  // Bulk upload not supported by CRM API
-  // const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(patientsCache.total);
-  const [hasMore, setHasMore] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({
     status: 'all',
     dateRange: { start: '', end: '' },
     assignedDoctor: '',
     ageRange: { min: '', max: '' },
   });
-  const limit = 10;
-  const menuRef = useRef<HTMLDivElement>(null);
+  
   const listContainerRef = useRef<HTMLDivElement>(null);
-  const { setIsVisible: setFooterVisible } = useFooterVisibility();
-  const lastScrollY = useRef(0);
-  const hasInitialized = useRef(false);
-  const previousFilters = useRef<string>('');
-  const isLoadingRef = useRef(false); // Track if API call is in progress
+  
+  // Use custom hooks
+  const {
+    patients,
+    loading,
+    loadingMore,
+    total,
+    hasMore,
+    handleLoadMore,
+    handleDelete,
+    handlePatientCreated,
+  } = usePatients({
+    debouncedSearchTerm,
+    statusFilter,
+    advancedFilters,
+  });
 
-  // Debounce search term to avoid excessive API calls
-  // Only update if value actually changed
-  useEffect(() => {
-    if (searchTerm === debouncedSearchTerm) {
-      return; // No change, skip update
-    }
-    
-    const timer = setTimeout(() => {
-      // Only update if value is different
-      if (searchTerm !== debouncedSearchTerm) {
-        setDebouncedSearchTerm(searchTerm);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm, debouncedSearchTerm]);
-
-  // Main effect to load patients - optimized to prevent duplicate calls
-  useEffect(() => {
-    // Create filter key to check cache
-    const filterKey = JSON.stringify({ searchTerm: debouncedSearchTerm, statusFilter, advancedFilters });
-    
-    // Prevent duplicate calls - check if filters actually changed
-    if (hasInitialized.current && previousFilters.current === filterKey) {
-      return; // Filters haven't changed, skip
-    }
-    
-    previousFilters.current = filterKey;
-    const cacheAge = Date.now() - patientsCache.timestamp;
-    const isCacheValid = patientsCache.patients.length > 0 && 
-                        patientsCache.filters === filterKey && 
-                        cacheAge < CACHE_DURATION;
-    
-    // Only show loading on initial load, not on filter changes
-    const isInitialLoad = !hasInitialized.current && patients.length === 0;
-    const isReturningToPage = !hasInitialized.current && patientsCache.patients.length > 0;
-    
-    if (isCacheValid && isInitialLoad) {
-      // Use cached data immediately for fast display
-      setPatients(patientsCache.patients);
-      setTotal(patientsCache.total);
-      setLoading(false);
-      setIsFiltering(false);
-      hasInitialized.current = true;
-      // Always refresh in background to get fresh data (e.g., if patient added from dashboard)
-      loadPatients(true, true);
-    } else if (isCacheValid && patientsCache.filters === filterKey) {
-      // Same filters, cache is valid - use it immediately
-      setPatients(patientsCache.patients);
-      setTotal(patientsCache.total);
-      setLoading(false);
-      setIsFiltering(false);
-      hasInitialized.current = true;
-      
-      // IMPORTANT: Always refresh in background when returning to page
-      // This ensures fresh data is fetched (e.g., if patient was added from dashboard)
-      // Only refresh if not already loading to prevent duplicate calls
-      if (!isLoadingRef.current) {
-        loadPatients(true, true);
-      }
-    } else {
-      // Filters changed or cache invalid - keep current data visible, fetch in background
-      setPage(1);
-      setIsFiltering(false);
-      hasInitialized.current = true;
-      // Load new data
-      loadPatients(true, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, statusFilter, advancedFilters]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        // Close menus if clicking outside
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Handle scroll visibility for footer on patient list container
-  useEffect(() => {
-    const container = listContainerRef.current;
-    if (!container) return;
-
-    let ticking = false;
-    
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = container.scrollTop;
-          
-          // Show footer when at top of list
-          if (currentScrollY < 10) {
-            setFooterVisible(true);
-            lastScrollY.current = currentScrollY;
-            ticking = false;
-            return;
-          }
-          
-          // Calculate scroll direction
-          const scrollDifference = currentScrollY - lastScrollY.current;
-          
-          // Hide footer when scrolling down (after 20px threshold)
-          if (scrollDifference > 5 && currentScrollY > 20) {
-            setFooterVisible(false);
-          } 
-          // Show footer when scrolling up
-          else if (scrollDifference < -5) {
-            setFooterVisible(true);
-          }
-          
-          lastScrollY.current = currentScrollY;
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    container.addEventListener('touchmove', handleScroll, { passive: true });
-    
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-      container.removeEventListener('touchmove', handleScroll);
-    };
-  }, []);
-
-  const loadPatients = async (reset = false, skipLoadingSpinner = false) => {
-    // Prevent concurrent calls - use a ref to track if a call is in progress
-    if (isLoadingRef.current) {
-      return; // Already loading, skip duplicate call
-    }
-    
-    try {
-      isLoadingRef.current = true;
-      
-      // Only show loading spinner on initial load (when no data exists)
-      if (reset && !skipLoadingSpinner && patients.length === 0) {
-        setLoading(true);
-        setPage(1);
-      } else if (reset && skipLoadingSpinner) {
-        // Filter change - don't show loading spinner or filtering state
-        // Keep current patients visible while fetching
-        setPage(1);
-        setIsFiltering(false); // Ensure no filtering state
-      } else if (!reset) {
-        // Loading more - show loading more indicator
-        setLoadingMore(true);
-      }
-
-      const currentPage = reset ? 1 : page;
-      const params: any = {
-        page: currentPage,
-        limit,
-        ...(statusFilter !== 'all' && { status: statusFilter }),
-        ...(debouncedSearchTerm && { search: debouncedSearchTerm }),
-        ...(advancedFilters.dateRange.start && { dateStart: advancedFilters.dateRange.start }),
-        ...(advancedFilters.dateRange.end && { dateEnd: advancedFilters.dateRange.end }),
-        ...(advancedFilters.ageRange.min && { ageMin: advancedFilters.ageRange.min }),
-        ...(advancedFilters.ageRange.max && { ageMax: advancedFilters.ageRange.max }),
-        ...(advancedFilters.assignedDoctor && { doctor: advancedFilters.assignedDoctor }),
-      };
-
-      const response = await crmPatientService.getPatients(params);
-      const newPatients = response.data || [];
-      const newTotal = response.total || 0;
-      
-      if (reset) {
-        // Update patients immediately - smooth transition
-        setPatients(newPatients);
-        // Update cache
-        const filterKey = JSON.stringify({ searchTerm, statusFilter, advancedFilters });
-        patientsCache.patients = newPatients;
-        patientsCache.total = newTotal;
-        patientsCache.filters = filterKey;
-        patientsCache.timestamp = Date.now();
-      } else {
-        // Append for pagination
-        setPatients([...patients, ...newPatients]);
-      }
-      
-      setTotal(newTotal);
-      setHasMore((currentPage * limit) < newTotal);
-      if (!reset) {
-        setPage(currentPage + 1);
-      }
-    } catch (error) {
-      toast.error('Failed to load patients');
-      console.error('Load patients error:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      setIsFiltering(false);
-      isLoadingRef.current = false; // Reset flag
-    }
-  };
-
-  const handleLoadMore = () => {
-    loadPatients(false);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this patient?')) {
-      return;
-    }
-
-    try {
-      // Optimistic update: Remove from list immediately
-      setPatients(prevPatients => prevPatients.filter(p => p.id !== id));
-      setTotal(prevTotal => Math.max(0, prevTotal - 1));
-      
-      // Update cache
-      patientsCache.patients = patientsCache.patients.filter(p => p.id !== id);
-      patientsCache.total = Math.max(0, patientsCache.total - 1);
-      
-      // Delete in background
-      await crmPatientService.deletePatient(id);
-      toast.success('Patient deleted successfully');
-      
-      // Optionally refresh in background to ensure sync (non-blocking)
-      loadPatients(true, true).catch(() => {
-        // Silent fail - we already updated optimistically
-      });
-    } catch (error) {
-      // Revert optimistic update on error
-      loadPatients(true, true);
-      toast.error('Failed to delete patient');
-    }
-  };
-
-  const handlePatientCreated = (newPatient?: Patient) => {
-    setShowAddModal(false);
-    setSelectedPatient(null);
-    
-    if (newPatient) {
-      // Optimistic update: Add/update patient in list immediately
-      setPatients(prevPatients => {
-        const existingIndex = prevPatients.findIndex(p => p.id === newPatient.id);
-        if (existingIndex >= 0) {
-          // Update existing patient
-          const updated = [...prevPatients];
-          updated[existingIndex] = newPatient;
-          return updated;
-        } else {
-          // Add new patient at the beginning
-          return [newPatient, ...prevPatients];
-        }
-      });
-      
-      // Update total if it's a new patient
-      if (!patients.find(p => p.id === newPatient.id)) {
-        setTotal(prevTotal => prevTotal + 1);
-        patientsCache.total = (patientsCache.total || 0) + 1;
-      }
-      
-      // Update cache
-      patientsCache.patients = [newPatient, ...patientsCache.patients.filter(p => p.id !== newPatient.id)];
-      patientsCache.timestamp = Date.now();
-      
-      // Optionally refresh in background to ensure sync (non-blocking)
-      loadPatients(true, true).catch(() => {
-        // Silent fail - we already updated optimistically
-      });
-    } else {
-      // Fallback: Reload if no patient data provided
-      loadPatients(true, true);
-    }
-  };
-
-  // Bulk upload not supported by CRM API
-  // const handleBulkUploadSuccess = () => {
-  //   toast.error('Bulk upload is not supported by CRM API');
-  //   setShowBulkUploadModal(false);
-  // };
+  // Handle scroll visibility for footer
+  useScrollFooter(listContainerRef);
 
   const handleFilterApply = (filters: FilterOptions) => {
     setAdvancedFilters(filters);
@@ -359,92 +71,82 @@ export default function CRMPage() {
     }
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setAdvancedFilters({
+      status: 'all',
+      dateRange: { start: '', end: '' },
+      assignedDoctor: '',
+      ageRange: { min: '', max: '' },
+    });
+  };
+
+  const handleAddPatient = () => {
+    setSelectedPatient(null);
+    setShowAddModal(true);
+  };
+
+  const handleViewPatient = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setShowDetailsModal(true);
+  };
+
+  const handleEditPatient = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setShowAddModal(true);
+  };
+
+  const handlePatientCreatedWithModal = (newPatient?: Patient) => {
+    setShowAddModal(false);
+    setSelectedPatient(null);
+    handlePatientCreated(newPatient);
+  };
+
   // Only show empty state when not loading and no patients
-  // During filter changes, we keep showing current patients until new data arrives
-  const isEmpty = !loading && patients.length === 0 && !isFiltering;
-  const isSearchResult = isEmpty && (searchTerm || statusFilter !== 'all' || 
-    advancedFilters.dateRange.start || advancedFilters.dateRange.end ||
-    advancedFilters.ageRange.min || advancedFilters.ageRange.max ||
-    advancedFilters.assignedDoctor);
+  const isEmpty = !loading && patients.length === 0;
+  const hasActiveFilters = !!(
+    searchTerm || 
+    statusFilter !== 'all' || 
+    advancedFilters.dateRange.start || 
+    advancedFilters.dateRange.end ||
+    advancedFilters.ageRange.min || 
+    advancedFilters.ageRange.max ||
+    advancedFilters.assignedDoctor
+  );
+  const isSearchResult = isEmpty && hasActiveFilters;
 
   return (
     <PrivateRoute>
       <Layout>
         <div className="flex flex-col h-full min-h-0 pb-16 md:pb-0">
           {/* Fixed Header Section - Search, Filters, and Actions */}
-          <div className="flex-shrink-0 space-y-4 md:space-y-6 pb-4 md:pb-6 bg-gray-50">
+          <div className="flex-shrink-0 space-y-4 md:space-y-6 pb-4 md:pb-6 bg-gray-50 dark:bg-gray-900/50">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Patients</h2>
-                  <p className="text-sm md:text-base text-gray-600 mt-0.5 md:mt-1">{total} patients</p>
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Patients</h2>
+                  <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-0.5 md:mt-1">{total} patients</p>
                 </div>
               </div>
             </div>
 
             {/* Action Buttons Row */}
             <div>
-              <div className="flex flex-col gap-2 md:gap-3">
-                {/* Search Bar - Full Width */}
-                <div className="relative">
-                  <Search className="absolute left-2.5 md:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search patients..."
-                    className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 bg-white rounded-lg md:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base"
-                  />
-                </div>
-                {/* Action Buttons - Add Patient */}
-                <div className="flex gap-2 md:gap-2.5">
-                  <button
-                    onClick={() => {
-                      setSelectedPatient(null);
-                      setShowAddModal(true);
-                    }}
-                    className="flex-1 bg-primary text-white py-2.5 px-4 md:py-3 md:px-6 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center justify-center space-x-2 shadow-md hover:shadow-lg text-sm md:text-base"
-                  >
-                    <Plus className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-                    <span className="truncate">Add Patient</span>
-                  </button>
-                  {/* Bulk upload not supported by CRM API - hidden */}
-                </div>
-              </div>
+              <PatientSearchBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onAddClick={handleAddPatient}
+              />
             </div>
 
             {/* Status Filter Pills with Filter Button */}
             <div>
-              <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                {/* Status Filter Pills */}
-                {['all', 'active', 'booked', 'follow-up', 'inactive'].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`flex items-center space-x-1.5 md:space-x-2 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${
-                      statusFilter === status
-                        ? 'bg-primary text-white shadow-md'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:border-primary'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${
-                      status === 'all' ? 'bg-current' :
-                      status === 'active' ? 'bg-green-500' :
-                      status === 'booked' ? 'bg-blue-500' :
-                      status === 'follow-up' ? 'bg-yellow-500' :
-                      'bg-gray-500'
-                    }`}></span>
-                    <span className="capitalize">{status === 'all' ? 'All' : status.replace('-', ' ')}</span>
-                  </button>
-                ))}
-                {/* Filter Button - Icon Only - Moved to Last */}
-                <button
-                  onClick={() => setShowFilterModal(true)}
-                  className="bg-white text-gray-700 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center border border-gray-200 shadow-sm hover:shadow-md"
-                >
-                  <Filter className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-              </div>
+              <PatientStatusFilters
+                statusFilter={statusFilter}
+                onStatusChange={setStatusFilter}
+                onFilterClick={() => setShowFilterModal(true)}
+              />
             </div>
           </div>
 
@@ -460,101 +162,23 @@ export default function CRMPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : isEmpty ? (
-            /* Empty State or No Search Results */
-            <div className="bg-white rounded-2xl p-6 md:p-8 text-center">
-              {isSearchResult ? (
-                <>
-                  <Search className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-3 md:mb-4" />
-                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-1.5 md:mb-2">
-                    No matches found for your search.
-                  </h3>
-                  <p className="text-xs md:text-sm text-gray-500 mb-4 md:mb-6">
-                    Try adjusting your search terms or filters.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSearchTerm('');
-                      setStatusFilter('all');
-                      setAdvancedFilters({
-                        status: 'all',
-                        dateRange: { start: '', end: '' },
-                        assignedDoctor: '',
-                        ageRange: { min: '', max: '' },
-                      });
-                    }}
-                    className="bg-primary text-white px-4 py-2 md:px-6 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:bg-primary-dark transition-colors"
-                  >
-                    Clear Filters
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Users className="w-14 h-14 md:w-20 md:h-20 text-gray-300 mx-auto mb-3 md:mb-4" />
-                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-1.5 md:mb-2">
-                    No customers yet.
-                  </h3>
-                  <p className="text-xs md:text-sm text-gray-500 mb-4 md:mb-6">
-                    Add new customers to start managing your network.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSelectedPatient(null);
-                      setShowAddModal(true);
-                    }}
-                    className="bg-primary text-white px-4 py-2.5 md:px-6 md:py-3 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:bg-primary-dark transition-colors shadow-md hover:shadow-lg flex items-center space-x-2 mx-auto"
-                  >
-                    <Plus className="w-4 h-4 md:w-5 md:h-5" />
-                    <span>Add New Customer</span>
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-              {/* Patient List */}
-              <div className="space-y-3 pb-4">
-                {patients.map((patient) => (
-                  <PatientCard
-                    key={patient.id}
-                    patient={patient}
-                    onView={() => {
-                      setSelectedPatient(patient);
-                      setShowDetailsModal(true);
-                    }}
-                    onEdit={() => {
-                      setSelectedPatient(patient);
-                      setShowAddModal(true);
-                    }}
-                    onDelete={() => handleDelete(patient.id)}
-                    getStatusColor={getStatusColor}
-                  />
-                ))}
-              </div>
-
-              {/* Load More Button */}
-              {hasMore && (
-                <div className="flex justify-center pt-4 pb-4">
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                    className="bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md flex items-center space-x-2"
-                  >
-                    {loadingMore ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700"></div>
-                        <span>Loading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Load More Patients</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-            </>
-          )}
+              <EmptyState
+                isSearchResult={isSearchResult}
+                onClearFilters={handleClearFilters}
+                onAddPatient={handleAddPatient}
+              />
+            ) : (
+              <PatientList
+                patients={patients}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                onView={handleViewPatient}
+                onEdit={handleEditPatient}
+                onDelete={handleDelete}
+                onLoadMore={handleLoadMore}
+                getStatusColor={getStatusColor}
+              />
+            )}
           </div>
 
           {/* Modals */}
@@ -565,7 +189,7 @@ export default function CRMPage() {
                 setShowAddModal(false);
                 setSelectedPatient(null);
               }}
-              onSuccess={handlePatientCreated}
+              onSuccess={handlePatientCreatedWithModal}
             />
           )}
 
@@ -583,14 +207,6 @@ export default function CRMPage() {
             />
           )}
 
-          {/* Bulk upload not supported by CRM API */}
-          {/* {showBulkUploadModal && (
-            <BulkUploadModal
-              onClose={() => setShowBulkUploadModal(false)}
-              onSuccess={handleBulkUploadSuccess}
-            />
-          )} */}
-
           {showFilterModal && (
             <FilterModal
               onClose={() => setShowFilterModal(false)}
@@ -601,145 +217,5 @@ export default function CRMPage() {
         </div>
       </Layout>
     </PrivateRoute>
-  );
-}
-
-function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: {
-  patient: Patient;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  getStatusColor: (status: string) => string;
-}) {
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Generate initials if not present
-  const getInitials = (name?: string) => {
-    if (!name) return 'P';
-    const names = name.trim().split(' ');
-    if (names.length === 1) {
-      return names[0].charAt(0).toUpperCase();
-    }
-    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
-  };
-
-  // Generate avatar color if not present or invalid
-  const getAvatarColor = () => {
-    // Valid Tailwind color classes
-    const validColors = [
-      'bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-red-500',
-      'bg-orange-500', 'bg-indigo-500', 'bg-pink-500', 'bg-teal-500',
-      'bg-cyan-500', 'bg-yellow-500', 'bg-lime-500', 'bg-emerald-500',
-      'bg-violet-500', 'bg-fuchsia-500', 'bg-rose-500', 'bg-amber-500'
-    ];
-    
-    // Check if patient has a valid color
-    if (patient.avatarColor && validColors.includes(patient.avatarColor)) {
-      return patient.avatarColor;
-    }
-    
-    // Generate consistent color based on name
-    if (patient.name) {
-      const nameHash = patient.name.charCodeAt(0);
-      return validColors[nameHash % validColors.length];
-    }
-    
-    // Default color
-    return 'bg-blue-500';
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const initials = patient.initials || getInitials(patient.name);
-  const avatarColor = getAvatarColor();
-  
-  // Ensure initials are never empty
-  const displayInitials = initials && initials.trim() ? initials : getInitials(patient.name || 'Patient');
-
-  return (
-    <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0">
-          <div 
-            className={`w-10 h-10 md:w-12 md:h-12 ${avatarColor} rounded-full flex items-center justify-center text-white text-sm md:text-base font-semibold flex-shrink-0 shadow-sm`}
-            style={{ minWidth: '2.5rem', minHeight: '2.5rem' }}
-          >
-            <span className="select-none">{displayInitials}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-1.5 md:space-x-2 mb-1 flex-wrap">
-              <p className="font-semibold text-sm md:text-base text-gray-900 truncate">{patient.name}</p>
-              <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2.5 py-0.5 rounded-full border ${getStatusColor(patient.status)} flex-shrink-0`}>
-                {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
-              </span>
-            </div>
-            <p className="text-xs md:text-sm text-gray-600 mb-0.5 md:mb-1 truncate">{patient.age} years • {patient.phone}</p>
-            <p className="text-[10px] md:text-xs text-gray-500 truncate">{patient.email}</p>
-            <div className="flex items-center space-x-2 md:space-x-4 mt-1.5 md:mt-2 text-[10px] md:text-xs text-gray-500 flex-wrap">
-              <span>Last: {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}</span>
-              <span>Next: {patient.nextAppointment ? new Date(patient.nextAppointment).toLocaleDateString() : 'N/A'}</span>
-            </div>
-          </div>
-        </div>
-        <div className="relative flex-shrink-0" ref={menuRef}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
-            className="p-1.5 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center"
-            aria-label="More options"
-          >
-            <MoreVertical className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[140px] py-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView();
-                  setShowMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center space-x-2"
-              >
-                <Eye className="w-4 h-4 flex-shrink-0" />
-                <span>View</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                  setShowMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 flex items-center space-x-2"
-              >
-                <Edit className="w-4 h-4 flex-shrink-0" />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                  setShowMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center space-x-2 border-t border-gray-100"
-              >
-                <Trash2 className="w-4 h-4 flex-shrink-0" />
-                <span>Delete</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }

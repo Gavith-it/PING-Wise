@@ -6,6 +6,7 @@ import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut,
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
+import ToggleSwitch from '@/components/ui/toggle-switch';
 
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,7 +52,7 @@ export default function SettingsMenu() {
     <div className="relative inline-block" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-1.5 md:p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
         aria-label="Settings Menu"
       >
         <Menu className="w-5 h-5 md:w-6 md:h-6" />
@@ -154,9 +155,12 @@ export default function SettingsMenu() {
                     )}
                     <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Dark Theme</span>
                   </div>
-                  <div className={`relative w-11 h-6 rounded-full transition-colors ${isDark ? 'bg-primary' : 'bg-gray-300'}`}>
-                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${isDark ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </div>
+                  <ToggleSwitch
+                    enabled={isDark}
+                    onChange={toggleTheme}
+                    label="Dark Theme"
+                    size="md"
+                  />
                 </button>
 
                 <button

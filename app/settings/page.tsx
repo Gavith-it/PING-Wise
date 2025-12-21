@@ -5,6 +5,7 @@ import { ArrowLeft, Bell, Shield, Globe, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
+import ToggleSwitch from '@/components/ui/toggle-switch';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -38,29 +39,29 @@ export default function SettingsPage() {
             
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700">
-                <div>
+                <div className="flex-1">
                   <p className="text-base font-medium text-gray-900 dark:text-white">Push Notifications</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Receive push notifications</p>
                 </div>
-                <button
-                  onClick={() => setNotifications(!notifications)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${notifications ? 'bg-primary' : 'bg-gray-300'}`}
-                >
-                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${notifications ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
+                <ToggleSwitch
+                  enabled={notifications}
+                  onChange={setNotifications}
+                  label="Push Notifications"
+                  size="md"
+                />
               </div>
 
               <div className="flex items-center justify-between py-3">
-                <div>
+                <div className="flex-1">
                   <p className="text-base font-medium text-gray-900 dark:text-white">Email Notifications</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Receive email updates</p>
                 </div>
-                <button
-                  onClick={() => setEmailNotifications(!emailNotifications)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${emailNotifications ? 'bg-primary' : 'bg-gray-300'}`}
-                >
-                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${emailNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
+                <ToggleSwitch
+                  enabled={emailNotifications}
+                  onChange={setEmailNotifications}
+                  label="Email Notifications"
+                  size="md"
+                />
               </div>
             </div>
           </div>
