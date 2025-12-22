@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, memo } from 'react';
-import { MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
+import { memo } from 'react';
+import { Eye, Edit, X } from 'lucide-react';
 import { Patient } from '@/types';
 
 interface PatientCardProps {
@@ -13,8 +13,6 @@ interface PatientCardProps {
 }
 
 function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: PatientCardProps) {
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   // Generate initials if not present
   const getInitials = (name?: string) => {
@@ -51,16 +49,6 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: Pati
     return 'bg-blue-500';
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const initials = patient.initials || getInitials(patient.name);
   const avatarColor = getAvatarColor();
   
@@ -70,7 +58,7 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: Pati
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
-        <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0">
+        <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0 pr-2 md:pr-3">
           <div 
             className={`w-10 h-10 md:w-12 md:h-12 ${avatarColor} rounded-full flex items-center justify-center text-white text-sm md:text-base font-semibold flex-shrink-0 shadow-sm`}
             style={{ minWidth: '2.5rem', minHeight: '2.5rem' }}
@@ -78,7 +66,7 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: Pati
             <span className="select-none">{displayInitials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-1.5 md:space-x-2 mb-1 flex-wrap">
+            <div className="flex items-center space-x-1.5 md:space-x-2 mb-1">
               <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white truncate">{patient.name}</p>
               <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2.5 py-0.5 rounded-full border ${getStatusColor(patient.status)} flex-shrink-0`}>
                 {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
@@ -92,54 +80,37 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: Pati
             </div>
           </div>
         </div>
-        <div className="relative flex-shrink-0" ref={menuRef}>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setShowMenu(!showMenu);
+              onView();
             }}
-            className="p-1.5 md:p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center"
-            aria-label="More options"
+            className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+            title="View"
           >
-            <MoreVertical className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+            <Eye className="w-3 h-3 md:w-3.5 md:h-3.5" />
           </button>
-          {showMenu && (
-            <div className="absolute right-0 top-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 min-w-[140px] py-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView();
-                  setShowMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 flex items-center space-x-2"
-              >
-                <Eye className="w-4 h-4 flex-shrink-0" />
-                <span>View</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                  setShowMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 flex items-center space-x-2"
-              >
-                <Edit className="w-4 h-4 flex-shrink-0" />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                  setShowMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center space-x-2 border-t border-gray-100"
-              >
-                <Trash2 className="w-4 h-4 flex-shrink-0" />
-                <span>Delete</span>
-              </button>
-            </div>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+            title="Edit"
+          >
+            <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            title="Delete"
+          >
+            <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
+          </button>
         </div>
       </div>
     </div>

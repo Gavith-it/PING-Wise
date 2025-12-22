@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { X } from 'lucide-react';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import { crmPatientService } from '@/lib/services/crmPatientService';
-import { teamService } from '@/lib/services/api';
+import { teamApi } from '@/lib/services/teamApi';
+import { crmTeamsToUsers } from '@/lib/utils/teamAdapter';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Appointment, Patient, User } from '@/types';
@@ -17,8 +18,9 @@ interface AppointmentModalProps {
   onSuccess: (updatedAppointment?: Appointment) => void;
 }
 
-// Cache for patients and doctors data to avoid loading delay
-const formDataCache: {
+// Shared cache for patients and doctors data to avoid loading delay
+// This cache is shared across the entire application to prevent duplicate API calls
+export const formDataCache: {
   patients: Patient[];
   doctors: User[];
   timestamp: number;
@@ -31,7 +33,8 @@ const formDataCache: {
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Track if preload is in progress to prevent duplicate calls
-let preloadInProgress = false;
+// Export this so other modules can check if preload is in progress
+export let preloadInProgress = false;
 
 // Export function to preload and cache form data
 export async function preloadFormData() {
@@ -48,15 +51,25 @@ export async function preloadFormData() {
   if (!isCacheValid) {
     try {
       preloadInProgress = true;
-      const [patientsRes, doctorsRes] = await Promise.all([
+      const [patientsRes, teamsData] = await Promise.all([
         crmPatientService.getPatients({ limit: 50 }), // Use CRM patient service to match CRM page
-        teamService.getTeamMembers({ role: 'doctor' }),
+        teamApi.getTeams(), // Use real team API to get all teams
       ]);
       formDataCache.patients = patientsRes.data || [];
-      formDataCache.doctors = doctorsRes.data || [];
+      
+      // Convert CrmTeam to User and filter for doctors
+      const allUsers = crmTeamsToUsers(teamsData);
+      // Filter for doctors (role can be 'doctor', 'Doctor', 'physician', etc.)
+      const doctors = allUsers.filter(user => {
+        const role = (user.role || '').toLowerCase();
+        return role === 'doctor' || role === 'physician' || role === 'dr';
+      });
+      
+      formDataCache.doctors = doctors;
       formDataCache.timestamp = Date.now();
     } catch (error) {
       // Silently fail - cache will be loaded when modal opens
+      console.warn('Failed to preload form data:', error);
     } finally {
       preloadInProgress = false;
     }
@@ -104,12 +117,19 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       }
       // Load with pagination - start with 50 instead of 100 for better performance
       // Use CRM patient service to ensure IDs match with CRM page
-      const [patientsRes, doctorsRes] = await Promise.all([
+      const [patientsRes, teamsData] = await Promise.all([
         crmPatientService.getPatients({ limit: 50 }),
-        teamService.getTeamMembers({ role: 'doctor' }),
+        teamApi.getTeams(), // Use real team API to get all teams
       ]);
       const newPatients = patientsRes.data || [];
-      const newDoctors = doctorsRes.data || [];
+      
+      // Convert CrmTeam to User and filter for doctors
+      const allUsers = crmTeamsToUsers(teamsData);
+      // Filter for doctors (role can be 'doctor', 'Doctor', 'physician', etc.)
+      const newDoctors = allUsers.filter(user => {
+        const role = (user.role || '').toLowerCase();
+        return role === 'doctor' || role === 'physician' || role === 'dr';
+      });
       
       // Update cache
       formDataCache.patients = newPatients;

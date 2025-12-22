@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { CalendarCheck, Users, Clock, CalendarPlus, UserPlus, Plus, ChevronRight, DollarSign } from 'lucide-react';
@@ -27,7 +27,12 @@ const RupeeIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 import { dashboardService, patientService, teamService, walletService } from '@/lib/services/api';
+import { reportsApi, DailyReport } from '@/lib/services/reportsApi';
+import { crmAppointmentService } from '@/lib/services/appointmentService';
+import { crmPatientService } from '@/lib/services/crmPatientService';
 import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
+import { Patient } from '@/types';
 import CountUp from 'react-countup';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
@@ -193,11 +198,13 @@ const dashboardCache: {
   stats: any;
   activity: any;
   todayAppointments: Appointment[];
+  dailyReport: DailyReport | null;
   timestamp: number;
 } = {
   stats: null,
   activity: null,
   todayAppointments: [],
+  dailyReport: null,
   timestamp: 0,
 };
 
@@ -207,42 +214,202 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, loading: authLoading, token } = useAuth();
   const { addNotification } = useNotifications();
-  const [stats, setStats] = useState<any>(dashboardCache.stats);
-  const [activity, setActivity] = useState<any>(dashboardCache.activity);
-  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>(dashboardCache.todayAppointments);
+  
+  // Initialize state consistently for SSR (always start with null/empty to avoid hydration mismatch)
+  const [stats, setStats] = useState<any>(null);
+  const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
+  const [activity, setActivity] = useState<any>(null);
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   // Start with false loading - show page immediately, load data in background
   const [loading, setLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(!dashboardCache.stats); // Track if data is loading
-  const [dataLoaded, setDataLoaded] = useState(!!dashboardCache.stats); // Track if data has been loaded at least once
+  const [dataLoading, setDataLoading] = useState(true); // Start with true, will be set to false after hydration
+  const [dataLoaded, setDataLoaded] = useState(false); // Track if data has been loaded at least once
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [isMounted, setIsMounted] = useState(false); // Track if component is mounted (client-side only)
+  
+  // Prevent duplicate API calls
+  const isLoadingRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+  const isLoadingPatientsRef = useRef(false);
+  
+  // Handle client-side mounting to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+    
+    // After mounting, check cache and initialize state from cache if available
+    const cacheAge = Date.now() - dashboardCache.timestamp;
+    const isCacheValid = dashboardCache.dailyReport && cacheAge < CACHE_DURATION;
+    
+    if (isCacheValid) {
+      // Use cached data immediately for instant display
+      const cachedReport = dashboardCache.dailyReport as DailyReport;
+      setDailyReport(cachedReport);
+      setStats(dashboardCache.stats);
+      
+      // Recalculate activity from cached dailyReport to ensure consistency
+      const totalCustomers = cachedReport?.totalCustomers || cachedReport?.total_customers || 0;
+      const activeCustomers = cachedReport?.activeCustomers || cachedReport?.active_customers || 0;
+      const bookedCustomers = cachedReport?.bookedCustomers || cachedReport?.booked_customers || 0;
+      const followupCustomers = cachedReport?.followupCustomers || cachedReport?.followup_customers || 0;
+      
+      const cachedActivity = {
+        total: totalCustomers,
+        active: {
+          count: activeCustomers,
+          percentage: totalCustomers > 0 ? Math.round((activeCustomers / totalCustomers) * 100) : 0
+        },
+        booked: {
+          count: bookedCustomers,
+          percentage: totalCustomers > 0 ? Math.round((bookedCustomers / totalCustomers) * 100) : 0
+        },
+        followUp: {
+          count: followupCustomers,
+          percentage: totalCustomers > 0 ? Math.round((followupCustomers / totalCustomers) * 100) : 0
+        }
+      };
+      
+      setActivity(cachedActivity);
+      setTodayAppointments(dashboardCache.todayAppointments);
+      setDataLoading(false);
+      setDataLoaded(true);
+    } else {
+      setDataLoading(false);
+    }
+  }, []);
 
   const loadDashboardData = useCallback(async (showLoadingSpinner = false) => {
+    // Prevent duplicate calls
+    if (isLoadingRef.current) {
+      return; // Already loading, skip duplicate call
+    }
+    
     try {
+      isLoadingRef.current = true;
+      
       // Only show spinner if explicitly requested (for refresh actions)
       // Don't block UI on initial load
       if (showLoadingSpinner) {
         setDataLoading(true);
       }
       
-      const [statsData, activityData, appointmentsData] = await Promise.all([
+      // Get today's date in yyyy-MM-dd format for filtering
+      const todayDateStr = format(new Date(), 'yyyy-MM-dd');
+      
+      // Fetch dailyReport FIRST (real data) - this is the primary source for KPIs
+      const dailyReportData = await reportsApi.getDailyReport().catch((error) => {
+        console.warn('Failed to load daily report (non-critical):', error);
+        return {};
+      });
+      
+      // Then fetch other data in parallel (no need for activity API - use dailyReport data)
+      const [statsData, appointmentsData] = await Promise.all([
         dashboardService.getStats(),
-        dashboardService.getActivity(),
-        dashboardService.getTodayAppointments(),
+        // Use real backend appointments API instead of mock data
+        crmAppointmentService.getAppointments({ date: todayDateStr }).catch((error) => {
+          console.warn('Failed to load today appointments (non-critical):', error);
+          return { success: true, data: [] };
+        }),
       ]);
 
       const newStats = statsData.data;
-      const newActivity = activityData.data;
-      const newAppointments = appointmentsData.data || [];
+      
+      // Map dailyReport data to activity chart format (real backend data)
+      // Type guard to ensure dailyReportData is DailyReport
+      const report = dailyReportData as DailyReport;
+      const totalCustomers = report?.totalCustomers || report?.total_customers || 0;
+      const activeCustomers = report?.activeCustomers || report?.active_customers || 0;
+      const bookedCustomers = report?.bookedCustomers || report?.booked_customers || 0;
+      const followupCustomers = report?.followupCustomers || report?.followup_customers || 0;
+      
+      // Calculate activity data from real backend data
+      const newActivity = {
+        total: totalCustomers,
+        active: {
+          count: activeCustomers,
+          percentage: totalCustomers > 0 ? Math.round((activeCustomers / totalCustomers) * 100) : 0
+        },
+        booked: {
+          count: bookedCustomers,
+          percentage: totalCustomers > 0 ? Math.round((bookedCustomers / totalCustomers) * 100) : 0
+        },
+        followUp: {
+          count: followupCustomers,
+          percentage: totalCustomers > 0 ? Math.round((followupCustomers / totalCustomers) * 100) : 0
+        }
+      };
+      // Filter appointments for today only (backend may return appointments for the date)
+      let allAppointments = appointmentsData.data || [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      // Filter appointments that are scheduled for today
+      let filteredAppointments = allAppointments.filter((apt: Appointment) => {
+        const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
+        return aptDate >= today && aptDate < tomorrow;
+      });
+      
+      // Enrich appointments with patient data (so patient names show correctly)
+      if (filteredAppointments.length > 0 && !isLoadingPatientsRef.current) {
+        try {
+          isLoadingPatientsRef.current = true;
+          
+          // Get all unique patient IDs from appointments
+          const patientIds = filteredAppointments
+            .map(apt => {
+              if (typeof apt.patient === 'string') return apt.patient;
+              if (typeof apt.patient === 'object' && apt.patient?.id) return apt.patient.id;
+              return null;
+            })
+            .filter((id): id is string => id !== null);
+          
+          if (patientIds.length > 0) {
+            // Fetch patient data (only once, prevent duplicate calls)
+            const patientsResponse = await crmPatientService.getPatients({ limit: 100 });
+            const patients: Patient[] = patientsResponse.data || [];
+            
+            // Create a map of patient ID to patient object
+            const patientMap = new Map<string, Patient>();
+            patients.forEach(patient => {
+              if (patient.id) {
+                patientMap.set(patient.id, patient);
+              }
+            });
+            
+            // Enrich appointments with patient data
+            filteredAppointments = filteredAppointments.map(apt => {
+              const patientId = typeof apt.patient === 'string' ? apt.patient : apt.patient?.id;
+              if (patientId && patientMap.has(patientId)) {
+                return { ...apt, patient: patientMap.get(patientId)! };
+              }
+              return apt;
+            });
+          }
+          
+          isLoadingPatientsRef.current = false;
+        } catch (error) {
+          console.warn('Failed to enrich appointments with patient data (non-critical):', error);
+          isLoadingPatientsRef.current = false;
+          // Continue without enrichment - appointments will still show but without patient names
+        }
+      }
+      
+      const newAppointments = filteredAppointments;
+      const newDailyReport = dailyReportData || {};
 
-      // Update cache
+      // Update cache (store dailyReport for instant display on next visit)
       dashboardCache.stats = newStats;
       dashboardCache.activity = newActivity;
       dashboardCache.todayAppointments = newAppointments;
+      dashboardCache.dailyReport = newDailyReport; // Store dailyReport in cache
       dashboardCache.timestamp = Date.now();
 
       // Update state - this will trigger re-render with real data
+      // IMPORTANT: Update dailyReport FIRST so KPIs show real data immediately
+      setDailyReport(newDailyReport);
       setStats(newStats);
       setActivity(newActivity);
       setTodayAppointments(newAppointments);
@@ -259,6 +426,7 @@ export default function DashboardPage() {
       // Mark as loaded even on error so we don't show loading forever
       setDataLoaded(true);
     } finally {
+      isLoadingRef.current = false; // Reset loading flag
       if (showLoadingSpinner) {
         setDataLoading(false);
       } else {
@@ -269,6 +437,16 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    // Only run on client-side after mounting to avoid hydration issues
+    if (!isMounted) {
+      return;
+    }
+    
+    // Prevent duplicate calls (React Strict Mode can trigger useEffect twice)
+    if (hasLoadedRef.current) {
+      return; // Already loaded, skip duplicate call
+    }
+    
     // Trust login state - if we have token and user, we're authenticated
     // Don't wait for authLoading if we just logged in (token exists = authenticated)
     // This allows instant dashboard display after login
@@ -277,13 +455,42 @@ export default function DashboardPage() {
     const shouldLoad = isAuthenticatedNow || (!authLoading && isAuthenticated && user);
     
     if (shouldLoad) {
+      hasLoadedRef.current = true; // Mark as loaded to prevent duplicate calls
+      
       const cacheAge = Date.now() - dashboardCache.timestamp;
-      const isCacheValid = dashboardCache.stats && cacheAge < CACHE_DURATION;
+      // Check cache validity using dailyReport (primary source for real data)
+      const isCacheValid = dashboardCache.dailyReport && cacheAge < CACHE_DURATION;
       
       // If we have valid cached data, use it immediately (instant display)
       if (isCacheValid) {
+        // Use cached dailyReport FIRST (real data) for instant display
+        const cachedReport = dashboardCache.dailyReport as DailyReport;
+        setDailyReport(cachedReport);
         setStats(dashboardCache.stats);
-        setActivity(dashboardCache.activity);
+        
+        // Recalculate activity from cached dailyReport to ensure consistency
+        const totalCustomers = cachedReport?.totalCustomers || cachedReport?.total_customers || 0;
+        const activeCustomers = cachedReport?.activeCustomers || cachedReport?.active_customers || 0;
+        const bookedCustomers = cachedReport?.bookedCustomers || cachedReport?.booked_customers || 0;
+        const followupCustomers = cachedReport?.followupCustomers || cachedReport?.followup_customers || 0;
+        
+        const cachedActivity = {
+          total: totalCustomers,
+          active: {
+            count: activeCustomers,
+            percentage: totalCustomers > 0 ? Math.round((activeCustomers / totalCustomers) * 100) : 0
+          },
+          booked: {
+            count: bookedCustomers,
+            percentage: totalCustomers > 0 ? Math.round((bookedCustomers / totalCustomers) * 100) : 0
+          },
+          followUp: {
+            count: followupCustomers,
+            percentage: totalCustomers > 0 ? Math.round((followupCustomers / totalCustomers) * 100) : 0
+          }
+        };
+        
+        setActivity(cachedActivity);
         setTodayAppointments(dashboardCache.todayAppointments);
         setDataLoading(false);
         setDataLoaded(true); // Mark as loaded since we have cached data
@@ -300,7 +507,7 @@ export default function DashboardPage() {
       // Preload patients and doctors data for appointment modal (in background)
       loadPreloadFunction();
     }
-  }, [authLoading, isAuthenticated, user, token, loadDashboardData]);
+  }, [isMounted, authLoading, isAuthenticated, user, token, loadDashboardData]);
 
   // Fetch wallet balance only on Dashboard page
   useEffect(() => {
@@ -369,39 +576,48 @@ export default function DashboardPage() {
   }, [addNotification, loadDashboardData]);
 
   // Memoize KPI cards to prevent unnecessary re-renders
-  const kpiCards = useMemo(() => (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
-      <KPICard
-        icon={CalendarCheck}
-        value={stats?.totalBookings?.value || 0}
-        label="Total Bookings"
-        change={stats?.totalBookings?.change || 0}
-        trend={stats?.totalBookings?.trend}
-      />
-      <KPICard
-        icon={Users}
-        value={stats?.totalPatients?.value || 0}
-        label="Total Patients"
-        change={stats?.totalPatients?.change || 0}
-        trend={stats?.totalPatients?.trend}
-      />
-      <KPICard
-        icon={Clock}
-        value={stats?.followUps?.value || 0}
-        label="Follow-ups"
-        change={stats?.followUps?.change || 0}
-        trend={stats?.followUps?.trend}
-      />
-      <KPICard
-        icon={RupeeIcon}
-        value={stats?.revenue?.value || 0}
-        label="Revenue"
-        change={stats?.revenue?.change || 0}
-        trend={stats?.revenue?.trend}
-        isCurrency={true}
-      />
-    </div>
-  ), [stats]);
+  // Use real data from dailyReport API when available, fallback to stats
+  const kpiCards = useMemo(() => {
+    // Map daily report data to KPI values (use real backend data)
+    const totalBookings = dailyReport?.totalAppointments || dailyReport?.total_appointments || stats?.totalBookings?.value || 0;
+    const totalPatients = dailyReport?.totalCustomers || dailyReport?.total_patients || stats?.totalPatients?.value || 0;
+    const followUps = dailyReport?.followupCustomers || dailyReport?.followup_customers || stats?.followUps?.value || 0;
+    
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+        <KPICard
+          icon={CalendarCheck}
+          value={totalBookings}
+          label="Total Bookings"
+          change={undefined}
+          trend={undefined}
+        />
+        <KPICard
+          icon={Users}
+          value={totalPatients}
+          label="Total Patients"
+          change={undefined}
+          trend={undefined}
+        />
+        <KPICard
+          icon={Clock}
+          value={followUps}
+          label="Follow-ups"
+          change={undefined}
+          trend={undefined}
+        />
+        <KPICard
+          icon={RupeeIcon}
+          value={0}
+          label="Revenue"
+          change={undefined}
+          trend={undefined}
+          isCurrency={true}
+          isComingSoon={true}
+        />
+      </div>
+    );
+  }, [stats, dailyReport]);
 
   // Memoize appointment cards list
   const appointmentCards = useMemo(() => (

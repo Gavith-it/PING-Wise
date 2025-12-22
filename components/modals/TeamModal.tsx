@@ -17,7 +17,6 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
   const [formData, setFormData] = useState({
     name: teamMember?.name || '',
     email: teamMember?.email || '',
-    password: '',
     role: (teamMember?.role || 'staff') as 'admin' | 'doctor' | 'staff',
     department: teamMember?.department || '',
     specialization: teamMember?.specialization || '',
@@ -28,15 +27,26 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
   useEffect(() => {
     if (teamMember) {
+      // Edit mode - populate with existing data
       setFormData({
         name: teamMember.name || '',
         email: teamMember.email || '',
-        password: '',
         role: teamMember.role || 'staff',
         department: teamMember.department || '',
         specialization: teamMember.specialization || '',
         phone: teamMember.phone || '',
         experience: teamMember.experience || '',
+      });
+    } else {
+      // Add mode - reset form to defaults
+      setFormData({
+        name: '',
+        email: '',
+        role: 'staff',
+        department: '',
+        specialization: '',
+        phone: '',
+        experience: '',
       });
     }
   }, [teamMember]);
@@ -105,37 +115,21 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 required
                 value={formData.name}
                 onChange={handleFieldChange('name')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleFieldChange('email')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-                />
-              </div>
-              {!teamMember && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Password *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={handleFieldChange('password')}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-                  />
-                </div>
-              )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email Address *
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleFieldChange('email')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -168,47 +162,42 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               </div>
             </div>
 
-            {formData.role === 'doctor' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Specialization
-                </label>
-                <input
-                  type="text"
-                  value={formData.specialization}
-                  onChange={handleFieldChange('specialization')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-                  placeholder="e.g., Cardiologist"
-                />
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Specialization
+              </label>
+              <input
+                type="text"
+                value={formData.specialization}
+                onChange={handleFieldChange('specialization')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+                placeholder="e.g., Cardiology"
+              />
+            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleFieldChange('phone')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-                />
-              </div>
-              {formData.role === 'doctor' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Experience
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.experience}
-                    onChange={handleFieldChange('experience')}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-                    placeholder="e.g., 5 years"
-                  />
-                </div>
-              )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={handleFieldChange('phone')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Experience
+              </label>
+              <input
+                type="text"
+                value={formData.experience}
+                onChange={handleFieldChange('experience')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+                placeholder="e.g., 3"
+              />
             </div>
 
             <div className="flex space-x-3 pt-4">
