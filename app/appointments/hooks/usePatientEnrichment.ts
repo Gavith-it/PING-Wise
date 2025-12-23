@@ -3,10 +3,7 @@ import { crmPatientService } from '@/lib/services/crmPatientService';
 import { Appointment, Patient } from '@/types';
 import { preloadFormData, formDataCache, preloadInProgress } from '@/components/modals/AppointmentModal';
 
-/**
- * Custom hook to enrich appointments with patient data
- * Uses shared cache from AppointmentModal to avoid duplicate API calls
- */
+// Enriches appointments with patient data
 export function usePatientEnrichment() {
   const [patientsCache, setPatientsCache] = useState<Patient[]>([]);
 

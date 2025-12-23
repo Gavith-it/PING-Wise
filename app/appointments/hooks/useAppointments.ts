@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { Appointment } from '@/types';
 import { preloadFormData } from '@/components/modals/AppointmentModal';
 
-// Cache for appointments data to enable instant navigation
+// Appointments cache
 const appointmentsCache: {
   appointments: Record<string, Appointment[]>;
   monthAppointments: Record<string, Appointment[]>;
@@ -77,8 +77,7 @@ export function useAppointments({
       // Enrich appointments with patient data
       newAppointments = await enrichAppointmentsWithPatients(newAppointments);
       
-      // IMPORTANT: Filter appointments to only include those for the exact selected date
-      // This ensures appointments don't show up on wrong dates due to backend timezone issues
+      // Filter to exact selected date (handles timezone issues)
       const filteredAppointments = newAppointments.filter(apt => {
         const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
         return isSameDay(aptDate, selectedDate);

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Patient } from '@/types';
 import { FilterOptions } from '@/components/modals/FilterModal';
 
-// Cache for patients data to enable instant navigation
+// Patients cache
 const patientsCache: {
   patients: Patient[];
   total: number;
@@ -20,10 +20,7 @@ const patientsCache: {
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 const LIMIT = 10;
 
-/**
- * Invalidate the patients cache
- * Call this when patients are added/updated from other pages (like dashboard)
- */
+// Invalidate cache when patients are added/updated elsewhere
 export function invalidatePatientsCache(): void {
   patientsCache.patients = [];
   patientsCache.total = 0;
@@ -51,7 +48,6 @@ interface UsePatientsReturn {
 }
 
 export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters }: UsePatientsParams): UsePatientsReturn {
-  // Initialize with cached data for instant display
   const [patients, setPatients] = useState<Patient[]>(patientsCache.patients);
   const [loading, setLoading] = useState(patientsCache.patients.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -71,11 +67,9 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     try {
       isLoadingRef.current = true;
       
-      // Only show loading spinner on initial load (when no data exists)
-      // Use functional update to get current patients length without dependency
+      // Show loading spinner on initial load
       if (reset && !skipLoadingSpinner) {
         setLoading(prev => {
-          // Only show loading if we don't have patients
           setPatients(currentPatients => {
             if (currentPatients.length === 0) {
               return currentPatients; // Will be set below
@@ -139,7 +133,7 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     }
   }, [debouncedSearchTerm, statusFilter, advancedFilters, page]);
 
-  // Main effect to load patients - optimized to prevent duplicate calls
+  // Load patients effect
   useEffect(() => {
     // Create filter key to check cache
     const filterKey = JSON.stringify({ searchTerm: debouncedSearchTerm, statusFilter, advancedFilters });
@@ -155,12 +149,11 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
                         patientsCache.filters === filterKey && 
                         cacheAge < CACHE_DURATION;
     
-    // Only show loading on initial load, not on filter changes
     const isInitialLoad = !hasInitialized.current;
     const hasCachedData = patientsCache.patients.length > 0;
     
     if (isCacheValid && isInitialLoad) {
-      // Use cached data immediately for fast display
+      // Use cached data
       setPatients(patientsCache.patients);
       setTotal(patientsCache.total);
       setLoading(false);

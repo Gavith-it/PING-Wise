@@ -6,9 +6,7 @@ interface TeamFilters {
   department: string;
 }
 
-/**
- * Custom hook to filter team members based on search query and filters
- */
+// Filters team members by search and filters
 export function useTeamFilters(
   teamMembers: User[],
   searchQuery: string,

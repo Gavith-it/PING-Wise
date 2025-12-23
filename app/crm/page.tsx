@@ -32,7 +32,6 @@ export default function CRMPage() {
   
   const listContainerRef = useRef<HTMLDivElement>(null);
   
-  // Use custom hooks
   const {
     patients,
     loading,

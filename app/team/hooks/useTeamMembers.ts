@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { User } from '@/types';
 import { generateInitials, generateAvatarColor } from '../utils/teamUtils';
 
-// Cache for team data to enable instant navigation
+// Team cache
 const teamCache: {
   teamMembers: User[];
   filters: string;
@@ -109,7 +109,7 @@ export function useTeamMembers({
     }
   }, [filter, filters]);
 
-  // Main effect to load team members
+  // Load team members effect
   useEffect(() => {
     const filterKey = JSON.stringify({ filter, filters });
     

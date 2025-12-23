@@ -2,9 +2,7 @@ import { useState, useCallback } from 'react';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import { Appointment } from '@/types';
 
-/**
- * Custom hook to handle appointment edit operations with background refresh
- */
+// Handles appointment edit operations
 export function useAppointmentEdit(
   enrichAppointmentsWithPatients: (appointments: Appointment[]) => Promise<Appointment[]>
 ) {

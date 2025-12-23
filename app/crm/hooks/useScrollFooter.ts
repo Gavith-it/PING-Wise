@@ -1,10 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
 
-/**
- * Custom hook to handle scroll visibility for footer
- * @param containerRef - Ref to the scrollable container
- */
+// Handles footer visibility on scroll
 export function useScrollFooter(containerRef: React.RefObject<HTMLDivElement>) {
   const { setIsVisible: setFooterVisible } = useFooterVisibility();
   const lastScrollY = useRef(0);

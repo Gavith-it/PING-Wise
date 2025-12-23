@@ -34,6 +34,8 @@ class TeamApiService {
       'https://pw-crm-gateway-1.onrender.com';
     
     // Proxy URL (Next.js API route)
+    // The route is /api/teams/[...path], so we use /api/teams as baseURL
+    // When calling empty string '', it becomes /api/teams/ which matches the catch-all route
     this.baseURL = '/api/teams';
     
     if (!isBrowser) {
@@ -143,6 +145,7 @@ class TeamApiService {
     // - No response (network error)
     // - Message containing "CORS" or "cross-origin"
     // - Code like "ERR_NETWORK" or "ERR_FAILED"
+    // - Status 0 (network error)
     if (!error.response) {
       const message = error.message?.toLowerCase() || '';
       const code = error.code?.toLowerCase() || '';
@@ -153,6 +156,10 @@ class TeamApiService {
         code === 'err_network' ||
         code === 'err_failed'
       );
+    }
+    // Also check for CORS-related status codes (status 0 indicates network error)
+    if (error.response.status === 0) {
+      return true;
     }
     return false;
   }
@@ -173,7 +180,12 @@ class TeamApiService {
     // In browser: try direct call first, fallback to proxy
     if (this.useDirectCall) {
       try {
-        return await requestFn(this.directApi);
+        const result = await requestFn(this.directApi);
+        // If direct call succeeds, log it (in development)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Team API] Direct backend call succeeded');
+        }
+        return result;
       } catch (error: any) {
         // If CORS error, switch to proxy and retry
         if (this.isCorsError(error as AxiosError)) {
@@ -182,7 +194,14 @@ class TeamApiService {
           // Retry with proxy
           return requestFn(this.proxyApi);
         }
-        // If not CORS error, throw it
+        // For other errors (like 502, 404, etc.), still try proxy as fallback
+        // This handles cases where backend is temporarily unavailable
+        if (error.response?.status >= 500 || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+          console.warn('[Team API] Backend error detected, falling back to proxy');
+          this.useDirectCall = false;
+          return requestFn(this.proxyApi);
+        }
+        // If not CORS or server error, throw it
         throw error;
       }
     } else {
@@ -218,9 +237,12 @@ class TeamApiService {
    */
   async getTeams(): Promise<CrmApiListResponse<CrmTeam>> {
     try {
-      const response = await this.makeRequestWithFallback((api) => 
-        api.get<any>('/teams')
-      ) as unknown as any;
+      const response = await this.makeRequestWithFallback((api) => {
+        // For direct API: baseURL is backend URL, so use '/teams'
+        // For proxy API: baseURL is '/api/teams', so use '' to get '/api/teams'
+        const isDirectApi = api === this.directApi;
+        return api.get<any>(isDirectApi ? '/teams' : '');
+      }) as unknown as any;
       
       // Handle null/undefined response
       if (response === null || response === undefined) {
@@ -275,9 +297,12 @@ class TeamApiService {
    * GET /teams/{id} (direct) or /api/teams/{id} (proxy fallback)
    */
   async getTeam(id: number | string): Promise<CrmApiSingleResponse<CrmTeam>> {
-    const response = await this.makeRequestWithFallback((api) => 
-      api.get<any>(`/teams/${id}`)
-    ) as unknown as any;
+    const response = await this.makeRequestWithFallback((api) => {
+      // For direct API: baseURL is backend URL, so use '/teams/{id}'
+      // For proxy API: baseURL is '/api/teams', so use '/{id}' to get '/api/teams/{id}'
+      const isDirectApi = api === this.directApi;
+      return api.get<any>(isDirectApi ? `/teams/${id}` : `/${id}`);
+    }) as unknown as any;
     return response.data || response; // Handle wrapped or direct response
   }
 
@@ -286,9 +311,12 @@ class TeamApiService {
    * POST /teams (direct) or /api/teams (proxy fallback)
    */
   async createTeam(data: CrmTeamRequest): Promise<CrmApiSingleResponse<CrmTeam>> {
-    const response = await this.makeRequestWithFallback((api) => 
-      api.post<any>('/teams', data)
-    ) as unknown as any;
+    const response = await this.makeRequestWithFallback((api) => {
+      // For direct API: baseURL is backend URL, so use '/teams'
+      // For proxy API: baseURL is '/api/teams', so use '' to get '/api/teams'
+      const isDirectApi = api === this.directApi;
+      return api.post<any>(isDirectApi ? '/teams' : '', data);
+    }) as unknown as any;
     return response.data || response; // Handle wrapped or direct response
   }
 
@@ -297,9 +325,12 @@ class TeamApiService {
    * PUT /teams/{id} (direct) or /api/teams/{id} (proxy fallback)
    */
   async updateTeam(id: number | string, data: CrmTeamRequest): Promise<CrmApiSingleResponse<CrmTeam>> {
-    const response = await this.makeRequestWithFallback((api) => 
-      api.put<any>(`/teams/${id}`, data)
-    ) as unknown as any;
+    const response = await this.makeRequestWithFallback((api) => {
+      // For direct API: baseURL is backend URL, so use '/teams/{id}'
+      // For proxy API: baseURL is '/api/teams', so use '/{id}' to get '/api/teams/{id}'
+      const isDirectApi = api === this.directApi;
+      return api.put<any>(isDirectApi ? `/teams/${id}` : `/${id}`, data);
+    }) as unknown as any;
     return response.data || response; // Handle wrapped or direct response
   }
 
@@ -309,9 +340,12 @@ class TeamApiService {
    * Returns a string according to Swagger
    */
   async deleteTeam(id: number | string): Promise<CrmApiStringResponse> {
-    const response = await this.makeRequestWithFallback((api) => 
-      api.delete<any>(`/teams/${id}`)
-    ) as unknown as any;
+    const response = await this.makeRequestWithFallback((api) => {
+      // For direct API: baseURL is backend URL, so use '/teams/{id}'
+      // For proxy API: baseURL is '/api/teams', so use '/{id}' to get '/api/teams/{id}'
+      const isDirectApi = api === this.directApi;
+      return api.delete<any>(isDirectApi ? `/teams/${id}` : `/${id}`);
+    }) as unknown as any;
     return response.data || response; // Handle wrapped or direct response
   }
 }

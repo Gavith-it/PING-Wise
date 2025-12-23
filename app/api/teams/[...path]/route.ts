@@ -43,7 +43,9 @@ async function handleRequest(
   method: string
 ) {
   try {
-    // Reconstruct the path (e.g., ['123'] -> '/teams/123')
+    // Reconstruct the path
+    // If params.path is empty (calling /api/teams/), use '/teams'
+    // If params.path has values (calling /api/teams/123), use '/teams/123'
     const path = params.path && params.path.length > 0 
       ? '/teams/' + params.path.join('/')
       : '/teams';

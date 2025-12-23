@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Appointment } from '@/types';
 
-/**
- * Custom hook to filter appointments based on search and status
- */
+// Filters appointments by search and status
 export function useAppointmentFilters(
   appointments: Appointment[],
   searchTerm: string,

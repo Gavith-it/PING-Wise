@@ -111,18 +111,37 @@ curl -X POST http://localhost:3000/api/auth/register \
 PING/
 ├── app/                    # Next.js App Router
 │   ├── api/               # Backend API Routes
-│   ├── dashboard/         # Dashboard page
-│   ├── login/             # Login page
-│   ├── crm/               # CRM/Patients page
+│   ├── dashboard/          # Dashboard page
+│   │   ├── components/    # Dashboard-specific components
+│   │   ├── hooks/         # Dashboard custom hooks
+│   │   ├── utils/         # Dashboard utilities
+│   │   └── page.tsx       # Main dashboard page
 │   ├── appointments/      # Appointments page
-│   ├── campaigns/         # Campaigns page
+│   │   ├── components/    # Appointment-specific components
+│   │   ├── hooks/         # Appointment custom hooks
+│   │   ├── utils/         # Appointment utilities
+│   │   └── page.tsx       # Main appointments page
 │   ├── team/              # Team page
+│   │   ├── components/    # Team-specific components
+│   │   ├── hooks/         # Team custom hooks
+│   │   ├── utils/         # Team utilities
+│   │   └── page.tsx       # Main team page
+│   ├── crm/               # CRM/Patients page
+│   │   ├── components/    # CRM-specific components
+│   │   ├── hooks/         # CRM custom hooks
+│   │   └── page.tsx       # Main CRM page
+│   ├── campaigns/         # Campaigns page
+│   │   ├── components/    # Campaign-specific components
+│   │   ├── hooks/         # Campaign custom hooks
+│   │   ├── utils/         # Campaign utilities
+│   │   └── page.tsx       # Main campaigns page
+│   ├── login/             # Login page
 │   ├── wallet/            # Wallet page
 │   ├── profile/           # Profile page
 │   ├── settings/          # Settings pages
 │   ├── layout.tsx         # Root layout
 │   └── page.tsx           # Home page
-├── components/            # React Components
+├── components/            # Shared React Components
 │   ├── ui/                # UI components
 │   ├── modals/            # Modal components
 │   ├── charts/            # Chart components
@@ -184,6 +203,57 @@ PING/
 
 ---
 
+## 🏗️ Refactored Architecture Pattern
+
+The codebase has been refactored to follow a modular, maintainable structure:
+
+### Structure Pattern
+Each major page follows this pattern:
+```
+app/[page-name]/
+├── page.tsx           # Main page component (orchestrates hooks & components)
+├── hooks/             # Custom React hooks (business logic & data fetching)
+│   ├── use[Feature].ts
+│   └── ...
+├── components/        # Page-specific components
+│   ├── [Component].tsx
+│   └── ...
+└── utils/             # Page-specific utility functions
+    ├── [utility].ts
+    └── ...
+```
+
+### Benefits of This Structure
+1. **Separation of Concerns**: Business logic in hooks, UI in components
+2. **Reusability**: Hooks can be reused across components
+3. **Testability**: Each hook and component can be tested independently
+4. **Maintainability**: Easy to find and update related code
+5. **Performance**: Hooks enable better caching and optimization
+6. **Type Safety**: Full TypeScript support throughout
+
+### How It Works
+1. **Page Component** (`page.tsx`): 
+   - Imports and uses custom hooks
+   - Renders page-specific components
+   - Handles user interactions and modals
+
+2. **Custom Hooks** (`hooks/`):
+   - Manage data fetching with caching
+   - Handle state management
+   - Provide loading and error states
+   - Expose methods for CRUD operations
+
+3. **Components** (`components/`):
+   - Receive data and callbacks as props
+   - Focus on presentation
+   - Are reusable and composable
+
+4. **Utils** (`utils/`):
+   - Helper functions specific to the page
+   - Formatting, calculations, transformations
+
+---
+
 ## 🗺️ Page-by-Page Code Mapping
 
 ### 1. **Home Page** (`/`)
@@ -221,7 +291,20 @@ PING/
 ### 3. **Dashboard Page** (`/dashboard`)
 - **File Location**: `app/dashboard/page.tsx`
 - **Purpose**: Main dashboard with KPIs, charts, and today's appointments
-- **Components Used**:
+- **Architecture**: Refactored with custom hooks and components
+- **Custom Hooks** (in `app/dashboard/hooks/`):
+  - `useDashboardStats.ts` - Manages dashboard statistics and activity data
+  - `useTodayAppointments.ts` - Manages today's appointments
+  - `useWalletBalance.ts` - Manages wallet balance
+- **Components** (in `app/dashboard/components/`):
+  - `KPICards.tsx` - Displays KPI cards with stats
+  - `KPICard.tsx` - Individual KPI card component
+  - `TodayAppointmentsList.tsx` - List of today's appointments
+  - `TodayAppointmentCard.tsx` - Individual appointment card
+  - `RupeeIcon.tsx` - Custom rupee currency icon
+- **Utils** (in `app/dashboard/utils/`):
+  - `preloadUtils.ts` - Preloads form data for modals
+- **Shared Components Used**:
   - `Layout` from `components/Layout.tsx`
   - `PrivateRoute` from `components/PrivateRoute.tsx`
   - `ActivityChart` from `components/charts/ActivityChart.tsx`
@@ -230,26 +313,20 @@ PING/
   - `FloatingButton` from `components/ui/floating-button.tsx`
 - **Backend API Calls**:
   - **Services Used**:
-    - `dashboardService.getStats()` → `GET /api/dashboard/stats`
-    - `dashboardService.getActivity()` → `GET /api/dashboard/activity`
-    - `dashboardService.getTodayAppointments()` → `GET /api/dashboard/today-appointments`
-    - `walletService.getBalance()` → `GET /api/wallet/balance`
-    - `patientService.getPatients()` → `GET /api/patients`
-    - `teamService.getTeamMembers()` → `GET /api/team`
+    - `reportsApi.getDailyReport()` → `GET /api/reports/daily` (via `useDashboardStats`)
+    - `crmAppointmentService.getAppointments()` → `GET /api/appointments` (via `useTodayAppointments`)
+    - `walletService.getBalance()` → `GET /api/wallet/balance` (via `useWalletBalance`)
   - **API Routes**:
-    - `app/api/dashboard/stats/route.ts`
-    - `app/api/dashboard/activity/route.ts`
-    - `app/api/dashboard/today-appointments/route.ts`
-    - `app/api/wallet/balance/route.ts`
-    - `app/api/patients/route.ts`
-    - `app/api/team/route.ts`
+    - `app/api/reports/[...path]/route.ts` - Reports API proxy
+    - `app/api/appointments/route.ts` - Appointments API
+    - `app/api/wallet/balance/route.ts` - Wallet balance API
 - **Data Flow**:
   ```
-  Page Load → Multiple API calls in parallel
-  → Dashboard Stats (KPIs)
-  → Activity Data (for charts)
-  → Today's Appointments
-  → Wallet Balance
+  Page Load → Custom hooks initialize
+  → useDashboardStats → Fetches stats and activity
+  → useTodayAppointments → Fetches today's appointments
+  → useWalletBalance → Fetches wallet balance
+  → Components render with data
   → Display in UI with charts and cards
   ```
 
@@ -258,14 +335,25 @@ PING/
 ### 4. **CRM/Patients Page** (`/crm`)
 - **File Location**: `app/crm/page.tsx`
 - **Purpose**: Patient management (CRUD operations)
-- **Components Used**:
+- **Architecture**: Uses custom hooks and components
+- **Custom Hooks** (in `app/crm/hooks/`):
+  - `usePatients.ts` - Manages patient data fetching, pagination, and caching
+  - `useDebounce.ts` - Debounces search input
+  - `useScrollFooter.ts` - Handles infinite scroll and footer visibility
+- **Components** (in `app/crm/components/`):
+  - `PatientList.tsx` - List of patients with infinite scroll
+  - `PatientCard.tsx` - Individual patient card with actions
+  - `PatientSearchBar.tsx` - Search and filter bar
+  - `PatientStatusFilters.tsx` - Status filter buttons
+  - `EmptyState.tsx` - Empty state when no patients found
+- **Shared Components Used**:
   - `Layout` from `components/Layout.tsx`
   - `PrivateRoute` from `components/PrivateRoute.tsx`
   - `CRMPatientModal` from `components/modals/CRMPatientModal.tsx`
   - `PatientDetailsModal` from `components/modals/PatientDetailsModal.tsx`
   - `FilterModal` from `components/modals/FilterModal.tsx`
 - **Backend API Calls**:
-  - **Service**: `crmPatientService` from `lib/services/crmPatientService.ts`
+  - **Service**: `crmPatientService` from `lib/services/crmPatientService.ts` (via `usePatients`)
   - **API Routes** (via proxy):
     - `GET /api/crm/customers` → `app/api/crm/[...path]/route.ts` → External CRM API
     - `POST /api/crm/customers` → `app/api/crm/[...path]/route.ts` → External CRM API
@@ -274,11 +362,13 @@ PING/
   - **External API**: `NEXT_PUBLIC_CRM_API_BASE_URL/customers`
 - **Data Flow**:
   ```
-  Page Load → crmPatientService.getPatients()
-  → /api/crm/customers (proxy)
-  → External CRM API
-  → Display patients list
+  Page Load → usePatients hook initializes
+  → Fetches patients with pagination
+  → useDebounce handles search input
+  → PatientList displays patients
+  → Infinite scroll loads more patients
   → CRUD operations via modals
+  → Hooks refresh data automatically
   ```
 
 ---
@@ -286,30 +376,50 @@ PING/
 ### 5. **Appointments Page** (`/appointments`)
 - **File Location**: `app/appointments/page.tsx`
 - **Purpose**: Calendar view and appointment management
-- **Components Used**:
+- **Architecture**: Refactored with custom hooks and components
+- **Custom Hooks** (in `app/appointments/hooks/`):
+  - `useAppointments.ts` - Manages appointment data fetching and caching
+  - `useAppointmentFilters.ts` - Handles appointment filtering logic
+  - `useAppointmentEdit.ts` - Manages appointment edit operations
+  - `useUpcomingAppointments.ts` - Manages upcoming appointments list
+  - `usePatientEnrichment.ts` - Enriches appointments with patient data
+- **Components** (in `app/appointments/components/`):
+  - `CalendarView.tsx` - Calendar grid with appointment indicators
+  - `AppointmentList.tsx` - List of appointments for selected date
+  - `AppointmentCard.tsx` - Individual appointment card
+  - `UpcomingAppointmentsList.tsx` - List of upcoming appointments
+  - `UpcomingAppointmentCard.tsx` - Individual upcoming appointment card
+  - `AppointmentSearchBar.tsx` - Search and filter bar
+- **Utils** (in `app/appointments/utils/`):
+  - `formatUtils.ts` - Date and time formatting utilities
+- **Shared Components Used**:
   - `Layout` from `components/Layout.tsx`
   - `PrivateRoute` from `components/PrivateRoute.tsx`
   - `AppointmentModal` from `components/modals/AppointmentModal.tsx`
-  - `patientService`, `teamService` for form data
 - **Backend API Calls**:
   - **Services**:
-    - `appointmentService.getAppointments()` → `GET /api/appointments`
-    - `appointmentService.createAppointment()` → `POST /api/appointments`
-    - `appointmentService.updateAppointment()` → `PUT /api/appointments/:id`
-    - `appointmentService.cancelAppointment()` → `DELETE /api/appointments/:id`
-    - `patientService.getPatients()` → `GET /api/patients` (for modal)
-    - `teamService.getTeamMembers()` → `GET /api/team` (for modal)
+    - `crmAppointmentService.getAppointments()` → `GET /api/appointments` (via `useAppointments`)
+    - `crmAppointmentService.createAppointment()` → `POST /api/appointments`
+    - `crmAppointmentService.updateAppointment()` → `PUT /api/appointments/:id` (via `useAppointmentEdit`)
+    - `crmAppointmentService.deleteAppointment()` → `DELETE /api/appointments/:id`
+    - `crmPatientService.getPatients()` → `GET /api/crm/customers` (for modal)
+    - `teamApi.getTeams()` → `GET /api/teams` (for modal)
   - **API Routes**:
     - `app/api/appointments/route.ts` (GET, POST)
     - `app/api/appointments/[id]/route.ts` (GET, PUT, DELETE)
-    - `app/api/patients/route.ts`
-    - `app/api/team/route.ts`
+    - `app/api/crm/customers` (via proxy)
+    - `app/api/teams` (via proxy)
 - **Data Flow**:
   ```
-  Page Load → Load appointments for selected date
-  → Calendar navigation → Load appointments for new date
+  Page Load → useAppointments hook initializes
+  → Checks cache first for instant display
+  → Fetches appointments for selected date
+  → usePatientEnrichment enriches with patient data
+  → CalendarView displays appointments
+  → AppointmentList shows selected date appointments
+  → UpcomingAppointmentsList shows future appointments
   → Create/Edit/Delete via modals
-  → Refresh appointment list
+  → Hooks refresh data automatically
   ```
 
 ---
@@ -317,15 +427,29 @@ PING/
 ### 6. **Campaigns Page** (`/campaigns`)
 - **File Location**: `app/campaigns/page.tsx`
 - **Purpose**: Create and manage marketing campaigns
-- **Components Used**:
+- **Architecture**: Refactored with custom hooks and components
+- **Custom Hooks** (in `app/campaigns/hooks/`):
+  - `useCampaigns.ts` - Manages campaign data fetching and caching
+  - `useTemplates.ts` - Manages template data fetching
+  - `useCampaignForm.ts` - Handles campaign form state and validation
+  - `useImageHandling.ts` - Manages image upload and preview
+- **Components** (in `app/campaigns/components/`):
+  - `CampaignsList.tsx` - List of campaigns
+  - `CampaignCard.tsx` - Individual campaign card
+  - `CampaignForm.tsx` - Campaign creation/edit form
+  - `TemplatesList.tsx` - List of available templates
+  - `TemplateCard.tsx` - Individual template card
+- **Utils** (in `app/campaigns/utils/`):
+  - `templateUtils.ts` - Template-related utility functions
+- **Shared Components Used**:
   - `Layout` from `components/Layout.tsx`
   - `PrivateRoute` from `components/PrivateRoute.tsx`
   - `TagSelectorModal` from `components/modals/TagSelectorModal.tsx`
   - `ScheduleModal` from `components/modals/ScheduleModal.tsx`
 - **Backend API Calls**:
   - **Services**:
-    - `campaignApi` from `lib/services/campaignApi.ts`
-    - `templateApi` from `lib/services/templateApi.ts`
+    - `campaignApi` from `lib/services/campaignApi.ts` (via `useCampaigns`)
+    - `templateApi` from `lib/services/templateApi.ts` (via `useTemplates`)
   - **API Routes** (via proxy):
     - `GET /api/campaigns` → `app/api/campaigns/route.ts` → External Campaign API
     - `POST /api/campaigns` → `app/api/campaigns/route.ts` → External Campaign API
@@ -339,9 +463,13 @@ PING/
     - Template API via `NEXT_PUBLIC_CRM_API_BASE_URL`
 - **Data Flow**:
   ```
-  Page Load → Load campaigns and templates
-  → Create campaign with tags/recipients
+  Page Load → useCampaigns and useTemplates hooks initialize
+  → Fetches campaigns and templates
+  → CampaignsList displays campaigns
+  → TemplatesList displays templates
+  → Create campaign with tags/recipients via CampaignForm
   → Schedule or send immediately
+  → Hooks refresh data automatically
   → Track campaign status
   ```
 
@@ -350,17 +478,31 @@ PING/
 ### 7. **Team Page** (`/team`)
 - **File Location**: `app/team/page.tsx`
 - **Purpose**: Team member management
-- **Components Used**:
+- **Architecture**: Refactored with custom hooks and components
+- **Custom Hooks** (in `app/team/hooks/`):
+  - `useTeamMembers.ts` - Manages team member data fetching and caching
+  - `useTeamFilters.ts` - Handles team member filtering logic
+  - `useAppointmentCounts.ts` - Fetches appointment counts for each team member
+- **Components** (in `app/team/components/`):
+  - `TeamList.tsx` - List of team members
+  - `TeamMemberCard.tsx` - Individual team member card
+  - `TeamSearchBar.tsx` - Search and filter bar
+  - `FilterCard.tsx` - Filter card component for status/department
+- **Utils** (in `app/team/utils/`):
+  - `teamUtils.ts` - Team member utility functions (initials, avatar colors, etc.)
+- **Shared Components Used**:
   - `Layout` from `components/Layout.tsx`
   - `PrivateRoute` from `components/PrivateRoute.tsx`
   - `TeamModal` from `components/modals/TeamModal.tsx`
   - `TeamMemberDetailsModal` from `components/modals/TeamMemberDetailsModal.tsx`
   - `TeamFilterModal` from `components/modals/TeamFilterModal.tsx`
-  - `StarRating` from `components/ui/star-rating.tsx`
 - **Backend API Calls**:
   - **Services**:
-    - `teamApi` from `lib/services/teamApi.ts`
-    - `appointmentService.getAppointments()` → For appointment counts
+    - `teamApi.getTeams()` → `GET /api/teams` (via `useTeamMembers`)
+    - `teamApi.createTeam()` → `POST /api/teams`
+    - `teamApi.updateTeam()` → `PUT /api/teams/:id`
+    - `teamApi.deleteTeam()` → `DELETE /api/teams/:id`
+    - `appointmentService.getAppointments()` → For appointment counts (via `useAppointmentCounts`)
   - **API Routes** (via proxy):
     - `GET /api/teams` → `app/api/teams/route.ts` → External Team API
     - `POST /api/teams` → `app/api/teams/route.ts` → External Team API
@@ -371,10 +513,14 @@ PING/
   - **External API**: Team API via `NEXT_PUBLIC_CRM_API_BASE_URL`
 - **Data Flow**:
   ```
-  Page Load → Load team members
-  → Filter/search team members
-  → View details, edit, or delete
-  → Load appointment counts for each member
+  Page Load → useTeamMembers hook initializes
+  → Checks cache first for instant display
+  → Fetches team members from API
+  → useTeamFilters applies filters/search
+  → useAppointmentCounts fetches counts for each member
+  → TeamList displays filtered members
+  → View details, edit, or delete via modals
+  → Hooks refresh data automatically
   ```
 
 ---
@@ -507,10 +653,10 @@ All services are in `lib/services/`:
 
 1. **`api.ts`** - Main API service with Axios instance
    - `authService` - Authentication
-   - `patientService` - Patient management
-   - `appointmentService` - Appointments
-   - `campaignService` - Campaigns (legacy)
-   - `teamService` - Team management (legacy)
+   - `patientService` - Patient management (legacy, use `crmPatientService` for CRM)
+   - `appointmentService` - Appointments (legacy, use `crmAppointmentService` for CRM)
+   - `campaignService` - Campaigns (legacy, use `campaignApi`)
+   - `teamService` - Team management (legacy, use `teamApi`)
    - `dashboardService` - Dashboard data
    - `walletService` - Wallet operations
 
@@ -519,22 +665,60 @@ All services are in `lib/services/`:
 
 3. **`crmPatientService.ts`** - Patient service for CRM
    - Wrapper around CRM API for patients
+   - Used by CRM page and appointment modals
 
-4. **`campaignApi.ts`** - Campaign API service
+4. **`appointmentService.ts`** - Appointment service for CRM
+   - Wrapper around CRM API for appointments
+   - Used by appointments page and dashboard
+
+5. **`campaignApi.ts`** - Campaign API service
    - External campaign API integration
 
-5. **`teamApi.ts`** - Team API service
+6. **`teamApi.ts`** - Team API service
    - External team API integration
+   - Used by team page and appointment modals
 
-6. **`templateApi.ts`** - Template API service
+7. **`templateApi.ts`** - Template API service
    - External template API integration
 
-7. **`pingwiseApi.ts`** - PingWise API service
+8. **`reportsApi.ts`** - Reports API service
+   - Daily reports and analytics
+   - Used by dashboard page
+
+9. **`pingwiseApi.ts`** - PingWise API service
    - Additional API integrations
+
+### Custom Hooks Architecture
+
+Each page uses custom hooks to manage data and business logic:
+
+#### Dashboard Hooks (`app/dashboard/hooks/`)
+- `useDashboardStats.ts` - Fetches and manages dashboard statistics
+- `useTodayAppointments.ts` - Fetches and manages today's appointments
+- `useWalletBalance.ts` - Fetches and manages wallet balance
+
+#### Appointments Hooks (`app/appointments/hooks/`)
+- `useAppointments.ts` - Manages appointment data with caching
+- `useAppointmentFilters.ts` - Handles filtering logic
+- `useAppointmentEdit.ts` - Manages edit operations
+- `useUpcomingAppointments.ts` - Manages upcoming appointments
+- `usePatientEnrichment.ts` - Enriches appointments with patient data
+
+#### Team Hooks (`app/team/hooks/`)
+- `useTeamMembers.ts` - Manages team member data with caching
+- `useTeamFilters.ts` - Handles filtering and search
+- `useAppointmentCounts.ts` - Fetches appointment counts per member
+
+#### CRM Hooks (`app/crm/hooks/`)
+- `usePatients.ts` - Manages patient data with pagination and caching
+- `useDebounce.ts` - Debounces search input
+- `useScrollFooter.ts` - Handles infinite scroll
 
 ### Service Flow
 ```
 Frontend Page
+    ↓
+Custom Hook (app/[page]/hooks/)
     ↓
 Service Layer (lib/services/)
     ↓
@@ -561,7 +745,39 @@ External API or Database
 - **`components/PrivateRoute.tsx`** - Authentication guard
 - **`components/ErrorBoundary.tsx`** - Error handling
 
-### Modal Components (`components/modals/`)
+### Page-Specific Components Structure
+
+Each major page now has its own organized structure:
+
+#### Dashboard Components (`app/dashboard/components/`)
+- `KPICards.tsx` - Container for all KPI cards
+- `KPICard.tsx` - Individual KPI card with animations
+- `TodayAppointmentsList.tsx` - List container for today's appointments
+- `TodayAppointmentCard.tsx` - Individual appointment card
+- `RupeeIcon.tsx` - Custom currency icon component
+
+#### Appointments Components (`app/appointments/components/`)
+- `CalendarView.tsx` - Calendar grid with appointment dots
+- `AppointmentList.tsx` - List of appointments for selected date
+- `AppointmentCard.tsx` - Individual appointment card
+- `UpcomingAppointmentsList.tsx` - Container for upcoming appointments
+- `UpcomingAppointmentCard.tsx` - Individual upcoming appointment card
+- `AppointmentSearchBar.tsx` - Search and filter bar
+
+#### Team Components (`app/team/components/`)
+- `TeamList.tsx` - List container for team members
+- `TeamMemberCard.tsx` - Individual team member card
+- `TeamSearchBar.tsx` - Search and filter bar
+- `FilterCard.tsx` - Filter card for status/department counts
+
+#### CRM Components (`app/crm/components/`)
+- `PatientList.tsx` - List container with infinite scroll
+- `PatientCard.tsx` - Individual patient card with actions
+- `PatientSearchBar.tsx` - Search and filter bar
+- `PatientStatusFilters.tsx` - Status filter buttons
+- `EmptyState.tsx` - Empty state component
+
+### Shared Modal Components (`components/modals/`)
 - `AppointmentModal.tsx` - Create/edit appointments
 - `CRMPatientModal.tsx` - Create/edit CRM patients
 - `PatientModal.tsx` - Create/edit patients
@@ -750,11 +966,11 @@ Comprehensive documentation is available in the `docs/` folder:
 |------------|-----------|-------------|--------------|-------------------|
 | `/` | `app/page.tsx` | None | None | None |
 | `/login` | `app/login/page.tsx` | `authService` | `POST /api/auth/login` | `app/api/auth/login/route.ts` |
-| `/dashboard` | `app/dashboard/page.tsx` | `dashboardService`, `walletService` | `GET /api/dashboard/stats`<br>`GET /api/dashboard/activity`<br>`GET /api/dashboard/today-appointments`<br>`GET /api/wallet/balance` | `app/api/dashboard/stats/route.ts`<br>`app/api/dashboard/activity/route.ts`<br>`app/api/dashboard/today-appointments/route.ts`<br>`app/api/wallet/balance/route.ts` |
-| `/crm` | `app/crm/page.tsx` | `crmPatientService` | `GET /api/crm/customers`<br>`POST /api/crm/customers`<br>`PUT /api/crm/customers/:id`<br>`DELETE /api/crm/customers/:id` | `app/api/crm/[...path]/route.ts` |
-| `/appointments` | `app/appointments/page.tsx` | `appointmentService` | `GET /api/appointments`<br>`POST /api/appointments`<br>`PUT /api/appointments/:id`<br>`DELETE /api/appointments/:id` | `app/api/appointments/route.ts`<br>`app/api/appointments/[id]/route.ts` |
-| `/campaigns` | `app/campaigns/page.tsx` | `campaignApi`, `templateApi` | `GET /api/campaigns`<br>`POST /api/campaigns`<br>`GET /api/campaigns/:id`<br>`PUT /api/campaigns/:id`<br>`DELETE /api/campaigns/:id`<br>`POST /api/campaigns/:id/send`<br>`GET /api/templates` | `app/api/campaigns/route.ts`<br>`app/api/campaigns/[id]/route.ts`<br>`app/api/campaigns/[id]/send/route.ts`<br>`app/api/templates/route.ts` |
-| `/team` | `app/team/page.tsx` | `teamApi` | `GET /api/teams`<br>`POST /api/teams`<br>`GET /api/teams/:id`<br>`PUT /api/teams/:id`<br>`DELETE /api/teams/:id` | `app/api/teams/route.ts`<br>`app/api/teams/[...path]/route.ts` |
+| `/dashboard` | `app/dashboard/page.tsx`<br>**Hooks**: `hooks/useDashboardStats.ts`<br>`hooks/useTodayAppointments.ts`<br>`hooks/useWalletBalance.ts`<br>**Components**: `components/KPICards.tsx`<br>`components/TodayAppointmentsList.tsx` | `reportsApi`, `crmAppointmentService`, `walletService` | `GET /api/reports/daily`<br>`GET /api/appointments`<br>`GET /api/wallet/balance` | `app/api/reports/[...path]/route.ts`<br>`app/api/appointments/route.ts`<br>`app/api/wallet/balance/route.ts` |
+| `/crm` | `app/crm/page.tsx`<br>**Hooks**: `hooks/usePatients.ts`<br>`hooks/useDebounce.ts`<br>**Components**: `components/PatientList.tsx`<br>`components/PatientCard.tsx`<br>`components/PatientSearchBar.tsx` | `crmPatientService` | `GET /api/crm/customers`<br>`POST /api/crm/customers`<br>`PUT /api/crm/customers/:id`<br>`DELETE /api/crm/customers/:id` | `app/api/crm/[...path]/route.ts` |
+| `/appointments` | `app/appointments/page.tsx`<br>**Hooks**: `hooks/useAppointments.ts`<br>`hooks/useAppointmentFilters.ts`<br>`hooks/useAppointmentEdit.ts`<br>`hooks/useUpcomingAppointments.ts`<br>**Components**: `components/CalendarView.tsx`<br>`components/AppointmentList.tsx`<br>`components/UpcomingAppointmentsList.tsx` | `crmAppointmentService`, `crmPatientService`, `teamApi` | `GET /api/appointments`<br>`POST /api/appointments`<br>`PUT /api/appointments/:id`<br>`DELETE /api/appointments/:id` | `app/api/appointments/route.ts`<br>`app/api/appointments/[id]/route.ts` |
+| `/campaigns` | `app/campaigns/page.tsx`<br>**Hooks**: `hooks/useCampaigns.ts`<br>`hooks/useTemplates.ts`<br>`hooks/useCampaignForm.ts`<br>**Components**: `components/CampaignsList.tsx`<br>`components/CampaignForm.tsx`<br>`components/TemplatesList.tsx` | `campaignApi`, `templateApi` | `GET /api/campaigns`<br>`POST /api/campaigns`<br>`GET /api/campaigns/:id`<br>`PUT /api/campaigns/:id`<br>`DELETE /api/campaigns/:id`<br>`POST /api/campaigns/:id/send`<br>`GET /api/templates` | `app/api/campaigns/route.ts`<br>`app/api/campaigns/[id]/route.ts`<br>`app/api/campaigns/[id]/send/route.ts`<br>`app/api/templates/route.ts` |
+| `/team` | `app/team/page.tsx`<br>**Hooks**: `hooks/useTeamMembers.ts`<br>`hooks/useTeamFilters.ts`<br>`hooks/useAppointmentCounts.ts`<br>**Components**: `components/TeamList.tsx`<br>`components/TeamMemberCard.tsx`<br>`components/TeamSearchBar.tsx` | `teamApi`, `appointmentService` | `GET /api/teams`<br>`POST /api/teams`<br>`GET /api/teams/:id`<br>`PUT /api/teams/:id`<br>`DELETE /api/teams/:id` | `app/api/teams/route.ts`<br>`app/api/teams/[...path]/route.ts` |
 | `/wallet` | `app/wallet/page.tsx` | `walletService` | `GET /api/wallet/balance` | `app/api/wallet/balance/route.ts` |
 | `/profile` | `app/profile/page.tsx` | None (uses AuthContext) | None | None |
 | `/settings` | `app/settings/page.tsx` | None | None | None |

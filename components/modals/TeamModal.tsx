@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X } from 'lucide-react';
 import { teamApi } from '@/lib/services/teamApi';
 import { userToCrmTeam } from '@/lib/utils/teamAdapter';
@@ -24,6 +24,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     experience: teamMember?.experience || '',
   });
   const [loading, setLoading] = useState(false);
+  const isSubmittingRef = useRef(false); // Prevent duplicate submissions
 
   useEffect(() => {
     if (teamMember) {
@@ -61,6 +62,13 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmittingRef.current) {
+      return;
+    }
+    
+    isSubmittingRef.current = true;
     setLoading(true);
 
     try {
@@ -83,9 +91,12 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
       }
       onSuccess();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || error.message || 'Failed to save team member');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save team member';
+      toast.error(errorMessage);
+      console.error('Team member save error:', error);
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   }, [formData, teamMember, onSuccess]);
 

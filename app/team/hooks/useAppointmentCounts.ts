@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { appointmentService } from '@/lib/services/api';
 import { User } from '@/types';
 
-/**
- * Custom hook to load appointment counts for team members
- */
+// Loads appointment counts for team members
 export function useAppointmentCounts(teamMembers: User[]) {
   const [appointmentCounts, setAppointmentCounts] = useState<Record<string, number>>({});
 

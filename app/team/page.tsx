@@ -170,10 +170,13 @@ export default function TeamPage() {
               setShowEditModal(false);
               setSelectedMember(null);
             }}
-            onSuccess={() => {
-              loadTeamMembers();
+            onSuccess={async () => {
               setShowEditModal(false);
               setSelectedMember(null);
+              // Small delay before refresh to let backend process
+              setTimeout(() => {
+                loadTeamMembers();
+              }, 500);
             }}
           />
         )}

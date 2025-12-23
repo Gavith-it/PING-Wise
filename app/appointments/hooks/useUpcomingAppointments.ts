@@ -2,9 +2,7 @@ import { useMemo } from 'react';
 import { isSameDay } from 'date-fns';
 import { Appointment } from '@/types';
 
-/**
- * Custom hook to calculate upcoming appointments
- */
+// Calculates upcoming appointments
 export function useUpcomingAppointments(
   allMonthAppointments: Appointment[],
   appointments: Appointment[],

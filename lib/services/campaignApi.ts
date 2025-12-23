@@ -4,7 +4,14 @@
  * Service for interacting with the Campaign API
  * Base URL: https://pw-crm-gateway-1.onrender.com/campaigns
  * 
- * Uses Next.js API proxy routes to avoid CORS issues
+ * IMPORTANT: Set environment variable:
+ * NEXT_PUBLIC_CRM_API_BASE_URL=https://pw-crm-gateway-1.onrender.com
+ * 
+ * ARCHITECTURE:
+ * - Tries direct backend call first (faster, requires CORS on backend)
+ * - Automatically falls back to Next.js proxy route if CORS error detected
+ * - Proxy route code is kept as fallback (not removed)
+ * - Server-side always uses direct calls (no CORS issues)
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -17,22 +24,59 @@ import {
 
 class CampaignApiService {
   private api: AxiosInstance;
+  private proxyApi: AxiosInstance; // Fallback proxy API
+  private directApi: AxiosInstance; // Direct backend API
   private baseURL: string;
+  private directBaseURL: string;
+  private useDirectCall: boolean = true; // Try direct call first
 
   constructor() {
-    // Use Next.js API routes as proxy to avoid CORS issues
+    const isBrowser = typeof window !== 'undefined';
+    
+    // Direct backend URL (from environment variable)
+    this.directBaseURL = 
+      (process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
+       'https://pw-crm-gateway-1.onrender.com') + '/campaigns';
+    
+    // Proxy URL (Next.js API route)
     this.baseURL = '/api/campaigns';
+    
+    if (!isBrowser) {
+      // In server: always use direct call
+      this.baseURL = this.directBaseURL;
+    }
 
-    // Create axios instance
-    this.api = axios.create({
+    // Create direct API instance (for direct backend calls)
+    this.directApi = axios.create({
+      baseURL: this.directBaseURL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Create proxy API instance (fallback)
+    this.proxyApi = axios.create({
       baseURL: this.baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
+    // Set default API (will try direct first)
+    this.api = this.directApi;
+
+    // Setup interceptors for both APIs
+    this.setupInterceptors(this.directApi);
+    this.setupInterceptors(this.proxyApi);
+  }
+
+  /**
+   * Setup interceptors for an axios instance
+   */
+  private setupInterceptors(apiInstance: AxiosInstance): void {
+
     // Request interceptor - Add auth token to all requests
-    this.api.interceptors.request.use(
+    apiInstance.interceptors.request.use(
       (config) => {
         const token = this.getToken();
         if (token && config.headers) {
@@ -55,7 +99,7 @@ class CampaignApiService {
     );
 
     // Response interceptor - Handle errors globally
-    this.api.interceptors.response.use(
+    apiInstance.interceptors.response.use(
       (response) => {
         // Log response in development
         if (process.env.NODE_ENV === 'development') {
@@ -115,16 +159,74 @@ class CampaignApiService {
     }
   }
 
+  /**
+   * Check if error is a CORS error
+   */
+  private isCorsError(error: AxiosError): boolean {
+    // CORS errors typically have:
+    // - No response (network error)
+    // - Message containing "CORS" or "cross-origin"
+    // - Code like "ERR_NETWORK" or "ERR_FAILED"
+    if (!error.response) {
+      const message = error.message?.toLowerCase() || '';
+      const code = error.code?.toLowerCase() || '';
+      return (
+        message.includes('cors') ||
+        message.includes('cross-origin') ||
+        message.includes('network error') ||
+        code === 'err_network' ||
+        code === 'err_failed'
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Make API request with automatic fallback to proxy on CORS error
+   */
+  private async makeRequestWithFallback<T>(
+    requestFn: (api: AxiosInstance) => Promise<T>
+  ): Promise<T> {
+    const isBrowser = typeof window !== 'undefined';
+    
+    // In server-side, always use direct call
+    if (!isBrowser) {
+      return requestFn(this.directApi);
+    }
+
+    // In browser: try direct call first, fallback to proxy
+    if (this.useDirectCall) {
+      try {
+        return await requestFn(this.directApi);
+      } catch (error: any) {
+        // If CORS error, switch to proxy and retry
+        if (this.isCorsError(error as AxiosError)) {
+          console.warn('[Campaign API] CORS error detected, falling back to proxy');
+          this.useDirectCall = false; // Disable direct calls for future requests
+          // Retry with proxy
+          return requestFn(this.proxyApi);
+        }
+        // If not CORS error, throw it
+        throw error;
+      }
+    } else {
+      // Already using proxy, use it directly
+      return requestFn(this.proxyApi);
+    }
+  }
+
   // ==================== CAMPAIGNS ====================
 
   /**
    * List all campaigns
-   * GET /api/campaigns
+   * GET /campaigns (direct) or /api/campaigns (proxy fallback)
    * Query params: org_id, limit
    */
   async getCampaigns(params?: { org_id?: string; limit?: number }): Promise<CrmApiListResponse<CrmCampaign>> {
     try {
-      const response = await this.api.get<any>('', { params }) as unknown as any;
+      const response = await this.makeRequestWithFallback((api) => 
+        api.get<any>('', { params })
+      ) as unknown as any;
       
       // Handle null/undefined response
       if (response === null || response === undefined) {
@@ -183,18 +285,22 @@ class CampaignApiService {
 
   /**
    * Get campaign by ID
-   * GET /api/campaigns/{id}
+   * GET /campaigns/{id} (direct) or /api/campaigns/{id} (proxy fallback)
    */
   async getCampaign(id: number | string): Promise<CrmApiSingleResponse<CrmCampaign>> {
-    return this.api.get<CrmCampaign>(`/${id}`) as unknown as CrmCampaign;
+    return this.makeRequestWithFallback((api) => 
+      api.get<CrmCampaign>(`/${id}`)
+    ) as unknown as CrmCampaign;
   }
 
   /**
    * Create campaign
-   * POST /api/campaigns
+   * POST /campaigns (direct) or /api/campaigns (proxy fallback)
    */
   async createCampaign(data: CrmCampaignRequest): Promise<CrmApiSingleResponse<CrmCampaign>> {
-    return this.api.post<CrmCampaign>('', data) as unknown as CrmCampaign;
+    return this.makeRequestWithFallback((api) => 
+      api.post<CrmCampaign>('', data)
+    ) as unknown as CrmCampaign;
   }
 }
 
