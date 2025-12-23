@@ -5,18 +5,18 @@ import toast from 'react-hot-toast';
 import { User } from '@/types';
 import { generateInitials, generateAvatarColor } from '../utils/teamUtils';
 
-// Team cache
+// Team cache - stores ALL team members (unfiltered) for better caching
 const teamCache: {
-  teamMembers: User[];
+  allTeamMembers: User[]; // Store all members (unfiltered)
   filters: string;
   timestamp: number;
 } = {
-  teamMembers: [],
+  allTeamMembers: [],
   filters: '',
   timestamp: 0,
 };
 
-const CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes - longer cache duration
 
 interface TeamFilters {
   status: string;
@@ -31,25 +31,68 @@ interface UseTeamMembersParams {
 interface UseTeamMembersReturn {
   teamMembers: User[];
   loading: boolean;
-  loadTeamMembers: (showLoading?: boolean) => Promise<void>;
+  loadTeamMembers: (showLoading?: boolean, isManualRefresh?: boolean) => Promise<void>;
+}
+
+// Helper function to apply filters to team members (defined outside component)
+function applyFiltersToMembers(members: User[], currentFilter: string, currentFilters: TeamFilters): User[] {
+  let filtered = [...members];
+  
+  if (currentFilters.status !== 'all') {
+    filtered = filtered.filter(m => m.status === currentFilters.status);
+  }
+  if (currentFilters.department !== 'all') {
+    filtered = filtered.filter(m => m.department === currentFilters.department);
+  }
+  if (currentFilter !== 'all') {
+    filtered = filtered.filter(m => m.status === currentFilter);
+  }
+  
+  // Ensure each member has initials and unique avatarColor
+  return filtered.map((member: User, index: number) => {
+    const memberInitials = member.initials || generateInitials(member.name);
+    const memberAvatarColor = generateAvatarColor(member.name, index);
+    
+    return {
+      ...member,
+      initials: memberInitials,
+      avatarColor: memberAvatarColor
+    };
+  });
 }
 
 export function useTeamMembers({
   filter,
   filters,
 }: UseTeamMembersParams): UseTeamMembersReturn {
-  const [teamMembers, setTeamMembers] = useState<User[]>(teamCache.teamMembers);
-  const [loading, setLoading] = useState(teamCache.teamMembers.length === 0);
+  const [teamMembers, setTeamMembers] = useState<User[]>(() => {
+    // Initialize from cache if available
+    const cacheAge = Date.now() - teamCache.timestamp;
+    if (teamCache.allTeamMembers.length > 0 && cacheAge < CACHE_DURATION) {
+      // Apply filters to cached data
+      return applyFiltersToMembers(teamCache.allTeamMembers, filter, filters);
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(teamCache.allTeamMembers.length === 0);
   
   const hasInitialized = useRef(false);
   const previousFilters = useRef<string>('');
   const isLoadingRef = useRef(false);
+  const lastLoadTimeRef = useRef<number>(0); // Track last load time for duplicate prevention
 
-  const loadTeamMembers = useCallback(async (showLoading = true) => {
+  const loadTeamMembers = useCallback(async (showLoading = true, isManualRefresh = false) => {
     // Prevent concurrent calls
     if (isLoadingRef.current) {
       return;
     }
+    
+    // Prevent duplicate calls within 1 second (debounce)
+    const now = Date.now();
+    if (!isManualRefresh && (now - lastLoadTimeRef.current) < 1000) {
+      return;
+    }
+    lastLoadTimeRef.current = now;
     
     try {
       isLoadingRef.current = true;
@@ -58,30 +101,13 @@ export function useTeamMembers({
         setLoading(true);
       }
       
-      // Fetch teams from Team API
+      // Fetch teams from Team API (only team API, no appointment calls)
       const crmTeams = await teamApi.getTeams();
-      const members = crmTeamsToUsers(crmTeams);
+      const allMembers = crmTeamsToUsers(crmTeams);
       
-      // Filter members based on UI filters (client-side filtering since API doesn't support it)
-      let filtered = members;
-      if (filters.status !== 'all') {
-        filtered = filtered.filter(m => m.status === filters.status);
-      }
-      if (filters.department !== 'all') {
-        filtered = filtered.filter(m => m.department === filters.department);
-      }
-      if (filter !== 'all') {
-        filtered = filtered.filter(m => m.status === filter);
-      }
-      
-      // Ensure each member has initials and unique avatarColor
-      // Always generate unique colors based on name/index to ensure each member is different
-      const processedMembers = filtered.map((member: User, index: number) => {
-        // Always generate initials if missing
+      // Process all members (add initials and colors)
+      const processedAllMembers = allMembers.map((member: User, index: number) => {
         const memberInitials = member.initials || generateInitials(member.name);
-        
-        // Always generate unique avatar color based on name (deterministic but unique per name)
-        // This ensures each member gets a distinct color, even if API returns same colors
         const memberAvatarColor = generateAvatarColor(member.name, index);
         
         return {
@@ -91,13 +117,21 @@ export function useTeamMembers({
         };
       });
       
-      // Update cache
-      const filterKey = JSON.stringify({ filter, filters });
-      teamCache.teamMembers = processedMembers;
-      teamCache.filters = filterKey;
+      // Update cache with ALL members (unfiltered)
+      teamCache.allTeamMembers = processedAllMembers;
       teamCache.timestamp = Date.now();
       
-      setTeamMembers(processedMembers);
+      // Apply filters to get filtered list
+      const filteredMembers = applyFiltersToMembers(processedAllMembers, filter, filters);
+      const filterKey = JSON.stringify({ filter, filters });
+      teamCache.filters = filterKey;
+      
+      // If manual refresh, update previousFilters to prevent useEffect from triggering
+      if (isManualRefresh) {
+        previousFilters.current = filterKey;
+      }
+      
+      setTeamMembers(filteredMembers);
     } catch (error) {
       toast.error('Failed to load team members');
       console.error('Load team error:', error);
@@ -120,31 +154,21 @@ export function useTeamMembers({
     
     previousFilters.current = filterKey;
     const cacheAge = Date.now() - teamCache.timestamp;
-    const isCacheValid = teamCache.teamMembers.length > 0 && 
-                        teamCache.filters === filterKey && 
-                        cacheAge < CACHE_DURATION;
+    const isCacheValid = teamCache.allTeamMembers.length > 0 && cacheAge < CACHE_DURATION;
     
-    if (isCacheValid && teamMembers.length === 0) {
-      // Use cached data immediately
-      setTeamMembers(teamCache.teamMembers);
-      setLoading(false);
-      hasInitialized.current = true;
-      // Refresh in background only if not already loading
-      if (!isLoadingRef.current) {
-        loadTeamMembers(false);
-      }
-    } else if (isCacheValid && teamCache.filters === filterKey) {
-      // Same filters, cache is valid - use it immediately
-      setTeamMembers(teamCache.teamMembers);
+    if (isCacheValid) {
+      // Use cached data immediately - apply filters client-side
+      const filteredFromCache = applyFiltersToMembers(teamCache.allTeamMembers, filter, filters);
+      setTeamMembers(filteredFromCache);
       setLoading(false);
       hasInitialized.current = true;
       
-      // Refresh in background only if not already loading
-      if (!isLoadingRef.current) {
+      // Refresh in background only if cache is older than 2 seconds and not already loading
+      if (cacheAge > 2 * 1000 && !isLoadingRef.current) {
         loadTeamMembers(false);
       }
     } else {
-      // Filters changed or cache invalid - load new data
+      // No cache or expired - load new data
       hasInitialized.current = true;
       loadTeamMembers(true);
     }

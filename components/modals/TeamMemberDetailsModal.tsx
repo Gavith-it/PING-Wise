@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Edit, Trash2, Phone, Mail, MapPin, Briefcase, Award, Calendar, Star } from 'lucide-react';
-import { teamService, appointmentService } from '@/lib/services/api';
+import { useState } from 'react';
+import { X, Edit, Trash2, Phone, Mail, Briefcase, Award, Star } from 'lucide-react';
+import { teamService } from '@/lib/services/api';
 import toast from 'react-hot-toast';
 import { User } from '@/types';
 import StarRating from '@/components/ui/star-rating';
@@ -22,23 +22,7 @@ export default function TeamMemberDetailsModal({
   onDelete,
   onSuccess,
 }: TeamMemberDetailsModalProps) {
-  const [appointmentCount, setAppointmentCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (teamMember?.id) {
-      loadAppointmentCount();
-    }
-  }, [teamMember?.id]);
-
-  const loadAppointmentCount = async () => {
-    try {
-      const response = await appointmentService.getAppointments({ doctor: teamMember?.id });
-      setAppointmentCount(response.count || 0);
-    } catch (error) {
-      console.error('Failed to load appointment count:', error);
-    }
-  };
 
   const handleDelete = async () => {
     if (!teamMember) return;
@@ -146,14 +130,7 @@ export default function TeamMemberDetailsModal({
                 </div>
               )}
 
-              {/* Appointment Count */}
-              <div className="flex items-start gap-2 md:gap-3">
-                <Calendar className="w-4 h-4 md:w-5 md:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-0.5">Appointments Held</p>
-                  <p className="text-sm md:text-base text-gray-900 dark:text-white font-semibold">{appointmentCount}</p>
-                </div>
-              </div>
+              {/* Appointment Count - Removed to prevent unnecessary API calls on team page */}
 
               {/* Status */}
               <div className="flex items-start gap-2 md:gap-3">

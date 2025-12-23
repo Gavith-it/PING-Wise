@@ -12,7 +12,6 @@ import TeamMemberDetailsModal from '@/components/modals/TeamMemberDetailsModal';
 import TeamFilterModal from '@/components/modals/TeamFilterModal';
 import { useTeamMembers } from './hooks/useTeamMembers';
 import { useTeamFilters } from './hooks/useTeamFilters';
-import { useAppointmentCounts } from './hooks/useAppointmentCounts';
 import FilterCard from './components/FilterCard';
 import TeamSearchBar from './components/TeamSearchBar';
 import TeamList from './components/TeamList';
@@ -35,9 +34,6 @@ export default function TeamPage() {
 
   // Use filter hook
   const filteredMembers = useTeamFilters(teamMembers, searchQuery, filters);
-
-  // Use appointment counts hook
-  const appointmentCounts = useAppointmentCounts(teamMembers);
 
   const handleView = (member: User) => {
     setSelectedMember(member);
@@ -127,7 +123,6 @@ export default function TeamPage() {
             <TeamList
               teamMembers={filteredMembers}
               loading={loading}
-              appointmentCounts={appointmentCounts}
               onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
@@ -159,7 +154,10 @@ export default function TeamPage() {
               handleDelete(id);
               setShowDetailsModal(false);
             }}
-            onSuccess={loadTeamMembers}
+            onSuccess={() => {
+              // Manual refresh - prevent useEffect from triggering
+              loadTeamMembers(true, true);
+            }}
           />
         )}
 
@@ -170,13 +168,14 @@ export default function TeamPage() {
               setShowEditModal(false);
               setSelectedMember(null);
             }}
-            onSuccess={async () => {
+            onSuccess={() => {
               setShowEditModal(false);
               setSelectedMember(null);
-              // Small delay before refresh to let backend process
+              // Manual refresh - prevent useEffect from triggering
+              // Small delay to let backend process the request
               setTimeout(() => {
-                loadTeamMembers();
-              }, 500);
+                loadTeamMembers(true, true);
+              }, 300);
             }}
           />
         )}

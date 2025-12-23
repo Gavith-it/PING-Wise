@@ -109,6 +109,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
   const hasLoadedRef = useRef(false); // Track if data has been loaded to prevent duplicate calls
   const isSubmittingRef = useRef(false); // Prevent duplicate form submissions
+  const hasCalledSuccessRef = useRef(false); // Prevent duplicate onSuccess calls
 
   const loadFormData = useCallback(async (showLoading = false) => {
     try {
@@ -149,6 +150,11 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       }
     }
   }, []);
+
+  useEffect(() => {
+    // Reset success flag when modal opens/closes or appointment changes
+    hasCalledSuccessRef.current = false;
+  }, [appointment]);
 
   useEffect(() => {
     // Prevent duplicate calls (React strict mode can trigger useEffect twice)
@@ -358,16 +364,21 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         reason: formData.reason || 'General consultation',
       };
 
+      let responseData: Appointment | undefined;
       if (appointment) {
         const response = await crmAppointmentService.updateAppointment(appointment.id, appointmentData);
         toast.success('Appointment updated successfully');
-        // Pass updated appointment data to onSuccess so parent can handle date changes
-        onSuccess(response.data);
+        responseData = response.data;
       } else {
         const response = await crmAppointmentService.createAppointment(appointmentData);
         toast.success('Appointment created successfully');
-        // Pass created appointment data to onSuccess
-        onSuccess(response.data);
+        responseData = response.data;
+      }
+      
+      // Call onSuccess only once - parent will handle closing the modal
+      if (!hasCalledSuccessRef.current) {
+        hasCalledSuccessRef.current = true;
+        onSuccess(responseData);
       }
     } catch (error: any) {
       // Handle different types of errors

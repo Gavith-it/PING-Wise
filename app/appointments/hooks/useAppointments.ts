@@ -315,9 +315,11 @@ export function useAppointments({
             return isSameDay(aptDate, updatedDate);
           });
           
-          // Update cache
-          appointmentsCache.appointments[updatedDateStr] = filteredAppointments;
-          appointmentsCache.timestamp = Date.now();
+      // Update cache
+      appointmentsCache.appointments[updatedDateStr] = filteredAppointments;
+      appointmentsCache.timestamp = Date.now();
+      // Update lastSelectedDate to prevent useEffect from triggering
+      lastSelectedDate.current = updatedDateStr;
         } catch (error) {
           console.error('Failed to load appointments for new date:', error);
         }
@@ -357,6 +359,8 @@ export function useAppointments({
         appointmentsCache.appointments[currentDateStr] = [enrichedAppointment];
       }
       appointmentsCache.timestamp = Date.now();
+      // Update lastSelectedDate to prevent useEffect from triggering
+      lastSelectedDate.current = currentDateStr;
     }
     
     // Update month appointments cache directly (no API call needed)
@@ -403,6 +407,8 @@ export function useAppointments({
       }
     }
     appointmentsCache.monthTimestamp = Date.now();
+    // Update lastLoadedMonth to prevent useEffect from triggering
+    lastLoadedMonth.current = monthStr;
   }, [selectedDate, currentMonth, enrichAppointmentsWithPatients, appointments, allMonthAppointments]);
 
   const handleDeleteAppointment = useCallback(async (id: string) => {

@@ -24,8 +24,12 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
   });
   const [loading, setLoading] = useState(false);
   const isSubmittingRef = useRef(false); // Prevent duplicate submissions
+  const hasCalledSuccessRef = useRef(false); // Prevent duplicate onSuccess calls
 
   useEffect(() => {
+    // Reset success flag when modal opens/closes or teamMember changes
+    hasCalledSuccessRef.current = false;
+    
     if (teamMember) {
       // Edit mode - populate with existing data
       setFormData({
@@ -85,7 +89,12 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         await teamApi.createTeam(crmTeamRequest);
         toast.success('Team member created successfully');
       }
-      onSuccess();
+      
+      // Call onSuccess only once - parent will handle closing the modal
+      if (!hasCalledSuccessRef.current) {
+        hasCalledSuccessRef.current = true;
+        onSuccess();
+      }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to save team member';
       toast.error(errorMessage);
