@@ -33,6 +33,7 @@ export interface Patient {
   assignedDoctor?: string;
   status: 'active' | 'booked' | 'follow-up' | 'inactive';
   medicalNotes?: string;
+  dateOfBirth?: Date;
   lastVisit?: Date;
   nextAppointment?: Date;
   initials?: string;
@@ -188,6 +189,7 @@ export interface CreatePatientRequest {
   assignedDoctor?: string;
   status?: 'active' | 'booked' | 'follow-up' | 'inactive';
   medicalNotes?: string;
+  dateOfBirth?: Date;
 }
 
 export interface CreateAppointmentRequest {

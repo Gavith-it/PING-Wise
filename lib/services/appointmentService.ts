@@ -120,6 +120,27 @@ export const crmAppointmentService = {
   },
 
   /**
+   * Search appointments by optional parameters
+   * Uses the /appointments/search endpoint
+   */
+  async searchAppointments(params: { status?: string; customer_id?: string; date?: string } = {}): Promise<ApiResponse<Appointment[]>> {
+    try {
+      const crmAppointments = await appointmentApi.searchAppointments(params);
+      const appointments = crmAppointmentsToAppointments(crmAppointments);
+      
+      return {
+        success: true,
+        data: appointments,
+        count: appointments.length,
+        total: appointments.length,
+      };
+    } catch (error: any) {
+      console.error('Error searching appointments from Appointment API:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Cancel/Delete appointment
    */
   async cancelAppointment(id: string): Promise<ApiResponse> {

@@ -39,7 +39,7 @@ function TeamList({
   }
 
   return (
-    <div className="space-y-2 md:space-y-3">
+    <div className="space-y-1.5 md:space-y-2">
       {teamMembers.map((member, index) => (
         <TeamMemberCard
           key={member.id}

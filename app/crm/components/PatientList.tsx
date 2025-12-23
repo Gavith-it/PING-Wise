@@ -28,7 +28,7 @@ function PatientList({
   return (
     <>
       {/* Patient List */}
-      <div className="space-y-3 pb-4">
+      <div className="space-y-1.5 md:space-y-2 pb-4">
         {patients.map((patient) => (
           <PatientCard
             key={patient.id}

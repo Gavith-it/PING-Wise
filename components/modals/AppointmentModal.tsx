@@ -108,6 +108,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
   const hasLoadedRef = useRef(false); // Track if data has been loaded to prevent duplicate calls
+  const isSubmittingRef = useRef(false); // Prevent duplicate form submissions
 
   const loadFormData = useCallback(async (showLoading = false) => {
     try {
@@ -244,6 +245,11 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent duplicate submissions
+    if (isSubmittingRef.current) {
+      return;
+    }
+    
     // Validate required fields with detailed error messages
     if (!formData.patient || formData.patient.trim() === '') {
       toast.error('Please select a patient');
@@ -311,6 +317,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
 
     try {
@@ -416,8 +423,9 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       }
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
-  }, [formData, appointment, onClose, onSuccess]);
+  }, [formData, appointment, selectedPatient, selectedDoctor, onSuccess]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">

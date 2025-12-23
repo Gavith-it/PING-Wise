@@ -276,6 +276,65 @@ class AppointmentApiService {
   }
 
   /**
+   * Search appointments by optional parameters
+   * GET /appointments/search (direct) or /api/appointments/search (proxy fallback)
+   * Query params: status, customer_id, date (YYYY-MM-DD)
+   */
+  async searchAppointments(params: { status?: string; customer_id?: string; date?: string } = {}): Promise<CrmApiListResponse<CrmAppointment>> {
+    try {
+      const response = await this.makeRequestWithFallback((api) => 
+        api.get<any>('/appointments/search', { params })
+      ) as unknown as any;
+      
+      // Handle null/undefined response
+      if (response === null || response === undefined) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Appointment Search API returned null/undefined - treating as empty array');
+        }
+        return [];
+      }
+      
+      // Handle falsy values
+      if (!response) {
+        return [];
+      }
+      
+      // Check if response has a data property (wrapped response)
+      let data = response;
+      if (typeof response === 'object' && response !== null && 'data' in response && !('id' in response)) {
+        data = response.data;
+      }
+      
+      // API may return single object or array, normalize to array
+      if (Array.isArray(data)) {
+        return data.filter((item): item is CrmAppointment => {
+          return item !== null && 
+                 item !== undefined && 
+                 typeof item === 'object' &&
+                 !!item.id;
+        });
+      }
+      
+      // Single Appointment object with id
+      if (typeof data === 'object' && data !== null && data.id) {
+        return [data];
+      }
+      
+      // Object without id - might be empty object or error response
+      if (typeof data === 'object' && data !== null && Object.keys(data).length === 0) {
+        return [];
+      }
+      
+      // Invalid response format
+      console.warn('Appointment Search API returned unexpected response format:', { type: typeof response, value: response });
+      return [];
+    } catch (error) {
+      console.error('Error in searchAppointments:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get a single appointment by ID
    * GET /appointments/{id} (direct) or /api/appointments/{id} (proxy fallback)
    */

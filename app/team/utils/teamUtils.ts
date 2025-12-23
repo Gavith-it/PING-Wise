@@ -41,10 +41,10 @@ export function generateAvatarColor(name: string, index: number): string {
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'active':
-      return 'bg-green-100 text-green-700';
+      return 'bg-green-100 text-green-700 border-green-200';
     case 'leave':
-      return 'bg-orange-100 text-orange-700';
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-gray-100 text-gray-700 border-gray-200';
   }
 }

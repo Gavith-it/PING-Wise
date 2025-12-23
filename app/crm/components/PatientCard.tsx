@@ -56,61 +56,75 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: Pati
   const displayInitials = initials && initials.trim() ? initials : getInitials(patient.name || 'Patient');
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-3 md:p-5 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-2.5 md:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
       <div className="flex items-start justify-between">
-        <div className="flex items-start space-x-2 md:space-x-4 flex-1 min-w-0 pr-2 md:pr-3">
+        <div className="flex items-start space-x-2 md:space-x-3 flex-1 min-w-0">
           <div 
-            className={`w-10 h-10 md:w-12 md:h-12 ${avatarColor} rounded-full flex items-center justify-center text-white text-sm md:text-base font-semibold flex-shrink-0 shadow-sm`}
-            style={{ minWidth: '2.5rem', minHeight: '2.5rem' }}
+            className={`w-8 h-8 md:w-10 md:h-10 ${avatarColor} rounded-full flex items-center justify-center text-white text-[10px] md:text-xs font-semibold flex-shrink-0`}
           >
             <span className="select-none">{displayInitials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-1.5 md:space-x-2 mb-1">
-              <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white truncate">{patient.name}</p>
-              <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2.5 py-0.5 rounded-full border ${getStatusColor(patient.status)} flex-shrink-0`}>
-                {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+            <p className="font-semibold text-xs md:text-sm text-gray-900 dark:text-white mb-0.5 md:mb-1">
+              {patient.name}
+            </p>
+            <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
+              {patient.age} years • {patient.phone}
+            </p>
+            <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-1">
+              {patient.email}
+            </p>
+            {/* Last Visit */}
+            <div className="flex items-center gap-4 md:gap-6 text-[10px] md:text-xs text-gray-500 dark:text-gray-400">
+              <span className="whitespace-nowrap">
+                Last: {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}
               </span>
-            </div>
-            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-0.5 md:mb-1 truncate">{patient.age} years • {patient.phone}</p>
-            <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate">{patient.email}</p>
-            <div className="flex items-center space-x-2 md:space-x-4 mt-1.5 md:mt-2 text-[10px] md:text-xs text-gray-500 dark:text-gray-400 flex-wrap">
-              <span>Last: {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}</span>
-              <span>Next: {patient.nextAppointment ? new Date(patient.nextAppointment).toLocaleDateString() : 'N/A'}</span>
+              {patient.nextAppointment && (
+                <span className="whitespace-nowrap">
+                  Next: {new Date(patient.nextAppointment).toLocaleDateString()}
+                </span>
+              )}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onView();
-            }}
-            className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-            title="View"
-          >
-            <Eye className="w-3 h-3 md:w-3.5 md:h-3.5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-            title="Edit"
-          >
-            <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-            title="Delete"
-          >
-            <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
-          </button>
+        <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0 ml-1">
+          {/* Status Badge - Top Right */}
+          <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(patient.status)}`}>
+            {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+          </span>
+          {/* Action Icons - Below Status */}
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onView();
+              }}
+              className="p-1 md:p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+              title="View"
+            >
+              <Eye className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="p-1 md:p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+              title="Edit"
+            >
+              <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-1 md:p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              title="Delete"
+            >
+              <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import CRMPatientModal from '@/components/modals/CRMPatientModal';
 import PatientDetailsModal from '@/components/modals/PatientDetailsModal';
 import FilterModal, { FilterOptions } from '@/components/modals/FilterModal';
@@ -30,7 +30,22 @@ export default function CRMPage() {
     ageRange: { min: '', max: '' },
   });
   
-  const listContainerRef = useRef<HTMLDivElement>(null);
+  // Reset status filter to 'all' when user starts searching (search is independent of filters)
+  useEffect(() => {
+    if (searchTerm.trim().length > 0) {
+      // User is typing in search - automatically reset status filter to 'all'
+      if (statusFilter !== 'all') {
+        setStatusFilter('all');
+      }
+      // Also reset status in advancedFilters to keep them in sync
+      if (advancedFilters.status !== 'all') {
+        setAdvancedFilters(prev => ({
+          ...prev,
+          status: 'all',
+        }));
+      }
+    }
+  }, [searchTerm, statusFilter, advancedFilters.status]);
   
   const {
     patients,
@@ -47,8 +62,8 @@ export default function CRMPage() {
     advancedFilters,
   });
 
-  // Handle scroll visibility for footer
-  useScrollFooter(listContainerRef);
+  // Handle scroll visibility for footer (now listens to window scroll)
+  useScrollFooter(null);
 
   const handleFilterApply = (filters: FilterOptions) => {
     setAdvancedFilters(filters);
@@ -58,15 +73,15 @@ export default function CRMPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-100 text-green-700 border-green-200';
       case 'booked':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'follow-up':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'inactive':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 text-gray-700 border-gray-200';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
@@ -118,9 +133,9 @@ export default function CRMPage() {
   return (
     <PrivateRoute>
       <Layout>
-        <div className="flex flex-col h-full min-h-0 pb-16 md:pb-0">
-          {/* Fixed Header Section - Search, Filters, and Actions */}
-          <div className="flex-shrink-0 space-y-4 md:space-y-6 pb-4 md:pb-6 bg-gray-50 dark:bg-gray-900/50">
+        <div className="pb-16 md:pb-0">
+          {/* Sticky Header Section - Search, Filters, and Actions */}
+          <div className="sticky top-0 z-10 space-y-4 md:space-y-6 pb-4 md:pb-6 bg-gray-50 dark:bg-gray-900/50 backdrop-blur-sm">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div>
@@ -149,12 +164,8 @@ export default function CRMPage() {
             </div>
           </div>
 
-          {/* Scrollable Patient List Container - Only this section scrolls */}
-          <div 
-            ref={listContainerRef}
-            className="flex-1 overflow-y-auto min-h-0 pr-1"
-            style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
-          >
+          {/* Patient List - Scrolls naturally with page */}
+          <div className="pr-1">
             {/* Loading State - Only on initial load when no data exists */}
             {loading && patients.length === 0 ? (
               <div className="flex items-center justify-center py-12">
