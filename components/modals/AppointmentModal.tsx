@@ -30,7 +30,8 @@ export const formDataCache: {
   timestamp: 0,
 };
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes - longer cache for better performance
+const STALE_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes - use stale cache in edit mode
 
 // Track if preload is in progress to prevent duplicate calls
 // Export this so other modules can check if preload is in progress
@@ -48,6 +49,7 @@ export async function preloadFormData() {
                       formDataCache.doctors.length > 0 && 
                       cacheAge < CACHE_DURATION;
   
+  // Only preload if cache is invalid (don't preload if cache is still fresh)
   if (!isCacheValid) {
     try {
       preloadInProgress = true;
@@ -85,10 +87,13 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     type: '',
     reason: '',
   });
-  // Initialize with cached data if available
+  // Initialize with cached data if available (use stale cache in edit mode)
   const [patients, setPatients] = useState<Patient[]>(() => {
     const cacheAge = Date.now() - formDataCache.timestamp;
-    if (formDataCache.patients.length > 0 && cacheAge < CACHE_DURATION) {
+    const isEditMode = !!appointment;
+    // In edit mode, use stale cache (up to 30 min), in create mode only use fresh cache (15 min)
+    const maxAge = isEditMode ? STALE_CACHE_DURATION : CACHE_DURATION;
+    if (formDataCache.patients.length > 0 && cacheAge < maxAge) {
       return formDataCache.patients;
     }
     return [];
@@ -96,7 +101,10 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   
   const [doctors, setDoctors] = useState<User[]>(() => {
     const cacheAge = Date.now() - formDataCache.timestamp;
-    if (formDataCache.doctors.length > 0 && cacheAge < CACHE_DURATION) {
+    const isEditMode = !!appointment;
+    // In edit mode, use stale cache (up to 30 min), in create mode only use fresh cache (15 min)
+    const maxAge = isEditMode ? STALE_CACHE_DURATION : CACHE_DURATION;
+    if (formDataCache.doctors.length > 0 && cacheAge < maxAge) {
       return formDataCache.doctors;
     }
     return [];
@@ -110,6 +118,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const hasLoadedRef = useRef(false); // Track if data has been loaded to prevent duplicate calls
   const isSubmittingRef = useRef(false); // Prevent duplicate form submissions
   const hasCalledSuccessRef = useRef(false); // Prevent duplicate onSuccess calls
+  const appointmentDoctorIdRef = useRef<string>(''); // Store appointment's doctor ID for matching
 
   const loadFormData = useCallback(async (showLoading = false) => {
     try {
@@ -154,6 +163,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   useEffect(() => {
     // Reset success flag when modal opens/closes or appointment changes
     hasCalledSuccessRef.current = false;
+    // Reset hasLoadedRef when appointment changes (allows reload when switching between edit/create)
+    hasLoadedRef.current = false;
   }, [appointment]);
 
   useEffect(() => {
@@ -167,26 +178,55 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     const isCacheValid = formDataCache.patients.length > 0 && 
                         formDataCache.doctors.length > 0 && 
                         cacheAge < CACHE_DURATION;
+    const isStaleCacheValid = formDataCache.patients.length > 0 && 
+                             formDataCache.doctors.length > 0 && 
+                             cacheAge < STALE_CACHE_DURATION;
+    
+    // In edit mode, use stale cache if available (don't show loading)
+    // In create mode, only use fresh cache or show loading
+    const isEditMode = !!appointment;
     
     if (isCacheValid) {
-      // Use cached data immediately
+      // Fresh cache - use immediately
       setPatients(formDataCache.patients);
       setDoctors(formDataCache.doctors);
       hasLoadedRef.current = true;
-      // Refresh in background (don't set loading states)
+      // Refresh in background only if cache is older than 2 minutes (silent refresh)
+      if (cacheAge > 2 * 60 * 1000) {
+        loadFormData(false).catch(() => {});
+      }
+    } else if (isEditMode && isStaleCacheValid) {
+      // Edit mode with stale cache - use it without loading spinner
+      // This prevents unnecessary API calls when just viewing/editing
+      setPatients(formDataCache.patients);
+      setDoctors(formDataCache.doctors);
+      hasLoadedRef.current = true;
+      // Refresh in background silently (no loading state)
+      loadFormData(false).catch(() => {});
+    } else if (isEditMode && formDataCache.patients.length > 0 && formDataCache.doctors.length > 0) {
+      // Edit mode with very old cache - still use it, refresh in background
+      // Better UX than showing loading spinner
+      setPatients(formDataCache.patients);
+      setDoctors(formDataCache.doctors);
+      hasLoadedRef.current = true;
+      // Refresh in background silently
       loadFormData(false).catch(() => {});
     } else {
-      // No cache, load data
+      // No cache or creating new appointment - load with loading spinner
       hasLoadedRef.current = true;
       loadFormData(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appointment]);
 
   useEffect(() => {
     if (appointment) {
       const patientId = typeof appointment.patient === 'string' ? appointment.patient : appointment.patient?.id || '';
       const doctorId = typeof appointment.doctor === 'string' ? appointment.doctor : appointment.doctor?.id || '';
+      
+      // Store doctor ID for later matching
+      appointmentDoctorIdRef.current = doctorId;
+      
       setFormData({
         patient: patientId,
         doctor: doctorId,
@@ -197,21 +237,98 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       });
       
       // Set selected patient and doctor if they exist
+      // Handle patient selection
       if (typeof appointment.patient === 'object' && appointment.patient) {
         setSelectedPatient(appointment.patient as Patient);
-      } else if (patientId) {
-        const patient = patients.find(p => p.id === patientId);
-        if (patient) setSelectedPatient(patient);
+      } else if (patientId && patients.length > 0) {
+        // Only try to find patient if patients list is loaded
+        const patient = patients.find(p => {
+          const pId = String(p.id || '');
+          const aptId = String(patientId || '');
+          return pId === aptId || p.id === patientId;
+        });
+        if (patient) {
+          setSelectedPatient(patient);
+          // Ensure formData has the correct patient ID
+          setFormData(prev => ({ ...prev, patient: String(patient.id) }));
+        }
       }
       
+      // Handle doctor selection
       if (typeof appointment.doctor === 'object' && appointment.doctor) {
-        setSelectedDoctor(appointment.doctor as User);
+        // If doctor is already an object, use it directly
+        const doctorObj = appointment.doctor as User;
+        setSelectedDoctor(doctorObj);
+        // Ensure formData has the correct doctor ID
+        if (doctorObj.id) {
+          const doctorIdStr = String(doctorObj.id);
+          setFormData(prev => ({ ...prev, doctor: doctorIdStr }));
+          appointmentDoctorIdRef.current = doctorIdStr;
+        }
       } else if (doctorId) {
-        const doctor = doctors.find(d => d.id === doctorId);
-        if (doctor) setSelectedDoctor(doctor);
+        // Try to find doctor in the list
+        if (doctors.length > 0) {
+          // Try multiple ID matching strategies in case of format differences
+          const doctor = doctors.find(d => {
+            const dId = String(d.id || '');
+            const aptId = String(doctorId || '');
+            // Try exact match, case-insensitive match, and direct comparison
+            return dId === aptId || 
+                   dId.toLowerCase() === aptId.toLowerCase() ||
+                   d.id === doctorId ||
+                   String(d.id) === String(doctorId);
+          });
+          
+          if (doctor) {
+            setSelectedDoctor(doctor);
+            // Ensure formData has the correct doctor ID (use the doctor's actual ID format)
+            const doctorIdStr = String(doctor.id);
+            setFormData(prev => ({ ...prev, doctor: doctorIdStr }));
+            appointmentDoctorIdRef.current = doctorIdStr;
+          } else {
+            // If doctor not found, log for debugging
+            console.warn('Doctor not found in list:', { 
+              appointmentDoctorId: doctorId, 
+              doctorsCount: doctors.length, 
+              doctorIds: doctors.map(d => ({ id: d.id, name: d.name, idType: typeof d.id }))
+            });
+          }
+        }
+        // If doctors list is not loaded yet, the doctorId is already in formData
+        // The useEffect will re-run when doctors are loaded
       }
+    } else {
+      // Reset when no appointment (create mode)
+      setSelectedPatient(null);
+      setSelectedDoctor(null);
+      appointmentDoctorIdRef.current = '';
     }
   }, [appointment, patients, doctors]);
+
+  // Separate useEffect to retry finding doctor when doctors list loads
+  useEffect(() => {
+    // Only run if we have an appointment and a doctor ID to match, but no selected doctor yet
+    if (appointment && appointmentDoctorIdRef.current && !selectedDoctor && doctors.length > 0) {
+      const doctorId = appointmentDoctorIdRef.current;
+      
+      // Try to find the doctor with improved matching
+      const doctor = doctors.find(d => {
+        const dId = String(d.id || '');
+        const aptId = String(doctorId || '');
+        return dId === aptId || 
+               dId.toLowerCase() === aptId.toLowerCase() ||
+               d.id === doctorId ||
+               String(d.id) === String(doctorId);
+      });
+      
+      if (doctor) {
+        setSelectedDoctor(doctor);
+        const doctorIdStr = String(doctor.id);
+        setFormData(prev => ({ ...prev, doctor: doctorIdStr }));
+        appointmentDoctorIdRef.current = doctorIdStr;
+      }
+    }
+  }, [appointment, doctors, selectedDoctor]);
 
   // Optimized field update handler
   const handleFieldChange = useCallback((field: keyof typeof formData) => {
@@ -244,7 +361,9 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     setSelectedDoctor(doctor);
     // Ensure formData.doctor is set to the doctor ID
     if (doctor && doctor.id) {
-      setFormData(prev => ({ ...prev, doctor: doctor.id }));
+      setFormData(prev => ({ ...prev, doctor: String(doctor.id) }));
+    } else if (!doctor) {
+      setFormData(prev => ({ ...prev, doctor: '' }));
     }
   }, []);
 
@@ -482,19 +601,19 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
               <Autocomplete
                 options={doctors.map(d => ({
                   ...d,
-                  id: d.id,
+                  id: String(d.id), // Ensure ID is always a string for consistent matching
                   label: `${d.name} - ${d.department || 'General'}`,
                 }))}
-                value={formData.doctor}
+                value={formData.doctor ? String(formData.doctor) : ''}
                 onChange={handleDoctorChange}
                 onSelect={handleDoctorSelect}
                 placeholder="Type to search doctors..."
                 disabled={false}
-                loading={false}
+                loading={loadingDoctors}
                 required
                 name="doctor"
                 getOptionLabel={(option) => option.label}
-                getOptionValue={(option) => option.id}
+                getOptionValue={(option) => String(option.id)}
               />
             </div>
 

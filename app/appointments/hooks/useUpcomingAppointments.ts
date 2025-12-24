@@ -62,7 +62,7 @@ export function useUpcomingAppointments(
       return dateA.getTime() - dateB.getTime();
     });
     
-    // Return top 5 upcoming appointments
-    return upcoming.slice(0, 5);
+    // Return all upcoming appointments (pagination will be handled in the component)
+    return upcoming;
   }, [allMonthAppointments, appointments, selectedDate]);
 }

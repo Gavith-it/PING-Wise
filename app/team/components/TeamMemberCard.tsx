@@ -82,7 +82,7 @@ function TeamMemberCard({
               {member.email}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-1">
-              {member.phone || 'N/A'} • {member.experience ? `${member.experience} years exp` : 'N/A'}
+              {member.phone || 'N/A'}
             </p>
             {/* Experience and Specialization */}
             <div className="flex items-center justify-between gap-4 md:gap-6 text-[10px] md:text-xs text-gray-500 dark:text-gray-400 mb-1">
