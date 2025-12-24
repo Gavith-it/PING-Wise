@@ -60,6 +60,38 @@ export default function PatientDetailsModal({ patient, onClose, onEdit }: Patien
                 <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-gray-700 dark:text-gray-300">{patient.email}</span>
               </div>
+              {patient.address && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</label>
+                  <p className="text-gray-700 dark:text-gray-300">{patient.address}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 mb-6">
+            <h5 className="font-semibold text-gray-900 dark:text-white mb-3">Personal Information</h5>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Gender</label>
+                  <p className="text-gray-900 dark:text-white capitalize">
+                    {patient.gender || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Date of Birth</label>
+                  <p className="text-gray-900 dark:text-white">
+                    {patient.dateOfBirth 
+                      ? new Date(patient.dateOfBirth).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })
+                      : 'N/A'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 

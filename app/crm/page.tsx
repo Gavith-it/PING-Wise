@@ -53,7 +53,11 @@ export default function CRMPage() {
     loadingMore,
     total,
     hasMore,
-    handleLoadMore,
+    hasPrevious,
+    page,
+    totalPages,
+    handleNextPage,
+    handlePreviousPage,
     handleDelete,
     handlePatientCreated,
   } = usePatients({
@@ -182,10 +186,14 @@ export default function CRMPage() {
                 patients={patients}
                 loadingMore={loadingMore}
                 hasMore={hasMore}
+                hasPrevious={hasPrevious}
+                page={page}
+                totalPages={totalPages}
                 onView={handleViewPatient}
                 onEdit={handleEditPatient}
                 onDelete={handleDelete}
-                onLoadMore={handleLoadMore}
+                onNextPage={handleNextPage}
+                onPreviousPage={handlePreviousPage}
                 getStatusColor={getStatusColor}
               />
             )}

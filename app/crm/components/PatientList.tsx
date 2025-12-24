@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Patient } from '@/types';
 import PatientCard from './PatientCard';
 
@@ -8,10 +9,14 @@ interface PatientListProps {
   patients: Patient[];
   loadingMore: boolean;
   hasMore: boolean;
+  hasPrevious: boolean;
+  page: number;
+  totalPages: number;
   onView: (patient: Patient) => void;
   onEdit: (patient: Patient) => void;
   onDelete: (id: string) => void;
-  onLoadMore: () => void;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
   getStatusColor: (status: string) => string;
 }
 
@@ -19,12 +24,19 @@ function PatientList({
   patients, 
   loadingMore, 
   hasMore, 
+  hasPrevious,
+  page,
+  totalPages,
   onView, 
   onEdit, 
   onDelete, 
-  onLoadMore,
+  onNextPage,
+  onPreviousPage,
   getStatusColor 
 }: PatientListProps) {
+  // Only show pagination if there are multiple pages
+  const showPagination = totalPages > 1;
+
   return (
     <>
       {/* Patient List */}
@@ -41,24 +53,33 @@ function PatientList({
         ))}
       </div>
 
-      {/* Load More Button */}
-      {hasMore && (
-        <div className="flex justify-center pt-4 pb-4">
+      {/* Pagination Controls */}
+      {showPagination && (
+        <div className="flex items-center justify-between pt-4 pb-4 border-t border-gray-200 dark:border-gray-700">
+          {/* Previous Button */}
           <button
-            onClick={onLoadMore}
-            disabled={loadingMore}
-            className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md flex items-center space-x-2"
+            onClick={onPreviousPage}
+            disabled={!hasPrevious || loadingMore}
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
-            {loadingMore ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700"></div>
-                <span>Loading...</span>
-              </>
-            ) : (
-              <>
-                <span>Load More Patients</span>
-              </>
-            )}
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Previous</span>
+          </button>
+
+          {/* Page Info */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Page <span className="font-semibold text-gray-900 dark:text-white">{page}</span> of{' '}
+            <span className="font-semibold text-gray-900 dark:text-white">{totalPages}</span>
+          </div>
+
+          {/* Next Button */}
+          <button
+            onClick={onNextPage}
+            disabled={!hasMore || loadingMore}
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       )}

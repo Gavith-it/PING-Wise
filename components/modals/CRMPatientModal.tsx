@@ -37,17 +37,47 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
 
   useEffect(() => {
     if (patient) {
+      // Format dateOfBirth for date input (YYYY-MM-DD)
+      let formattedDateOfBirth = '';
+      if (patient.dateOfBirth) {
+        try {
+          const dob = patient.dateOfBirth instanceof Date 
+            ? patient.dateOfBirth 
+            : new Date(patient.dateOfBirth);
+          if (!isNaN(dob.getTime())) {
+            formattedDateOfBirth = dob.toISOString().split('T')[0];
+          }
+        } catch (error) {
+          console.error('Error parsing dateOfBirth:', error);
+          formattedDateOfBirth = '';
+        }
+      }
+
       setFormData({
         name: patient.name || '',
         age: patient.age?.toString() || '',
         gender: patient.gender || '',
-        dateOfBirth: patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '',
+        dateOfBirth: formattedDateOfBirth,
         phone: patient.phone || '',
         email: patient.email || '',
         address: patient.address || '',
         assignedDoctor: typeof patient.assignedDoctor === 'string' ? patient.assignedDoctor : '',
         status: patient.status || 'active',
         medicalNotes: patient.medicalNotes || '',
+      });
+    } else {
+      // Reset form when no patient (adding new)
+      setFormData({
+        name: '',
+        age: '',
+        gender: '',
+        dateOfBirth: '',
+        phone: '',
+        email: '',
+        address: '',
+        assignedDoctor: '',
+        status: 'active',
+        medicalNotes: '',
       });
     }
   }, [patient]);

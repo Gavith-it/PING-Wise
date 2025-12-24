@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X } from 'lucide-react';
 import { teamApi } from '@/lib/services/teamApi';
-import { userToCrmTeam } from '@/lib/utils/teamAdapter';
+import { userToCrmTeam, crmTeamToUser } from '@/lib/utils/teamAdapter';
 import toast from 'react-hot-toast';
 import { User } from '@/types';
 
 interface TeamModalProps {
   teamMember?: User | null;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdMember?: User) => void;
 }
 
 export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalProps) {
@@ -82,18 +82,73 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         experience: formData.experience,
       });
 
+      let createdOrUpdatedMember: User | undefined;
+      
       if (teamMember && teamMember.id) {
-        await teamApi.updateTeam(teamMember.id, crmTeamRequest);
+        const response = await teamApi.updateTeam(teamMember.id, crmTeamRequest);
         toast.success('Team member updated successfully');
+        // Convert response to User format for cache update
+        if (response && typeof response === 'object' && 'id' in response) {
+          try {
+            createdOrUpdatedMember = crmTeamToUser(response as any);
+            // Preserve existing data that might not be in response
+            createdOrUpdatedMember = {
+              ...createdOrUpdatedMember,
+              ...formData,
+              id: teamMember.id,
+            };
+          } catch (error) {
+            console.error('Error converting updated team member:', error);
+            // Fallback: create user object from form data
+            createdOrUpdatedMember = {
+              id: teamMember.id,
+              name: formData.name,
+              email: formData.email,
+              role: formData.role,
+              specialization: formData.specialization,
+              phone: formData.phone,
+              experience: formData.experience,
+              status: teamMember.status || 'inactive',
+              department: teamMember.department || '',
+            } as User;
+          }
+        }
       } else {
-        await teamApi.createTeam(crmTeamRequest);
+        const response = await teamApi.createTeam(crmTeamRequest);
         toast.success('Team member created successfully');
+        // Convert response to User format for cache update
+        if (response && typeof response === 'object' && 'id' in response) {
+          try {
+            createdOrUpdatedMember = crmTeamToUser(response as any);
+            // Add form data to the created member
+            createdOrUpdatedMember = {
+              ...createdOrUpdatedMember,
+              ...formData,
+            };
+          } catch (error) {
+            console.error('Error converting created team member:', error);
+            // Fallback: create user object from form data (will need ID from response)
+            if ('id' in response) {
+              createdOrUpdatedMember = {
+                id: String(response.id),
+                name: formData.name,
+                email: formData.email,
+                role: formData.role,
+                specialization: formData.specialization,
+                phone: formData.phone,
+                experience: formData.experience,
+                status: 'inactive',
+                department: '',
+              } as User;
+            }
+          }
+        }
       }
       
       // Call onSuccess only once - parent will handle closing the modal
       if (!hasCalledSuccessRef.current) {
         hasCalledSuccessRef.current = true;
-        onSuccess();
+        onSuccess(createdOrUpdatedMember);
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to save team member';

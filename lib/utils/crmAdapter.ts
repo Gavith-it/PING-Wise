@@ -28,6 +28,20 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     return undefined;
   }
 
+  // Parse date_of_birth if available (CRM API might have it as date_of_birth or in medical_history)
+  let dateOfBirth: Date | undefined;
+  if ((customer as any).date_of_birth) {
+    try {
+      dateOfBirth = new Date((customer as any).date_of_birth);
+      // Check if date is valid
+      if (isNaN(dateOfBirth.getTime())) {
+        dateOfBirth = undefined;
+      }
+    } catch {
+      dateOfBirth = undefined;
+    }
+  }
+
   return {
     id: String(customerId), // Ensure id is a string
     name: `${customer.first_name} ${customer.last_name}`.trim(),
@@ -38,9 +52,8 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     address: customer.address,
     assignedDoctor: customer.assigned_to,
     status: mapStatusToPatientStatus(customer.status || 'active'),
-    medicalNotes: typeof customer.medical_history === 'object' && customer.medical_history !== null
-      ? JSON.stringify(customer.medical_history) 
-      : customer.medical_history ? String(customer.medical_history) : '',
+    medicalNotes: parseMedicalHistory(customer.medical_history || (customer as any).medical_history || null),
+    dateOfBirth: dateOfBirth,
     lastVisit: undefined, // Not available in CRM API
     nextAppointment: undefined, // Not available in CRM API
     initials: `${customer.first_name?.[0] || ''}${customer.last_name?.[0] || ''}`.toUpperCase() || 'P',
@@ -60,18 +73,38 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  // Parse medical notes if it's a JSON string
-  let medicalHistory: Record<string, any> | undefined;
-  if ('medicalNotes' in patient && patient.medicalNotes) {
-    try {
-      medicalHistory = JSON.parse(patient.medicalNotes);
-    } catch {
-      // If not JSON, store as string in an object
-      medicalHistory = { notes: patient.medicalNotes };
+  // Convert medical notes to CRM API format
+  // CRM API expects: [{"Key":"notes","Value":"text"}] or {"notes":"text"}
+  let medicalHistory: any | undefined;
+  if ('medicalNotes' in patient && patient.medicalNotes && patient.medicalNotes.trim()) {
+    const notesText = patient.medicalNotes.trim();
+    
+    // If it's already in the expected array format, try to parse it
+    if (notesText.startsWith('[') || notesText.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(notesText);
+        // If it's already in the correct format, use it
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].Key === 'notes') {
+          medicalHistory = parsed;
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          // If it's an object, convert to array format
+          medicalHistory = [{ Key: 'notes', Value: parsed.notes || parsed.Value || notesText }];
+        } else {
+          // Fallback: wrap in expected format
+          medicalHistory = [{ Key: 'notes', Value: notesText }];
+        }
+      } catch {
+        // If parsing fails, treat as plain text and format it
+        medicalHistory = [{ Key: 'notes', Value: notesText }];
+      }
+    } else {
+      // Plain text - format as CRM API expects
+      medicalHistory = [{ Key: 'notes', Value: notesText }];
     }
   }
 
-  return {
+  // Include date_of_birth if available
+  const crmRequest: CrmCustomerRequest & { date_of_birth?: string } = {
     first_name: firstName,
     last_name: lastName,
     email: patient.email,
@@ -83,25 +116,137 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
     status: mapPatientStatusToCrmStatus(patient.status),
     medical_history: medicalHistory,
   };
+
+  // Add date_of_birth if available (format as ISO string)
+  if ('dateOfBirth' in patient && patient.dateOfBirth) {
+    const dob = patient.dateOfBirth instanceof Date 
+      ? patient.dateOfBirth 
+      : new Date(patient.dateOfBirth);
+    if (!isNaN(dob.getTime())) {
+      crmRequest.date_of_birth = dob.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    }
+  }
+
+  return crmRequest;
+}
+
+/**
+ * Parse medical history from CRM API format to plain text
+ * Handles various formats:
+ * - Array format: [{"Key":"notes","Value":"text"}]
+ * - Object format: {"notes":"text"} or {"Key":"notes","Value":"text"}
+ * - String format: "text"
+ * - JSON string: "[{\"Key\":\"notes\",\"Value\":\"text\"}]"
+ */
+function parseMedicalHistory(medicalHistory: any): string {
+  if (!medicalHistory) {
+    return '';
+  }
+
+  // If it's already a string, check if it's a JSON string
+  if (typeof medicalHistory === 'string') {
+    // Try to parse if it looks like JSON
+    if (medicalHistory.trim().startsWith('[') || medicalHistory.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(medicalHistory);
+        return parseMedicalHistory(parsed); // Recursively parse the parsed JSON
+      } catch {
+        // If parsing fails, return as-is (plain string)
+        return medicalHistory;
+      }
+    }
+    // Plain string, return as-is
+    return medicalHistory;
+  }
+
+  // If it's an array (e.g., [{"Key":"notes","Value":"text"}])
+  if (Array.isArray(medicalHistory)) {
+    // Look for objects with Key/Value structure
+    for (const item of medicalHistory) {
+      if (item && typeof item === 'object') {
+        // Check for Key/Value format (case-insensitive key matching)
+        const itemKey = item.Key || item.key;
+        const itemValue = item.Value || item.value;
+        
+        if (itemKey && itemValue) {
+          // Check if key is 'notes' (case-insensitive)
+          if (String(itemKey).toLowerCase() === 'notes') {
+            return String(itemValue || '');
+          }
+        }
+        // Check for direct value property (case-insensitive)
+        if ('Value' in item || 'value' in item) {
+          const value = item.Value || item.value;
+          if (value) {
+            return String(value || '');
+          }
+        }
+        // Check for notes property (case-insensitive)
+        if ('notes' in item || 'Notes' in item) {
+          const notes = item.notes || item.Notes;
+          if (notes) {
+            return String(notes || '');
+          }
+        }
+      }
+    }
+    // If no valid structure found, return empty
+    return '';
+  }
+
+  // If it's an object
+  if (typeof medicalHistory === 'object' && medicalHistory !== null) {
+    // Check for Key/Value format (case-insensitive)
+    const key = medicalHistory.Key || medicalHistory.key;
+    const value = medicalHistory.Value || medicalHistory.value;
+    
+    if (key && value && String(key).toLowerCase() === 'notes') {
+      return String(value || '');
+    }
+    // Check for notes property (case-insensitive)
+    if ('notes' in medicalHistory || 'Notes' in medicalHistory) {
+      const notes = medicalHistory.notes || medicalHistory.Notes;
+      if (notes) {
+        return String(notes || '');
+      }
+    }
+    // Check for Value property (case-insensitive)
+    if ('Value' in medicalHistory || 'value' in medicalHistory) {
+      const val = medicalHistory.Value || medicalHistory.value;
+      if (val) {
+        return String(val || '');
+      }
+    }
+    // If object has string values, try to extract meaningful text
+    const values = Object.values(medicalHistory).filter(v => typeof v === 'string' && v.trim());
+    if (values.length > 0) {
+      return values[0] as string;
+    }
+  }
+
+  // Fallback: convert to string
+  return String(medicalHistory);
 }
 
 /**
  * Map CRM status to Patient status
  */
 function mapStatusToPatientStatus(crmStatus: string): 'active' | 'booked' | 'follow-up' | 'inactive' {
-  const normalized = crmStatus.toLowerCase();
+  const normalized = crmStatus.toLowerCase().trim();
   
-  if (normalized.includes('active') || normalized === 'active') {
+  // Check for 'inactive' FIRST before 'active' since 'inactive' contains 'active' as substring
+  if (normalized === 'inactive' || normalized.includes('inactive')) {
+    return 'inactive';
+  }
+  // Then check for 'active' (exact match or contains)
+  if (normalized === 'active' || normalized.includes('active')) {
     return 'active';
   }
-  if (normalized.includes('booked') || normalized === 'booked') {
+  if (normalized === 'booked' || normalized.includes('booked')) {
     return 'booked';
   }
-  if (normalized.includes('follow') || normalized === 'follow-up') {
+  if (normalized === 'follow-up' || normalized.includes('follow')) {
     return 'follow-up';
-  }
-  if (normalized.includes('inactive') || normalized === 'inactive') {
-    return 'inactive';
   }
   
   // Default to active if status doesn't match

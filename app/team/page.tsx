@@ -30,6 +30,9 @@ export default function TeamPage() {
     teamMembers,
     loading,
     loadTeamMembers,
+    addTeamMemberToCache,
+    updateTeamMemberInCache,
+    removeTeamMemberFromCache,
   } = useTeamMembers({ filter, filters });
 
   // Use filter hook
@@ -58,7 +61,8 @@ export default function TeamPage() {
     try {
       await teamApi.deleteTeam(id);
       toast.success('Team member deleted successfully');
-      loadTeamMembers();
+      // Optimistically remove from cache instead of refetching
+      removeTeamMemberFromCache(id);
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.message || 'Failed to delete team member');
     }
@@ -168,14 +172,22 @@ export default function TeamPage() {
               setShowEditModal(false);
               setSelectedMember(null);
             }}
-            onSuccess={() => {
+            onSuccess={(createdOrUpdatedMember) => {
               setShowEditModal(false);
               setSelectedMember(null);
-              // Manual refresh - prevent useEffect from triggering
-              // Small delay to let backend process the request
-              setTimeout(() => {
+              // Optimistically update cache with new/updated member instead of refetching
+              if (createdOrUpdatedMember) {
+                if (selectedMember && selectedMember.id) {
+                  // Update existing member
+                  updateTeamMemberInCache(createdOrUpdatedMember);
+                } else {
+                  // Add new member
+                  addTeamMemberToCache(createdOrUpdatedMember);
+                }
+              } else {
+                // Fallback: if we don't have the member data, refresh (shouldn't happen)
                 loadTeamMembers(true, true);
-              }, 300);
+              }
             }}
           />
         )}

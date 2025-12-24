@@ -35,9 +35,12 @@ interface UsePatientsReturn {
   loadingMore: boolean;
   total: number;
   hasMore: boolean;
+  hasPrevious: boolean;
   page: number;
+  totalPages: number;
   loadPatients: (reset?: boolean, skipLoadingSpinner?: boolean) => Promise<void>;
-  handleLoadMore: () => void;
+  handleNextPage: () => void;
+  handlePreviousPage: () => void;
   handleDelete: (id: string) => Promise<void>;
   handlePatientCreated: (newPatient?: Patient) => void;
 }
@@ -52,6 +55,8 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [hasPrevious, setHasPrevious] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
   const hasInitialized = useRef(false);
   const isLoadingRef = useRef(false);
 
@@ -197,24 +202,43 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     const filtered = filterPatients(allPatients);
     const totalFiltered = filtered.length;
     
-    // Apply pagination
+    // Calculate pagination
+    const calculatedTotalPages = Math.ceil(totalFiltered / LIMIT);
     const startIndex = (page - 1) * LIMIT;
     const endIndex = startIndex + LIMIT;
     const paginatedPatients = filtered.slice(startIndex, endIndex);
     
     setPatients(paginatedPatients);
     setTotal(totalFiltered);
-    setHasMore(endIndex < totalFiltered);
+    setTotalPages(calculatedTotalPages);
+    setHasMore(page < calculatedTotalPages);
+    setHasPrevious(page > 1);
     
     // Reset to page 1 if filters changed (but not if it's just page change)
-    if (page > 1 && filtered.length <= (page - 1) * LIMIT) {
+    if (page > calculatedTotalPages && calculatedTotalPages > 0) {
       setPage(1);
     }
   }, [allPatients, filterPatients, page]);
 
-  const handleLoadMore = useCallback(() => {
-    // Client-side pagination - just increment page
-    setPage(prev => prev + 1);
+  // Scroll to top when page changes
+  useEffect(() => {
+    if (hasInitialized.current) {
+      // Scroll to top smoothly when page changes
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [page]);
+
+  const handleNextPage = useCallback(() => {
+    setPage(prev => {
+      const filtered = filterPatients(allPatients);
+      const totalFiltered = filtered.length;
+      const calculatedTotalPages = Math.ceil(totalFiltered / LIMIT);
+      return prev < calculatedTotalPages ? prev + 1 : prev;
+    });
+  }, [allPatients, filterPatients]);
+
+  const handlePreviousPage = useCallback(() => {
+    setPage(prev => prev > 1 ? prev - 1 : 1);
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
@@ -263,16 +287,23 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
         }
       });
       
-      // Update cache
-      patientsCache.allPatients = [newPatient, ...patientsCache.allPatients.filter(p => p.id !== newPatient.id)];
+      // Update cache with the new/updated patient data
+      // No need to refetch - we already have the latest data from the API response
+      const existingCacheIndex = patientsCache.allPatients.findIndex(p => p.id === newPatient.id);
+      if (existingCacheIndex >= 0) {
+        // Update existing patient in cache
+        patientsCache.allPatients[existingCacheIndex] = newPatient;
+      } else {
+        // Add new patient to cache at the beginning
+        patientsCache.allPatients = [newPatient, ...patientsCache.allPatients];
+      }
       patientsCache.timestamp = Date.now();
       
-      // Optionally refresh in background to ensure sync (non-blocking)
-      loadAllPatients(true).catch(() => {
-        // Silent fail - we already updated optimistically
-      });
+      // No need to call loadAllPatients - we already have the updated data from the API response
+      // The optimistic update is sufficient and more efficient
     } else {
-      // Fallback: Reload if no patient data provided
+      // Fallback: Only reload if no patient data provided (shouldn't happen in normal flow)
+      // This is a safety fallback in case onSuccess is called without patient data
       loadAllPatients(true);
     }
   }, [loadAllPatients]);
@@ -295,9 +326,12 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     loadingMore: false, // Client-side pagination is instant, no loading state needed
     total,
     hasMore,
+    hasPrevious,
     page,
+    totalPages,
     loadPatients,
-    handleLoadMore,
+    handleNextPage,
+    handlePreviousPage,
     handleDelete,
     handlePatientCreated,
   };

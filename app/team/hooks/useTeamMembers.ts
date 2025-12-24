@@ -32,6 +32,9 @@ interface UseTeamMembersReturn {
   teamMembers: User[];
   loading: boolean;
   loadTeamMembers: (showLoading?: boolean, isManualRefresh?: boolean) => Promise<void>;
+  addTeamMemberToCache: (newMember: User) => void;
+  updateTeamMemberInCache: (updatedMember: User) => void;
+  removeTeamMemberFromCache: (memberId: string) => void;
 }
 
 // Helper function to apply filters to team members (defined outside component)
@@ -81,6 +84,77 @@ export function useTeamMembers({
   const isLoadingRef = useRef(false);
   const lastLoadTimeRef = useRef<number>(0); // Track last load time for duplicate prevention
 
+  // Add new team member to cache without refetching
+  const addTeamMemberToCache = useCallback((newMember: User) => {
+    // Process the new member (add initials and colors)
+    const memberInitials = newMember.initials || generateInitials(newMember.name);
+    const memberAvatarColor = generateAvatarColor(newMember.name, teamCache.allTeamMembers.length);
+    
+    const processedMember: User = {
+      ...newMember,
+      initials: memberInitials,
+      avatarColor: memberAvatarColor
+    };
+    
+    // Add to cache
+    teamCache.allTeamMembers = [...teamCache.allTeamMembers, processedMember];
+    teamCache.timestamp = Date.now(); // Update timestamp to keep cache valid
+    
+    // Update previousFilters to prevent useEffect from triggering
+    const filterKey = JSON.stringify({ filter, filters });
+    previousFilters.current = filterKey;
+    
+    // Apply filters and update state
+    const filteredMembers = applyFiltersToMembers(teamCache.allTeamMembers, filter, filters);
+    setTeamMembers(filteredMembers);
+  }, [filter, filters]);
+
+  // Update team member in cache without refetching
+  const updateTeamMemberInCache = useCallback((updatedMember: User) => {
+    // Process the updated member
+    const memberInitials = updatedMember.initials || generateInitials(updatedMember.name);
+    const existingMember = teamCache.allTeamMembers.find(m => m.id === updatedMember.id);
+    const memberIndex = teamCache.allTeamMembers.findIndex(m => m.id === updatedMember.id);
+    const memberAvatarColor = existingMember?.avatarColor || generateAvatarColor(updatedMember.name, memberIndex >= 0 ? memberIndex : teamCache.allTeamMembers.length);
+    
+    const processedMember: User = {
+      ...updatedMember,
+      initials: memberInitials,
+      avatarColor: memberAvatarColor
+    };
+    
+    // Update in cache
+    if (memberIndex >= 0) {
+      teamCache.allTeamMembers[memberIndex] = processedMember;
+    } else {
+      teamCache.allTeamMembers.push(processedMember);
+    }
+    teamCache.timestamp = Date.now();
+    
+    // Update previousFilters to prevent useEffect from triggering
+    const filterKey = JSON.stringify({ filter, filters });
+    previousFilters.current = filterKey;
+    
+    // Apply filters and update state
+    const filteredMembers = applyFiltersToMembers(teamCache.allTeamMembers, filter, filters);
+    setTeamMembers(filteredMembers);
+  }, [filter, filters]);
+
+  // Remove team member from cache without refetching
+  const removeTeamMemberFromCache = useCallback((memberId: string) => {
+    // Remove from cache
+    teamCache.allTeamMembers = teamCache.allTeamMembers.filter(m => m.id !== memberId);
+    teamCache.timestamp = Date.now();
+    
+    // Update previousFilters to prevent useEffect from triggering
+    const filterKey = JSON.stringify({ filter, filters });
+    previousFilters.current = filterKey;
+    
+    // Apply filters and update state
+    const filteredMembers = applyFiltersToMembers(teamCache.allTeamMembers, filter, filters);
+    setTeamMembers(filteredMembers);
+  }, [filter, filters]);
+
   const loadTeamMembers = useCallback(async (showLoading = true, isManualRefresh = false) => {
     // Prevent concurrent calls
     if (isLoadingRef.current) {
@@ -88,11 +162,17 @@ export function useTeamMembers({
     }
     
     // Prevent duplicate calls within 1 second (debounce)
+    // For manual refreshes, still check to prevent rapid duplicate calls
     const now = Date.now();
-    if (!isManualRefresh && (now - lastLoadTimeRef.current) < 1000) {
-      return;
+    if ((now - lastLoadTimeRef.current) < 500) {
+      return; // Prevent duplicate calls within 500ms (even for manual refreshes)
     }
     lastLoadTimeRef.current = now;
+    
+    // Invalidate cache on manual refresh to ensure fresh data
+    if (isManualRefresh) {
+      teamCache.timestamp = 0;
+    }
     
     try {
       isLoadingRef.current = true;
@@ -179,5 +259,8 @@ export function useTeamMembers({
     teamMembers,
     loading,
     loadTeamMembers,
+    addTeamMemberToCache,
+    updateTeamMemberInCache,
+    removeTeamMemberFromCache,
   };
 }
