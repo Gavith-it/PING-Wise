@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar, MessageSquare } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import AppointmentModal from '@/components/modals/AppointmentModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
@@ -44,11 +44,25 @@ export default function AppointmentsPage() {
     enrichAppointmentsWithPatients,
   });
 
-  // Use filter hook
-  const filteredAppointments = useAppointmentFilters(appointments, searchTerm, statusFilter);
+  // Filter appointments to only show today's appointments in the top section
+  const today = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
 
-  // Use upcoming appointments hook
-  const upcomingAppointments = useUpcomingAppointments(allMonthAppointments, appointments, selectedDate);
+  const todayAppointments = useMemo(() => {
+    return appointments.filter(apt => {
+      const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
+      return isSameDay(aptDate, today);
+    });
+  }, [appointments, today]);
+
+  // Use filter hook for today's appointments
+  const filteredAppointments = useAppointmentFilters(todayAppointments, searchTerm, statusFilter);
+
+  // Use upcoming appointments hook - shows appointments for selected date (if not today) and other future dates
+  const upcomingAppointments = useUpcomingAppointments(allMonthAppointments, appointments, selectedDate, today);
 
   // Use edit hook
   const {
@@ -143,7 +157,7 @@ export default function AppointmentsPage() {
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div>
                 <h3 className="text-sm md:text-lg font-semibold text-gray-900 dark:text-white">
-                  Appointments for {format(selectedDate, 'MMMM d, yyyy')}
+                  Appointments for {format(today, 'MMMM d, yyyy')}
                 </h3>
                 <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? 's' : ''} {statusFilter !== 'all' ? `(${statusFilter})` : ''}
