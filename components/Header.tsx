@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Settings, X, Home, Users, Calendar, Megaphone, UserCheck, FileText, CalendarCheck, UserPlus, MessageSquare, AlertCircle, CheckCircle2, HelpCircle, Wallet } from 'lucide-react';
+import { Bell, Settings, X, Home, Users, Calendar, Megaphone, UserCheck, FileText, CalendarCheck, UserPlus, MessageSquare, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -120,15 +120,6 @@ export default function Header() {
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-3">
-          {/* Wallet Icon - Navigate to wallet page */}
-          <button
-            onClick={() => router.push('/wallet')}
-            className="p-1.5 md:p-2 text-gray-900 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Wallet"
-          >
-            <Wallet className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
-
           <div className="relative" ref={notificationRef}>
             <button
               onClick={() => {
@@ -137,7 +128,7 @@ export default function Header() {
                   markAllAsRead();
                 }
               }}
-              className="relative p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="relative p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
               {unreadCount > 0 && (
@@ -150,7 +141,7 @@ export default function Header() {
 
           <button
             onClick={() => router.push(`/guide?page=${pathname}`)}
-            className="p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300"
             title="Help & User Guide"
           >
             <HelpCircle className="w-4 h-4 md:w-5 md:h-5" />
@@ -159,7 +150,7 @@ export default function Header() {
       </div>
 
       {showNotifications && (
-        <div className="absolute top-full right-2 md:right-4 mt-2 w-[calc(100vw-1rem)] md:w-80 max-w-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl md:rounded-2xl shadow-lg z-50 max-h-[70vh] md:max-h-96 overflow-hidden flex flex-col">
+        <div className="absolute top-full right-2 md:right-4 mt-2 w-[calc(100vw-1rem)] md:w-80 max-w-sm bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-lg z-50 max-h-[70vh] md:max-h-96 overflow-hidden flex flex-col">
           <div className="p-3 md:p-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between">
               <h3 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">Notifications</h3>

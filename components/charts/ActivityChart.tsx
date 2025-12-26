@@ -14,7 +14,7 @@ interface ActivityData {
     count?: number;
     percentage?: number;
   };
-  followUp?: {
+  inactive?: {
     count?: number;
     percentage?: number;
   };
@@ -35,16 +35,16 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
       color: '#10b981', // Medical green
     },
     {
+      name: 'Inactive',
+      value: data.inactive?.count || 0,
+      percentage: data.inactive?.percentage || 0,
+      color: '#6b7280', // Gray for inactive
+    },
+    {
       name: 'Booked',
       value: data.booked?.count || 0,
       percentage: data.booked?.percentage || 0,
       color: '#34d399', // Light green
-    },
-    {
-      name: 'Churned',
-      value: data.followUp?.count || 0,
-      percentage: data.followUp?.percentage || 0,
-      color: '#14b8a6', // Teal green
     },
   ], [data]);
 

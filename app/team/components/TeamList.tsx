@@ -8,17 +8,13 @@ import { getStatusColor } from '../utils/teamUtils';
 interface TeamListProps {
   teamMembers: User[];
   loading: boolean;
-  onView: (member: User) => void;
-  onEdit: (member: User) => void;
-  onDelete: (id: string) => void;
+  onCardClick: (member: User) => void;
 }
 
 function TeamList({
   teamMembers,
   loading,
-  onView,
-  onEdit,
-  onDelete,
+  onCardClick,
 }: TeamListProps) {
   if (loading) {
     return (
@@ -44,10 +40,7 @@ function TeamList({
           member={member}
           index={index}
           getStatusColor={getStatusColor}
-          appointmentCount={0}
-          onView={() => onView(member)}
-          onEdit={() => onEdit(member)}
-          onDelete={() => onDelete(member.id)}
+          onClick={() => onCardClick(member)}
         />
       ))}
     </div>

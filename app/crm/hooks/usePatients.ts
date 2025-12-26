@@ -3,6 +3,7 @@ import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
 import { Patient } from '@/types';
 import { FilterOptions } from '@/components/modals/FilterModal';
+import { normalizeCustomerStatus } from '@/lib/constants/status';
 
 // Patients cache - stores ALL patients (not filtered)
 const patientsCache: {
@@ -115,9 +116,15 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
   const filterPatients = useCallback((patientsToFilter: Patient[]): Patient[] => {
     let filtered = [...patientsToFilter];
 
-    // Status filter
+    // Status filter - normalize both sides for comparison
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(p => p.status === statusFilter);
+      // Normalize filter value to standardized format for comparison
+      const normalizedFilter = normalizeCustomerStatus(statusFilter);
+      filtered = filtered.filter(p => {
+        // Normalize patient status to standardized format for comparison
+        const normalizedPatientStatus = normalizeCustomerStatus(p.status);
+        return normalizedPatientStatus === normalizedFilter;
+      });
     }
 
     // Search filter (name, email, phone)
@@ -246,28 +253,83 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
       return;
     }
 
+    // Store the original patient list for potential revert
+    const originalPatients = [...allPatients];
+    const originalCache = [...patientsCache.allPatients];
+
     try {
-      // Optimistic update: Remove from allPatients immediately
-      setAllPatients(prevAllPatients => prevAllPatients.filter(p => p.id !== id));
+      // Log the delete attempt
+      console.log('[Delete Patient] ============================================');
+      console.log('[Delete Patient] STARTING DELETE OPERATION');
+      console.log('[Delete Patient] Patient ID:', id);
+      console.log('[Delete Patient] ============================================');
+      
+      // IMPORTANT: Call API FIRST and WAIT for response before updating UI
+      // This ensures the API is definitely called and we have confirmation
+      console.log('[Delete Patient] Step 1: Calling DELETE API...');
+      console.log('[Delete Patient] Waiting for API response...');
+      
+      const deleteResponse = await crmPatientService.deletePatient(id);
+      
+      console.log('[Delete Patient] Step 2: API call completed!');
+      console.log('[Delete Patient] API Response:', deleteResponse);
+      console.log('[Delete Patient] API Response Success:', deleteResponse?.success);
+      
+      // Verify the API call was successful
+      if (!deleteResponse || (deleteResponse.success === false)) {
+        throw new Error('API returned unsuccessful response');
+      }
+      
+      console.log('[Delete Patient] Step 3: API confirmed successful - updating UI...');
+      
+      // ONLY update UI after confirmed successful API call
+      setAllPatients(prevAllPatients => {
+        const filtered = prevAllPatients.filter(p => p.id !== id);
+        console.log('[Delete Patient] UI updated. Remaining patients:', filtered.length);
+        return filtered;
+      });
       
       // Update cache
       patientsCache.allPatients = patientsCache.allPatients.filter(p => p.id !== id);
       patientsCache.timestamp = Date.now();
       
-      // Delete in background
-      await crmPatientService.deletePatient(id);
+      console.log('[Delete Patient] Step 4: Patient deleted successfully from database AND UI');
+      console.log('[Delete Patient] ============================================');
       toast.success('Patient deleted successfully');
       
-      // Optionally refresh in background to ensure sync (non-blocking)
-      loadAllPatients(true).catch(() => {
-        // Silent fail - we already updated optimistically
+      // Refresh in background to ensure sync (non-blocking)
+      console.log('[Delete Patient] Step 5: Refreshing patient list in background...');
+      loadAllPatients(true).catch((refreshError) => {
+        console.warn('[Delete Patient] Background refresh failed (non-critical):', refreshError);
       });
-    } catch (error) {
-      // Revert optimistic update on error
-      loadAllPatients(true);
-      toast.error('Failed to delete patient');
+    } catch (error: any) {
+      // API call failed - DO NOT update UI
+      console.error('[Delete Patient] ============================================');
+      console.error('[Delete Patient] DELETE OPERATION FAILED');
+      console.error('[Delete Patient] Error:', error);
+      console.error('[Delete Patient] Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        url: error?.config?.url,
+        method: error?.config?.method,
+      });
+      console.error('[Delete Patient] UI will NOT be updated - keeping original state');
+      console.error('[Delete Patient] ============================================');
+      
+      // Restore original state (in case any partial update happened)
+      setAllPatients(originalPatients);
+      patientsCache.allPatients = originalCache;
+      patientsCache.timestamp = Date.now();
+      
+      // Show detailed error message
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          'Failed to delete patient. The patient was NOT deleted from the database.';
+      toast.error(errorMessage);
     }
-  }, [loadAllPatients]);
+  }, [allPatients, loadAllPatients]);
 
   const handlePatientCreated = useCallback((newPatient?: Patient) => {
     if (newPatient) {

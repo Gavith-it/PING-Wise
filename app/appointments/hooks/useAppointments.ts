@@ -71,7 +71,7 @@ export function useAppointments({
       }
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const response = await crmAppointmentService.getAppointments({ date: dateStr });
+      const response = await crmAppointmentService.searchAppointments({ date: dateStr });
       let newAppointments = response.data || [];
       
       // Enrich appointments with patient data
@@ -224,7 +224,8 @@ export function useAppointments({
     }
     
     // Preload patients and doctors data for appointment modal (in background)
-    preloadFormData();
+    // Only preload if cache is old or doesn't exist - prevents unnecessary calls
+    preloadFormData().catch(() => {}); // Silently fail if preload fails
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
@@ -305,7 +306,7 @@ export function useAppointments({
         // New date is in current month - load it from API
         delete appointmentsCache.appointments[updatedDateStr];
         try {
-          const response = await crmAppointmentService.getAppointments({ date: updatedDateStr });
+          const response = await crmAppointmentService.searchAppointments({ date: updatedDateStr });
           let newAppointments = response.data || [];
           newAppointments = await enrichAppointmentsWithPatients(newAppointments);
           
@@ -361,6 +362,25 @@ export function useAppointments({
       appointmentsCache.timestamp = Date.now();
       // Update lastSelectedDate to prevent useEffect from triggering
       lastSelectedDate.current = currentDateStr;
+    }
+    
+    // Also update cache for the appointment's date if it's different from selected date
+    // This ensures confirmed appointments appear when viewing their date
+    if (updatedDateStr !== currentDateStr && appointmentsCache.appointments[updatedDateStr]) {
+      const existingIndex = appointmentsCache.appointments[updatedDateStr].findIndex(
+        apt => apt.id === enrichedAppointment.id
+      );
+      if (existingIndex >= 0) {
+        // Update existing in the appointment's date cache
+        appointmentsCache.appointments[updatedDateStr][existingIndex] = enrichedAppointment;
+      } else {
+        // Add to the appointment's date cache
+        appointmentsCache.appointments[updatedDateStr] = [
+          enrichedAppointment,
+          ...appointmentsCache.appointments[updatedDateStr]
+        ];
+      }
+      appointmentsCache.timestamp = Date.now();
     }
     
     // Update month appointments cache directly (no API call needed)

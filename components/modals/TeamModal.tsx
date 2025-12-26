@@ -6,6 +6,15 @@ import { teamApi } from '@/lib/services/teamApi';
 import { userToCrmTeam, crmTeamToUser } from '@/lib/utils/teamAdapter';
 import toast from 'react-hot-toast';
 import { User } from '@/types';
+import {
+  validateName,
+  validatePhone,
+  validateEmail,
+  handleNameInput,
+  handlePhoneInput,
+  formatPhoneForDisplay,
+  formatPhoneForApi,
+} from '@/lib/utils/formValidation';
 
 interface TeamModalProps {
   teamMember?: User | null;
@@ -23,6 +32,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     experience: teamMember?.experience || '',
   });
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const isSubmittingRef = useRef(false); // Prevent duplicate submissions
   const hasCalledSuccessRef = useRef(false); // Prevent duplicate onSuccess calls
 
@@ -37,7 +47,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         email: teamMember.email || '',
         role: teamMember.role || 'staff',
         specialization: teamMember.specialization || '',
-        phone: teamMember.phone || '',
+        phone: formatPhoneForDisplay(teamMember.phone || ''),
         experience: teamMember.experience || '',
       });
     } else {
@@ -53,16 +63,93 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     }
   }, [teamMember]);
 
-  // Optimized field update handler
+  // Optimized field update handler with validation
   const handleFieldChange = useCallback((field: keyof typeof formData) => {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
+      let value = e.target.value;
+      
+      // Apply input filtering based on field type
+      if (field === 'name') {
+        value = handleNameInput(value); // Remove numbers from name
+      } else if (field === 'phone') {
+        value = handlePhoneInput(value); // Only digits, max 10
+      }
+      
       setFormData(prev => ({ ...prev, [field]: value }));
+      
+      // Validate field in real-time and set error
+      let fieldError = '';
+      if (field === 'name') {
+        const validation = validateName(value);
+        if (!validation.isValid) {
+          fieldError = validation.error;
+        }
+      } else if (field === 'phone') {
+        if (value.trim() !== '') {
+          const validation = validatePhone(value);
+          if (!validation.isValid) {
+            fieldError = validation.error;
+          }
+        }
+      } else if (field === 'email') {
+        if (value.trim() !== '') {
+          const validation = validateEmail(value);
+          if (!validation.isValid) {
+            fieldError = validation.error;
+          }
+        }
+      }
+      
+      // Update errors
+      setErrors(prev => {
+        if (fieldError) {
+          return { ...prev, [field]: fieldError };
+        } else {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        }
+      });
     };
   }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    const newErrors: Record<string, string> = {};
+    
+    const nameValidation = validateName(formData.name);
+    if (!nameValidation.isValid) {
+      newErrors.name = nameValidation.error;
+    }
+    
+    const emailValidation = validateEmail(formData.email);
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error;
+    }
+    
+    // Phone is now mandatory
+    if (!formData.phone || formData.phone.trim() === '') {
+      newErrors.phone = 'Phone number is required';
+    } else {
+      const phoneValidation = validatePhone(formData.phone);
+      if (!phoneValidation.isValid) {
+        newErrors.phone = phoneValidation.error;
+      }
+    }
+    
+    // Specialization is now mandatory
+    if (!formData.specialization || formData.specialization.trim() === '') {
+      newErrors.specialization = 'Specialization is required';
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Please fix the errors in the form');
+      return;
+    }
     
     // Prevent duplicate submissions
     if (isSubmittingRef.current) {
@@ -78,7 +165,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         email: formData.email,
         role: formData.role,
         specialization: formData.specialization,
-        phone: formData.phone,
+        phone: formatPhoneForApi(formData.phone),
         experience: formData.experience,
       });
 
@@ -181,26 +268,64 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Full Name *
               </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={handleFieldChange('name')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={handleFieldChange('name')}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.name ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Enter full name (letters only)"
+                  title={errors.name || 'Name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
+                />
+                {errors.name && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.name}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address *
               </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleFieldChange('email')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleFieldChange('email')}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.email ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="email@example.com"
+                  title={errors.email || 'Email can contain letters and numbers (alphanumeric).'}
+                />
+                {errors.email && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.email}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
+              )}
             </div>
 
             <div>
@@ -221,10 +346,11 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Specialization
+                Specialization *
               </label>
               <input
                 type="text"
+                required
                 value={formData.specialization}
                 onChange={handleFieldChange('specialization')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
@@ -234,14 +360,39 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Phone Number
+                Phone Number *
               </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={handleFieldChange('phone')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
+                  +91
+                </div>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  required
+                  value={formData.phone}
+                  onChange={handleFieldChange('phone')}
+                  className={`w-full pl-12 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.phone ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="10 digits (numbers only)"
+                  maxLength={10}
+                  title={errors.phone || 'Phone number must be exactly 10 digits. Letters are not allowed.'}
+                />
+                {errors.phone && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.phone}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phone}</p>
+              )}
             </div>
 
             <div>

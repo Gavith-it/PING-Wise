@@ -16,7 +16,6 @@
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import {
-  CrmLoginRequest,
   CrmTokenResponse,
   CrmCustomer,
   CrmCustomerRequest,
@@ -93,12 +92,25 @@ class CrmApiService {
         const token = this.getToken();
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
-          
-          // Log token in development (only first few chars for security)
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[CRM API] Request ${config.method?.toUpperCase()} ${config.url} - Token: ${token.substring(0, 20)}...`);
-          }
-        } else {
+        }
+        
+        // Always log DELETE requests with full details
+        if (config.method?.toUpperCase() === 'DELETE') {
+          const fullUrl = config.baseURL ? `${config.baseURL}${config.url}` : config.url;
+          console.log('========================================');
+          console.log('[CRM API] DELETE REQUEST INTERCEPTOR');
+          console.log('[CRM API] Method:', config.method?.toUpperCase());
+          console.log('[CRM API] URL Path:', config.url);
+          console.log('[CRM API] Base URL:', config.baseURL);
+          console.log('[CRM API] Full URL:', fullUrl);
+          console.log('[CRM API] Has Token:', !!token);
+          console.log('========================================');
+        }
+        
+        // Log token in development (only first few chars for security)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[CRM API] Request ${config.method?.toUpperCase()} ${config.url} - Token: ${token ? token.substring(0, 20) + '...' : 'No token'}`);
+        } else if (!token) {
           console.warn(`[CRM API] Request ${config.method?.toUpperCase()} ${config.url} - No token found!`);
         }
         return config;
@@ -111,6 +123,19 @@ class CrmApiService {
     // Response interceptor - Handle errors globally
     apiInstance.interceptors.response.use(
       (response) => {
+        // Always log DELETE responses
+        if (response.config.method?.toUpperCase() === 'DELETE') {
+          const fullUrl = response.config.baseURL ? `${response.config.baseURL}${response.config.url}` : response.config.url;
+          console.log('========================================');
+          console.log('[CRM API] DELETE RESPONSE INTERCEPTOR');
+          console.log('[CRM API] Status:', response.status);
+          console.log('[CRM API] Status Text:', response.statusText);
+          console.log('[CRM API] URL:', fullUrl);
+          console.log('[CRM API] Response Data:', response.data);
+          console.log('[CRM API] DELETE SUCCESSFUL!');
+          console.log('========================================');
+        }
+        
         // Log response in development
         if (process.env.NODE_ENV === 'development') {
           console.log(`[CRM API] Response ${response.config.method?.toUpperCase()} ${response.config.url}:`, {
@@ -228,100 +253,29 @@ class CrmApiService {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    // Check all possible token keys for consistency across all services
+    // Check token keys - priority: token > access_token
     return sessionStorage.getItem('token') || 
-           sessionStorage.getItem('crm_access_token') || 
            sessionStorage.getItem('access_token');
   }
 
   private setToken(token: string): void {
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('crm_access_token', token);
-      sessionStorage.setItem('access_token', token);
-      // Also store in 'token' for AuthContext compatibility
+      // Store in both keys for compatibility
       sessionStorage.setItem('token', token);
+      sessionStorage.setItem('access_token', token);
     }
   }
 
   removeToken(): void {
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('crm_access_token');
-      sessionStorage.removeItem('access_token');
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('access_token');
     }
   }
 
   // ==================== AUTHENTICATION ====================
-
-  /**
-   * Login and obtain JWT token
-   * POST /login (direct) or /api/crm/login (proxy fallback)
-   */
-  async login(credentials: CrmLoginRequest): Promise<CrmTokenResponse> {
-    const isBrowser = typeof window !== 'undefined';
-    
-    // In server: always use direct call
-    if (!isBrowser) {
-      const apiResponse = await this.directApi.post<CrmTokenResponse>('/login', credentials);
-      return apiResponse.data;
-    }
-    
-    // In browser: try direct call first, fallback to proxy
-    try {
-      if (this.useDirectCall) {
-        try {
-          const apiResponse = await this.directApi.post<CrmTokenResponse>('/login', credentials);
-          const response = apiResponse.data;
-          // Store token automatically
-          if (response.access_token) {
-            this.setToken(response.access_token);
-          }
-          return response;
-        } catch (error: any) {
-          // If CORS error, fallback to proxy
-          if (this.isCorsError(error as AxiosError)) {
-            console.warn('[CRM API] CORS error on login, falling back to proxy');
-            this.useDirectCall = false;
-            const proxyResponse = await this.proxyApi.post<CrmTokenResponse>('/login', credentials);
-            const response = proxyResponse.data;
-            // Store token automatically
-            if (response.access_token) {
-              this.setToken(response.access_token);
-            }
-            return response;
-          }
-          throw error;
-        }
-      } else {
-        // Already using proxy
-        const proxyResponse = await this.proxyApi.post<CrmTokenResponse>('/login', credentials);
-        const response = proxyResponse.data;
-        // Store token automatically
-        if (response.access_token) {
-          this.setToken(response.access_token);
-        }
-        return response;
-      }
-    } catch (error: any) {
-      // Final fallback: try proxy if direct failed for any reason (non-CORS error)
-      if (this.useDirectCall) {
-        console.warn('[CRM API] Login failed, trying proxy fallback');
-        this.useDirectCall = false;
-        try {
-          const proxyResponse = await this.proxyApi.post<CrmTokenResponse>('/login', credentials);
-          const response = proxyResponse.data;
-          // Store token automatically
-          if (response.access_token) {
-            this.setToken(response.access_token);
-          }
-          return response;
-        } catch (proxyError) {
-          throw proxyError;
-        }
-      }
-      throw error;
-    }
-  }
+  // Note: Login is handled by AuthContext via /api/auth/login
+  // This service only handles CRM data operations, not authentication
 
   /**
    * Validate token
@@ -471,9 +425,60 @@ class CrmApiService {
    * DELETE /customers/{id}
    */
   async deleteCustomer(id: number | string): Promise<CrmApiStringResponse> {
-    return this.makeRequestWithFallback((api) => 
-      api.delete<CrmApiStringResponse>(`/customers/${id}`)
-    ) as unknown as CrmApiStringResponse;
+    // Ensure ID is properly formatted (remove any whitespace, convert to string for URL)
+    const customerId = String(id).trim();
+    
+    if (!customerId || customerId === 'undefined' || customerId === 'null') {
+      throw new Error('Invalid customer ID provided for deletion');
+    }
+    
+    // Construct the full URL path
+    const deletePath = `/customers/${customerId}`;
+    const fullUrl = `${this.directBaseURL}${deletePath}`;
+    
+    // Log the delete attempt with full details - VERY VISIBLE
+    console.log('');
+    console.log('🚨🚨🚨 DELETE API CALL STARTING 🚨🚨🚨');
+    console.log('========================================');
+    console.log('📍 DELETE /customers/{id}');
+    console.log('📍 Customer ID:', customerId);
+    console.log('📍 Delete Path:', deletePath);
+    console.log('📍 Full URL:', fullUrl);
+    console.log('📍 Method: DELETE');
+    console.log('📍 Expected Status: 204 (No Content) - This is CORRECT for DELETE');
+    console.log('========================================');
+    console.log('');
+    
+    try {
+      const response = await this.makeRequestWithFallback((api) => {
+        console.log('⏳ Sending DELETE request to:', deletePath);
+        console.log('⏳ Waiting for API response...');
+        return api.delete<CrmApiStringResponse>(deletePath);
+      });
+      
+      console.log('');
+      console.log('✅✅✅ DELETE API CALL SUCCESSFUL ✅✅✅');
+      console.log('========================================');
+      console.log('✅ Status: 204 (No Content) - DELETE successful!');
+      console.log('✅ Response:', response);
+      console.log('✅ Customer deleted from database');
+      console.log('========================================');
+      console.log('');
+      
+      return response as unknown as CrmApiStringResponse;
+    } catch (error: any) {
+      console.error('[CRM API] DELETE request FAILED:', error);
+      console.error('[CRM API] Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        url: error?.config?.url,
+        method: error?.config?.method,
+      });
+      console.error('[CRM API] ============================================');
+      throw error;
+    }
   }
 
   // ==================== TEAMS ====================

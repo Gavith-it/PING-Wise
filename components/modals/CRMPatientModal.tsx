@@ -12,6 +12,19 @@ import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
 import { Patient, CreatePatientRequest } from '@/types';
 import { patientToCrmCustomer, crmCustomerToPatient } from '@/lib/utils/crmAdapter';
+import {
+  validateName,
+  validatePhone,
+  validateAge,
+  validateEmail,
+  validateAddress,
+  handleNameInput,
+  handlePhoneInput,
+  handleAgeInput,
+  formatPhoneForDisplay,
+  formatPhoneForApi,
+} from '@/lib/utils/formValidation';
+import { CustomerStatus, normalizeCustomerStatus, customerStatusToApiFormat } from '@/lib/constants/status';
 
 interface CRMPatientModalProps {
   patient?: Patient | null;
@@ -58,7 +71,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
         age: patient.age?.toString() || '',
         gender: patient.gender || '',
         dateOfBirth: formattedDateOfBirth,
-        phone: patient.phone || '',
+        phone: formatPhoneForDisplay(patient.phone || ''),
         email: patient.email || '',
         address: patient.address || '',
         assignedDoctor: typeof patient.assignedDoctor === 'string' ? patient.assignedDoctor : '',
@@ -85,51 +98,94 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Full name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
+    // Validate name - only letters, no numbers
+    const nameValidation = validateName(formData.name);
+    if (!nameValidation.isValid) {
+      newErrors.name = nameValidation.error;
     }
 
-    if (!formData.age) {
-      newErrors.age = 'Age is required';
-    } else {
-      const ageNum = parseInt(formData.age);
-      if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
-        newErrors.age = 'Age must be between 1 and 120';
-      }
+    // Validate age - only digits, max 2 digits
+    const ageValidation = validateAge(formData.age);
+    if (!ageValidation.isValid) {
+      newErrors.age = ageValidation.error;
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+    // Validate phone - only digits, max 10 digits
+    const phoneValidation = validatePhone(formData.phone);
+    if (!phoneValidation.isValid) {
+      newErrors.phone = phoneValidation.error;
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email address is required';
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email.trim())) {
-        newErrors.email = 'Please enter a valid email address';
-      }
+    // Validate email - alphanumeric allowed
+    const emailValidation = validateEmail(formData.email);
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error;
+    }
+
+    // Validate address - alphanumeric allowed (optional)
+    const addressValidation = validateAddress(formData.address);
+    if (!addressValidation.isValid) {
+      newErrors.address = addressValidation.error;
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData]);
 
-  // Optimized field update handler - only updates specific field
+  // Optimized field update handler - only updates specific field with input filtering
   const handleFieldChange = useCallback((field: keyof typeof formData) => {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-      const value = e.target.value;
+      let value = e.target.value;
+      
+      // Apply input filtering based on field type
+      if (field === 'name') {
+        value = handleNameInput(value); // Remove numbers from name
+      } else if (field === 'phone') {
+        value = handlePhoneInput(value); // Only digits, max 10
+      } else if (field === 'age') {
+        value = handleAgeInput(value); // Only digits, max 2
+      }
+      
       setFormData(prev => ({ ...prev, [field]: value }));
-      // Clear error for this field if it exists
+      
+      // Validate field in real-time and set error
+      let fieldError = '';
+      if (field === 'name') {
+        const validation = validateName(value);
+        if (!validation.isValid) {
+          fieldError = validation.error;
+        }
+      } else if (field === 'phone') {
+        const validation = validatePhone(value);
+        if (!validation.isValid && value.trim() !== '') {
+          fieldError = validation.error;
+        }
+      } else if (field === 'age') {
+        const validation = validateAge(value);
+        if (!validation.isValid && value.trim() !== '') {
+          fieldError = validation.error;
+        }
+      } else if (field === 'email') {
+        const validation = validateEmail(value);
+        if (!validation.isValid && value.trim() !== '') {
+          fieldError = validation.error;
+        }
+      } else if (field === 'address') {
+        const validation = validateAddress(value);
+        if (!validation.isValid) {
+          fieldError = validation.error;
+        }
+      }
+      
+      // Update errors
       setErrors(prev => {
-        if (prev[field]) {
+        if (fieldError) {
+          return { ...prev, [field]: fieldError };
+        } else {
           const newErrors = { ...prev };
           delete newErrors[field];
           return newErrors;
         }
-        return prev;
       });
     };
   }, []);
@@ -148,7 +204,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
       const patientData: CreatePatientRequest = {
         name: formData.name.trim(),
         email: formData.email.trim(),
-        phone: formData.phone.trim(),
+        phone: formatPhoneForApi(formData.phone.trim()),
         age: parseInt(formData.age),
         gender: formData.gender as 'male' | 'female' | 'other' | '',
         status: formData.status as 'active' | 'booked' | 'follow-up' | 'inactive',
@@ -207,16 +263,29 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Full Name *
               </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={handleFieldChange('name')}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
-                  errors.name ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
-                }`}
-                placeholder="Enter patient's full name"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={handleFieldChange('name')}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.name ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Enter patient's full name (letters only)"
+                  title={errors.name || 'Name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
+                />
+                {errors.name && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.name}
+                    </div>
+                  </div>
+                )}
+              </div>
               {errors.name && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
               )}
@@ -227,20 +296,33 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Age *
                 </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  max="120"
-                  value={formData.age}
-                  onChange={handleFieldChange('age')}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                  errors.age ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
-                }`}
-                  placeholder="Age"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    value={formData.age}
+                    onChange={handleFieldChange('age')}
+                    className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                      errors.age ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="Age (1-99)"
+                    maxLength={2}
+                    title={errors.age || 'Age must be 1-99 (maximum 2 digits). Letters are not allowed.'}
+                  />
+                  {errors.age && (
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                      <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                        <span className="text-white text-xs font-bold">!</span>
+                      </div>
+                      <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        {errors.age}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {errors.age && (
-                  <p className="mt-1 text-sm text-red-600">{errors.age}</p>
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.age}</p>
                 )}
               </div>
 
@@ -278,18 +360,36 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Phone Number *
               </label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={handleFieldChange('phone')}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
-                  errors.phone ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
-                }`}
-                placeholder="+1 234 567 8900"
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
+                  +91
+                </div>
+                <input
+                  type="tel"
+                  required
+                  inputMode="numeric"
+                  value={formData.phone}
+                  onChange={handleFieldChange('phone')}
+                  className={`w-full pl-12 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.phone ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="10 digits (numbers only)"
+                  maxLength={10}
+                  title={errors.phone || 'Phone number must be exactly 10 digits. Letters are not allowed.'}
+                />
+                {errors.phone && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.phone}
+                    </div>
+                  </div>
+                )}
+              </div>
               {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phone}</p>
               )}
             </div>
 
@@ -297,18 +397,31 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address *
               </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleFieldChange('email')}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
-                  errors.email ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
-                }`}
-                placeholder="patient@example.com"
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleFieldChange('email')}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.email ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="patient@example.com"
+                  title={errors.email || 'Email can contain letters and numbers (alphanumeric).'}
+                />
+                {errors.email && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.email}
+                    </div>
+                  </div>
+                )}
+              </div>
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
               )}
             </div>
 
@@ -316,13 +429,31 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Address
               </label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={handleFieldChange('address')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Street address"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={handleFieldChange('address')}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.address ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Street address (alphanumeric allowed)"
+                  title={errors.address || 'Address can contain letters and numbers (alphanumeric).'}
+                />
+                {errors.address && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.address}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {errors.address && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
+              )}
             </div>
 
             <div>
@@ -332,12 +463,12 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <select
                 value={formData.status}
                 onChange={handleFieldChange('status')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
-                <option value="active">Active</option>
-                <option value="booked">Booked</option>
-                <option value="follow-up">Follow-up</option>
-                <option value="inactive">Inactive</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.Active)}>{CustomerStatus.Active}</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.Booked)}>{CustomerStatus.Booked}</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.FollowUp)}>{CustomerStatus.FollowUp}</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.Inactive)}>{CustomerStatus.Inactive}</option>
               </select>
             </div>
 

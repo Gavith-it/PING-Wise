@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { isSameDay } from 'date-fns';
 import { Appointment } from '@/types';
 
-// Calculates upcoming appointments
+// Calculates pending appointments for current date only
 export function useUpcomingAppointments(
   allMonthAppointments: Appointment[],
   appointments: Appointment[],
@@ -20,49 +20,28 @@ export function useUpcomingAppointments(
       index === self.findIndex((a) => a.id === apt.id)
     );
     
-    // Filter for future appointments (excluding current selected date)
-    const upcoming = uniqueAppointments.filter(apt => {
+    // Filter for pending appointments on current date only
+    const pending = uniqueAppointments.filter(apt => {
       const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
       
-      // Exclude appointments on the selected date (they should only appear in main list)
-      if (isSameDay(aptDate, selectedDate)) {
+      // Only include appointments on the current date (today)
+      if (!isSameDay(aptDate, today)) {
         return false;
       }
       
-      // Only include appointments that are AFTER the selected date (future dates)
-      const aptDateOnly = new Date(aptDate.getFullYear(), aptDate.getMonth(), aptDate.getDate());
-      const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-      
-      if (aptDateOnly <= selectedDateOnly) {
-        return false; // Exclude appointments on or before selected date
-      }
-      
-      // For appointments after selected date, check if they're in the future
-      const aptDateTime = new Date(aptDate);
-      // Parse time if available
-      if (apt.time) {
-        const [hours, minutes] = apt.time.split(':').map(Number);
-        aptDateTime.setHours(hours || 0, minutes || 0, 0, 0);
-      }
-      
-      // Include appointments from today onwards (future appointments)
-      return aptDateTime >= today;
+      // Only include appointments with status 'pending'
+      return apt.status === 'pending';
     });
     
-    // Sort by date and time (earliest first)
-    upcoming.sort((a, b) => {
-      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-      
-      // If same date, sort by time
-      if (dateA.getTime() === dateB.getTime() && a.time && b.time) {
+    // Sort by time (earliest first)
+    pending.sort((a, b) => {
+      if (a.time && b.time) {
         return a.time.localeCompare(b.time);
       }
-      
-      return dateA.getTime() - dateB.getTime();
+      return 0;
     });
     
-    // Return all upcoming appointments (pagination will be handled in the component)
-    return upcoming;
+    // Return all pending appointments for current date (pagination will be handled in the component)
+    return pending;
   }, [allMonthAppointments, appointments, selectedDate]);
 }

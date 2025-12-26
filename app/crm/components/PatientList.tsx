@@ -12,9 +12,7 @@ interface PatientListProps {
   hasPrevious: boolean;
   page: number;
   totalPages: number;
-  onView: (patient: Patient) => void;
-  onEdit: (patient: Patient) => void;
-  onDelete: (id: string) => void;
+  onCardClick: (patient: Patient) => void;
   onNextPage: () => void;
   onPreviousPage: () => void;
   getStatusColor: (status: string) => string;
@@ -27,9 +25,7 @@ function PatientList({
   hasPrevious,
   page,
   totalPages,
-  onView, 
-  onEdit, 
-  onDelete, 
+  onCardClick, 
   onNextPage,
   onPreviousPage,
   getStatusColor 
@@ -45,9 +41,7 @@ function PatientList({
           <PatientCard
             key={patient.id}
             patient={patient}
-            onView={() => onView(patient)}
-            onEdit={() => onEdit(patient)}
-            onDelete={() => onDelete(patient.id)}
+            onClick={() => onCardClick(patient)}
             getStatusColor={getStatusColor}
           />
         ))}

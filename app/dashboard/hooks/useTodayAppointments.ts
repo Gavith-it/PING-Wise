@@ -44,7 +44,7 @@ export function useTodayAppointments(): UseTodayAppointmentsReturn {
       const todayDateStr = format(new Date(), 'yyyy-MM-dd');
       
       // Fetch appointments for today
-      const appointmentsData = await crmAppointmentService.getAppointments({ date: todayDateStr }).catch((error) => {
+      const appointmentsData = await crmAppointmentService.searchAppointments({ date: todayDateStr }).catch((error) => {
         console.warn('Failed to load today appointments (non-critical):', error);
         return { success: true, data: [] };
       });

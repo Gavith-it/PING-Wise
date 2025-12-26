@@ -6,6 +6,7 @@
 
 import { CrmCampaign, CrmCampaignRequest } from '@/types/crmApi';
 import { Campaign } from '@/types';
+import { CampaignTag, normalizeCampaignTag, campaignTagToApiFormat } from '@/lib/constants/status';
 
 /**
  * Convert CRM Campaign to UI Campaign model
@@ -59,10 +60,23 @@ export function campaignToCrmCampaign(campaign: Partial<Campaign> & { title?: st
     status = 'draft';
   }
 
+  // Convert tags to standardized format for API
+  // The CRM API expects standardized format (Active, FollowUp, etc.)
+  const apiFormatTags = (campaign.recipientTags || []).map(tag => {
+    const normalized = normalizeCampaignTag(tag);
+    // If tag is already in standardized format, use it; otherwise convert
+    if (normalized) {
+      return campaignTagToApiFormat(normalized);
+    }
+    // If normalization failed, try to use the tag as-is if it's already standardized
+    // Otherwise, return the original tag (might be legacy format)
+    return tag;
+  });
+
   return {
     name: campaign.title || campaign.name || '',
     message: campaign.message,
-    tags: campaign.recipientTags || [],
+    tags: apiFormatTags,
     recipients: campaign.recipients || [],
     is_scheduled: is_scheduled,
     scheduled_at: scheduled_at,

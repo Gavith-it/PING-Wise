@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
     const activePatients = await PatientModel.countDocuments({ status: 'active' });
     const bookedPatients = await PatientModel.countDocuments({ status: 'booked' });
-    const followUpPatients = await PatientModel.countDocuments({ status: 'follow-up' });
+    const inactivePatients = await PatientModel.countDocuments({ status: 'inactive' });
     const totalPatients = await PatientModel.countDocuments();
 
     const activityData = {
@@ -63,9 +63,9 @@ export async function GET(req: NextRequest) {
         count: bookedPatients,
         percentage: totalPatients > 0 ? Math.round((bookedPatients / totalPatients) * 100) : 0
       },
-      followUp: {
-        count: followUpPatients,
-        percentage: totalPatients > 0 ? Math.round((followUpPatients / totalPatients) * 100) : 0
+      inactive: {
+        count: inactivePatients,
+        percentage: totalPatients > 0 ? Math.round((inactivePatients / totalPatients) * 100) : 0
       }
     };
 

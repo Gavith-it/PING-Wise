@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Wallet, Plus } from 'lucide-react';
+import { ArrowLeft, Wallet } from 'lucide-react';
 import { walletService } from '@/lib/services/api';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -95,7 +95,7 @@ export default function WalletPage() {
       // NOTE: Add funds API endpoint pending implementation
       // When available, uncomment the following:
       // await walletService.addFunds({ amount: amountNum });
-      toast.success(`₹${amountNum} added to wallet successfully`);
+      toast.success(`${amountNum} credits added successfully`);
       setShowAddFunds(false);
       setAmount('');
       loadWalletData(); // Reload balance
@@ -124,15 +124,15 @@ export default function WalletPage() {
               
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount (₹)
+                  Amount (Credits)
                 </label>
                 <input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter amount"
+                  placeholder="Enter credits amount"
                   min="1"
-                  step="0.01"
+                  step="1"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
@@ -155,17 +155,17 @@ export default function WalletPage() {
       <Layout>
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Wallet Balance</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your wallet and transactions</p>
-            </div>
+          <div className="flex items-center space-x-3 md:space-x-4">
             <button
               onClick={() => router.back()}
-              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
             </button>
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Credits</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your credits and transactions</p>
+            </div>
           </div>
 
           {/* Wallet Balance Card */}
@@ -174,9 +174,9 @@ export default function WalletPage() {
               <Wallet className="w-5 h-5 md:w-6 md:h-6 opacity-90" />
             </div>
             <div className="mb-1 md:mb-2">
-              <p className="text-2xl md:text-3xl font-bold">₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-2xl md:text-3xl font-bold">{balance.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
             </div>
-            <p className="text-sm md:text-base text-blue-100 opacity-90">Available Balance</p>
+            <p className="text-sm md:text-base text-blue-100 opacity-90">Available Credits</p>
           </div>
 
           {/* Transactions Section */}
@@ -185,10 +185,9 @@ export default function WalletPage() {
               <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
               <button
                 onClick={() => setShowAddFunds(true)}
-                className="flex items-center space-x-1.5 bg-primary text-white px-3 py-1.5 md:px-3.5 md:py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors shadow-sm hover:shadow-md"
+                className="bg-primary text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-95"
               >
-                <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                <span className="text-xs md:text-sm">Add Funds</span>
+                Add Funds
               </button>
             </div>
 
@@ -226,7 +225,7 @@ export default function WalletPage() {
                             : 'text-red-600'
                         }`}
                       >
-                        {transaction.type === 'credit' ? '+' : '-'}₹{transaction.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {transaction.type === 'credit' ? '+' : '-'}{transaction.amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
                     </div>
                   </div>

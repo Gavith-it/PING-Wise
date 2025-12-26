@@ -58,8 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Then validate in background using CRM API /checkAuth
       setToken(storedToken);
       
-      // Also set in CRM API service to ensure it's available
-      sessionStorage.setItem('crm_access_token', storedToken);
+      // Also set access_token for compatibility
       sessionStorage.setItem('access_token', storedToken);
 
       // Validate token using backend /checkAuth endpoint
@@ -92,7 +91,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.error('Token validation error', error);
         // Clear all tokens on validation failure
         sessionStorage.removeItem('token');
-        sessionStorage.removeItem('crm_access_token');
         sessionStorage.removeItem('access_token');
         sessionStorage.removeItem('user');
         setToken(null);
@@ -124,90 +122,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Get backend URL from environment variable (same as CRM API)
       const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
       const loginUrl = `${BACKEND_API_BASE_URL}/login`;
-      const proxyUrl = '/api/auth/login';
       
-      // Try direct backend call first (faster if CORS is enabled)
-      // Fallback to proxy if CORS error occurs (same pattern as CRM API)
-      let response: Response;
-      let useDirectCall = true;
-      
-      // Check if we should try direct call (store preference in sessionStorage)
-      // This allows remembering if CORS is working or not
-      const directCallPreference = sessionStorage.getItem('use_direct_login');
-      if (directCallPreference === 'false') {
-        useDirectCall = false;
-      }
-      
-      try {
-        if (useDirectCall) {
-          // Try direct backend call
-          response = await fetch(loginUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_name: userName,
-              password: password,
-            }),
-          });
-          
-          // If successful, save preference
-          if (response.ok) {
-            sessionStorage.setItem('use_direct_login', 'true');
-          }
-        } else {
-          // Use proxy
-          response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_name: userName,
-              password: password,
-            }),
-          });
-        }
-      } catch (fetchError: any) {
-        // Check if it's a CORS error (fetch API errors don't have response property)
-        // CORS errors typically have no response and specific error messages
-        const errorMessage = fetchError?.message?.toLowerCase() || '';
-        const errorName = fetchError?.name?.toLowerCase() || '';
-        const isCorsError = 
-          errorMessage.includes('cors') ||
-          errorMessage.includes('cross-origin') ||
-          errorMessage.includes('network error') ||
-          errorMessage.includes('failed to fetch') ||
-          errorName === 'typeerror' ||
-          fetchError?.code === 'ERR_NETWORK' ||
-          fetchError?.code === 'ERR_FAILED';
-        
-        if (isCorsError && useDirectCall) {
-          // CORS error detected, fallback to proxy
-          console.warn('[Auth] CORS error on login, falling back to proxy');
-          sessionStorage.setItem('use_direct_login', 'false');
-          
-          try {
-            response = await fetch(proxyUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                user_name: userName,
-                password: password,
-              }),
-            });
-          } catch (proxyError) {
-            // If proxy also fails, throw original error
-            throw fetchError;
-          }
-        } else {
-          // Re-throw if not CORS error or already using proxy
-          throw fetchError;
-        }
-      }
+      // Always call backend URL directly (no proxy fallback)
+      const response = await fetch(loginUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_name: userName,
+          password: password,
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -235,7 +161,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         // Store token - this token works for both app auth and CRM data
         sessionStorage.setItem('token', token);
-        sessionStorage.setItem('crm_access_token', token); // Same token for CRM endpoints
         sessionStorage.setItem('access_token', token);
         sessionStorage.setItem('user', JSON.stringify(user));
         localStorage.removeItem('token');
@@ -263,7 +188,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     // Clear all tokens from sessionStorage
     sessionStorage.removeItem('token');
-    sessionStorage.removeItem('crm_access_token');
     sessionStorage.removeItem('access_token');
     sessionStorage.removeItem('user');
     // Also clear localStorage token if it exists (cleanup)
@@ -286,11 +210,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data: AuthResponse = await response.json();
 
       if (data.success && data.token && data.user) {
-        setUser(data.user);
-        setToken(data.token);
-        sessionStorage.setItem('token', data.token);
+        const token = data.token;
+        // Store token in both keys for consistency across all APIs
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('access_token', token);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
         // Clear any old localStorage token
         localStorage.removeItem('token');
+        
+        setUser(data.user);
+        setToken(token);
         toast.success('Registration successful!');
         return true;
       } else {

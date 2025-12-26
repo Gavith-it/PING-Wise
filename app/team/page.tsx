@@ -127,9 +127,7 @@ export default function TeamPage() {
             <TeamList
               teamMembers={filteredMembers}
               loading={loading}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
+              onCardClick={handleView}
             />
           </div>
         </div>

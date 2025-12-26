@@ -214,17 +214,15 @@ class ReportsApiService {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    // Check all possible token keys for consistency across all services
+    // Check token keys - priority: token > access_token
     return sessionStorage.getItem('token') || 
-           sessionStorage.getItem('crm_access_token') || 
            sessionStorage.getItem('access_token');
   }
 
   private removeToken(): void {
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('crm_access_token');
-      sessionStorage.removeItem('access_token');
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('access_token');
     }
   }
 

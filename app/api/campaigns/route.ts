@@ -6,8 +6,26 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 
 const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
+
+/**
+ * Extract org_id from JWT token
+ */
+function extractOrgIdFromToken(authHeader: string | null): string | null {
+  if (!authHeader) return null;
+  
+  try {
+    const token = authHeader.replace('Bearer ', '').trim();
+    // Decode without verification (we're just extracting, backend will verify)
+    const decoded = jwt.decode(token) as { org_id?: string; organization_id?: string } | null;
+    return decoded?.org_id || decoded?.organization_id || null;
+  } catch (error) {
+    console.error('[Campaign API Proxy] Error decoding token:', error);
+    return null;
+  }
+}
 
 export async function GET(req: NextRequest) {
   return handleBaseRequest(req, 'GET');
@@ -26,6 +44,18 @@ async function handleBaseRequest(req: NextRequest, method: string) {
     
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
+    
+    // For GET requests, try to extract org_id from token and add to query params
+    if (method === 'GET' && authHeader) {
+      const orgId = extractOrgIdFromToken(authHeader);
+      if (orgId && !searchParams.has('org_id')) {
+        searchParams.set('org_id', orgId);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Campaign API Proxy] Added org_id from token to query params:', orgId);
+        }
+      }
+    }
+    
     const queryString = searchParams.toString();
     const url = queryString 
       ? `${BACKEND_API_BASE_URL}${path}?${queryString}`
@@ -45,6 +75,21 @@ async function handleBaseRequest(req: NextRequest, method: string) {
     if (method === 'POST') {
       try {
         const reqBody = await req.json();
+        
+        // Extract org_id from token if not present in body
+        // The backend expects org_id in context, so we add it to the request body
+        if (!reqBody.org_id && authHeader) {
+          const orgId = extractOrgIdFromToken(authHeader);
+          if (orgId) {
+            reqBody.org_id = orgId;
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Campaign API Proxy] Added org_id from token to request body:', orgId);
+            }
+          } else {
+            console.warn('[Campaign API Proxy] Could not extract org_id from token');
+          }
+        }
+        
         body = JSON.stringify(reqBody);
       } catch {
         // No body or invalid JSON

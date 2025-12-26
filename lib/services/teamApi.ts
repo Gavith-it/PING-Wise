@@ -214,9 +214,8 @@ class TeamApiService {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    // Check all possible token keys (same as CRM API for consistency)
+    // Check token keys - priority: token > access_token
     return sessionStorage.getItem('token') || 
-           sessionStorage.getItem('crm_access_token') || 
            sessionStorage.getItem('access_token');
   }
 
@@ -224,7 +223,6 @@ class TeamApiService {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('access_token');
-      sessionStorage.removeItem('crm_access_token');
     }
   }
 

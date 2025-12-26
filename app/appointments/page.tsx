@@ -162,10 +162,10 @@ export default function AppointmentsPage() {
             />
           </div>
 
-          {/* Upcoming Appointments Section */}
+          {/* Pending Appointments Section */}
           <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-3 md:p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-4 md:mb-6">
             <h3 className="text-sm md:text-lg font-semibold text-gray-900 dark:text-white mb-3 md:mb-4">
-              Upcoming Appointments
+              Pending Appointments
             </h3>
             <UpcomingAppointmentsList
               upcomingAppointments={upcomingAppointments}

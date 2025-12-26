@@ -5,6 +5,19 @@ import { X } from 'lucide-react';
 import { patientService } from '@/lib/services/api';
 import toast from 'react-hot-toast';
 import { Patient } from '@/types';
+import {
+  validateName,
+  validatePhone,
+  validateAge,
+  validateEmail,
+  validateAddress,
+  handleNameInput,
+  handlePhoneInput,
+  handleAgeInput,
+  formatPhoneForDisplay,
+  formatPhoneForApi,
+} from '@/lib/utils/formValidation';
+import { CustomerStatus, normalizeCustomerStatus, customerStatusToApiFormat } from '@/lib/constants/status';
 
 interface PatientModalProps {
   patient?: Patient | null;
@@ -33,7 +46,7 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
         name: patient.name || '',
         age: patient.age?.toString() || '',
         gender: patient.gender || '',
-        phone: patient.phone || '',
+        phone: formatPhoneForDisplay(patient.phone || ''),
         email: patient.email || '',
         address: patient.address || '',
         assignedDoctor: typeof patient.assignedDoctor === 'string' ? patient.assignedDoctor : '',
@@ -46,52 +59,34 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Full name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    } else if (formData.name.trim().length > 100) {
-      newErrors.name = 'Name must be less than 100 characters';
-    } else if (!/^[a-zA-Z\s'-]+$/.test(formData.name.trim())) {
-      newErrors.name = 'Name can only contain letters, spaces, hyphens, and apostrophes';
+    // Validate name - only letters, no numbers
+    const nameValidation = validateName(formData.name);
+    if (!nameValidation.isValid) {
+      newErrors.name = nameValidation.error;
     }
 
-    // Age validation
-    if (!formData.age) {
-      newErrors.age = 'Age is required';
-    } else {
-      const ageNum = parseInt(formData.age);
-      if (isNaN(ageNum)) {
-        newErrors.age = 'Age must be a valid number';
-      } else if (ageNum < 1) {
-        newErrors.age = 'Age must be at least 1';
-      } else if (ageNum > 120) {
-        newErrors.age = 'Age must be less than 120';
-      }
+    // Validate age - only digits, max 2 digits
+    const ageValidation = validateAge(formData.age);
+    if (!ageValidation.isValid) {
+      newErrors.age = ageValidation.error;
     }
 
-    // Phone validation
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else {
-      // Remove spaces, dashes, parentheses for validation
-      const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
-      if (!/^\+?[1-9]\d{9,14}$/.test(cleanPhone)) {
-        newErrors.phone = 'Please enter a valid phone number (10-15 digits)';
-      }
+    // Validate phone - only digits, max 10 digits
+    const phoneValidation = validatePhone(formData.phone);
+    if (!phoneValidation.isValid) {
+      newErrors.phone = phoneValidation.error;
     }
 
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email address is required';
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email.trim())) {
-        newErrors.email = 'Please enter a valid email address';
-      } else if (formData.email.trim().length > 255) {
-        newErrors.email = 'Email must be less than 255 characters';
-      }
+    // Validate email - alphanumeric allowed
+    const emailValidation = validateEmail(formData.email);
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error;
+    }
+
+    // Validate address - alphanumeric allowed (optional)
+    const addressValidation = validateAddress(formData.address);
+    if (!addressValidation.isValid) {
+      newErrors.address = addressValidation.error;
     }
 
     // Gender validation (optional but if provided must be valid)
@@ -102,11 +97,6 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
     // Status validation
     if (formData.status && !['active', 'booked', 'follow-up', 'inactive'].includes(formData.status)) {
       newErrors.status = 'Please select a valid status';
-    }
-
-    // Address validation (optional but if provided check length)
-    if (formData.address && formData.address.length > 500) {
-      newErrors.address = 'Address must be less than 500 characters';
     }
 
     // Medical notes validation (optional but if provided check length)
@@ -134,7 +124,7 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
         ...formData,
         name: formData.name.trim(),
         email: formData.email.trim(),
-        phone: formData.phone.trim(),
+        phone: formatPhoneForApi(formData.phone.trim()),
         age: typeof formData.age === 'string' ? parseInt(formData.age) : formData.age,
         gender: formData.gender as 'male' | 'female' | 'other' | '',
         status: formData.status as 'active' | 'booked' | 'follow-up' | 'inactive' | undefined,
@@ -176,21 +166,41 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Full Name *
               </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value });
-                  if (errors.name) {
-                    setErrors({ ...errors, name: '' });
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.name ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter patient's full name"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => {
+                    const filteredValue = handleNameInput(e.target.value);
+                    setFormData({ ...formData, name: filteredValue });
+                    // Validate in real-time
+                    const validation = validateName(filteredValue);
+                    if (!validation.isValid) {
+                      setErrors({ ...errors, name: validation.error });
+                    } else {
+                      const newErrors = { ...errors };
+                      delete newErrors.name;
+                      setErrors(newErrors);
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter patient's full name (letters only)"
+                  title={errors.name || 'Name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
+                />
+                {errors.name && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.name}
+                    </div>
+                  </div>
+                )}
+              </div>
               {errors.name && (
                 <p className="mt-1 text-sm text-red-600">{errors.name}</p>
               )}
@@ -201,23 +211,43 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Age *
                 </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  max="120"
-                  value={formData.age}
-                  onChange={(e) => {
-                    setFormData({ ...formData, age: e.target.value });
-                    if (errors.age) {
-                      setErrors({ ...errors, age: '' });
-                    }
-                  }}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                    errors.age ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Age"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    value={formData.age}
+                    onChange={(e) => {
+                      const filteredValue = handleAgeInput(e.target.value);
+                      setFormData({ ...formData, age: filteredValue });
+                      // Validate in real-time
+                      const validation = validateAge(filteredValue);
+                      if (!validation.isValid && filteredValue.trim() !== '') {
+                        setErrors({ ...errors, age: validation.error });
+                      } else {
+                        const newErrors = { ...errors };
+                        delete newErrors.age;
+                        setErrors(newErrors);
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                      errors.age ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Age (1-99)"
+                    maxLength={2}
+                    title={errors.age || 'Age must be 1-99 (maximum 2 digits). Letters are not allowed.'}
+                  />
+                  {errors.age && (
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                      <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                        <span className="text-white text-xs font-bold">!</span>
+                      </div>
+                      <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        {errors.age}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {errors.age && (
                   <p className="mt-1 text-sm text-red-600">{errors.age}</p>
                 )}
@@ -253,21 +283,46 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Phone Number *
               </label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={(e) => {
-                  setFormData({ ...formData, phone: e.target.value });
-                  if (errors.phone) {
-                    setErrors({ ...errors, phone: '' });
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.phone ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                }`}
-                placeholder="+1 (555) 123-4567"
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                  +91
+                </div>
+                <input
+                  type="tel"
+                  required
+                  inputMode="numeric"
+                  value={formData.phone}
+                  onChange={(e) => {
+                    const filteredValue = handlePhoneInput(e.target.value);
+                    setFormData({ ...formData, phone: filteredValue });
+                    // Validate in real-time
+                    const validation = validatePhone(filteredValue);
+                    if (!validation.isValid && filteredValue.trim() !== '') {
+                      setErrors({ ...errors, phone: validation.error });
+                    } else {
+                      const newErrors = { ...errors };
+                      delete newErrors.phone;
+                      setErrors(newErrors);
+                    }
+                  }}
+                  className={`w-full pl-12 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="10 digits (numbers only)"
+                  maxLength={10}
+                  title={errors.phone || 'Phone number must be exactly 10 digits. Letters are not allowed.'}
+                />
+                {errors.phone && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.phone}
+                    </div>
+                  </div>
+                )}
+              </div>
               {errors.phone && (
                 <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
               )}
@@ -277,21 +332,40 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address *
               </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => {
-                  setFormData({ ...formData, email: e.target.value });
-                  if (errors.email) {
-                    setErrors({ ...errors, email: '' });
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                }`}
-                placeholder="patient@example.com"
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    // Validate in real-time
+                    const validation = validateEmail(e.target.value);
+                    if (!validation.isValid && e.target.value.trim() !== '') {
+                      setErrors({ ...errors, email: validation.error });
+                    } else {
+                      const newErrors = { ...errors };
+                      delete newErrors.email;
+                      setErrors(newErrors);
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="patient@example.com"
+                  title={errors.email || 'Email can contain letters and numbers (alphanumeric).'}
+                />
+                {errors.email && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.email}
+                    </div>
+                  </div>
+                )}
+              </div>
               {errors.email && (
                 <p className="mt-1 text-sm text-red-600">{errors.email}</p>
               )}
@@ -301,21 +375,40 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Address
               </label>
-              <textarea
-                rows={2}
-                value={formData.address}
-                onChange={(e) => {
-                  setFormData({ ...formData, address: e.target.value });
-                  if (errors.address) {
-                    setErrors({ ...errors, address: '' });
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none ${
-                  errors.address ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter patient's address (optional)"
-                maxLength={500}
-              />
+              <div className="relative">
+                <textarea
+                  rows={2}
+                  value={formData.address}
+                  onChange={(e) => {
+                    setFormData({ ...formData, address: e.target.value });
+                    // Validate in real-time
+                    const validation = validateAddress(e.target.value);
+                    if (!validation.isValid) {
+                      setErrors({ ...errors, address: validation.error });
+                    } else {
+                      const newErrors = { ...errors };
+                      delete newErrors.address;
+                      setErrors(newErrors);
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none ${
+                    errors.address ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter patient's address (optional, alphanumeric allowed)"
+                  maxLength={500}
+                  title={errors.address || 'Address can contain letters and numbers (alphanumeric).'}
+                />
+                {errors.address && (
+                  <div className="absolute right-2 top-2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.address}
+                    </div>
+                  </div>
+                )}
+              </div>
               {errors.address && (
                 <p className="mt-1 text-sm text-red-600">{errors.address}</p>
               )}
@@ -337,13 +430,13 @@ export default function PatientModal({ patient, onClose, onSuccess }: PatientMod
                   }
                 }}
                 className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                  errors.status ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+                  errors.status ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
                 }`}
               >
-                <option value="active">Active</option>
-                <option value="booked">Booked</option>
-                <option value="follow-up">Follow-up</option>
-                <option value="inactive">Inactive</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.Active)}>{CustomerStatus.Active}</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.Booked)}>{CustomerStatus.Booked}</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.FollowUp)}>{CustomerStatus.FollowUp}</option>
+                <option value={customerStatusToApiFormat(CustomerStatus.Inactive)}>{CustomerStatus.Inactive}</option>
               </select>
               {errors.status && (
                 <p className="mt-1 text-sm text-red-600">{errors.status}</p>

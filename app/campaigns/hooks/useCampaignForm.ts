@@ -161,7 +161,26 @@ export function useCampaignForm({ onSuccess }: UseCampaignFormParams): UseCampai
       // Call success callback
       onSuccess();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send campaign');
+      // Handle 401 Unauthorized specifically
+      if (error.response?.status === 401) {
+        toast.error('Your session has expired. Please log in again.');
+        // Clear tokens
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('access_token');
+          // Redirect to login after showing error
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000); // Give user time to read the error message
+        }
+      } else {
+        // Handle other errors
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.error || 
+                            error.message || 
+                            'Failed to send campaign';
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

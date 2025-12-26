@@ -164,14 +164,27 @@ export const crmPatientService = {
    */
   async deletePatient(id: string): Promise<ApiResponse> {
     try {
-      await crmApi.deleteCustomer(id);
+      console.log('[CRM Patient Service] Deleting patient with ID:', id);
+      console.log('[CRM Patient Service] Calling crmApi.deleteCustomer...');
+      
+      const response = await crmApi.deleteCustomer(id);
+      
+      console.log('[CRM Patient Service] Delete API call successful:', response);
       
       return {
         success: true,
         message: 'Patient deleted successfully',
       };
     } catch (error: any) {
-      console.error('Error deleting patient from CRM:', error);
+      console.error('[CRM Patient Service] Error deleting patient from CRM:', error);
+      console.error('[CRM Patient Service] Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        url: error?.config?.url,
+        method: error?.config?.method,
+      });
       throw error;
     }
   },

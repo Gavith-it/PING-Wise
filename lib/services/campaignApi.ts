@@ -33,10 +33,10 @@ class CampaignApiService {
   constructor() {
     const isBrowser = typeof window !== 'undefined';
     
-    // Direct backend URL (from environment variable)
+    // Direct backend URL (from environment variable) - same pattern as CRM API
     this.directBaseURL = 
-      (process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
-       'https://pw-crm-gateway-1.onrender.com') + '/campaigns';
+      process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
+      'https://pw-crm-gateway-1.onrender.com';
     
     // Proxy URL (Next.js API route)
     this.baseURL = '/api/campaigns';
@@ -87,8 +87,10 @@ class CampaignApiService {
             console.log(`[Campaign API] Request ${config.method?.toUpperCase()} ${config.url} - Token: ${token.substring(0, 20)}...`);
           }
         } else {
+          // Always warn if no token (even in production) as this is critical
+          console.warn(`[Campaign API] Request ${config.method?.toUpperCase()} ${config.url} - No token found! This will likely result in 401 error.`);
           if (process.env.NODE_ENV === 'development') {
-            console.warn(`[Campaign API] Request ${config.method?.toUpperCase()} ${config.url} - No token found!`);
+            console.warn('[Campaign API] Available sessionStorage keys:', Object.keys(sessionStorage));
           }
         }
         return config;
@@ -126,14 +128,41 @@ class CampaignApiService {
         }
         
         // Handle 401 Unauthorized
+        // NOTE: Don't remove token here if this is a direct call that will fallback to proxy
+        // The makeRequestWithFallback will catch this error and retry with proxy
+        // Only remove token if proxy also fails (handled in makeRequestWithFallback)
         if (error.response?.status === 401) {
           console.warn('[Campaign API] 401 Unauthorized - Token may be invalid or expired');
-          this.removeToken();
-          // Only redirect if we're not already on the login page
-          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-            setTimeout(() => {
-              window.location.href = '/login';
-            }, 100);
+          
+          // Check if this is a direct API call (will fallback to proxy)
+          const isDirectCall = error.config?.baseURL === this.directBaseURL;
+          
+          if (isDirectCall) {
+            // This is a direct call - don't remove token yet, let makeRequestWithFallback handle it
+            // The fallback will retry with proxy, and if that also fails, token will be removed
+            console.warn('[Campaign API] 401 on direct call - will fallback to proxy');
+          } else {
+            // This is already a proxy call or final attempt - remove token
+            const url = error.config?.url || '';
+            const isCampaignOperation = url.includes('/campaigns') && 
+              (error.config?.method === 'POST' || error.config?.method === 'PUT' || error.config?.method === 'GET');
+            
+            if (!isCampaignOperation) {
+              // For non-campaign operations, remove token and redirect
+              this.removeToken();
+              if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+                setTimeout(() => {
+                  if (!window.location.pathname.includes('/login')) {
+                    window.location.href = '/login';
+                  }
+                }, 100);
+              }
+            } else {
+              // For campaign operations, remove token but don't redirect immediately
+              // Let the component handle the error and show appropriate message
+              this.removeToken();
+              console.warn('[Campaign API] 401 on campaign operation (proxy) - error will be handled by component');
+            }
           }
         }
         return Promise.reject(error);
@@ -145,17 +174,25 @@ class CampaignApiService {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    // Check all possible token keys (same as CRM API for consistency)
-    return sessionStorage.getItem('token') || 
-           sessionStorage.getItem('crm_access_token') || 
-           sessionStorage.getItem('access_token');
+    // Check token keys - priority: token > access_token
+    const token = sessionStorage.getItem('token') || 
+                  sessionStorage.getItem('access_token');
+    
+    // Log in development if no token found
+    if (!token && process.env.NODE_ENV === 'development') {
+      console.warn('[Campaign API] No token found in sessionStorage. Keys available:', {
+        hasToken: !!sessionStorage.getItem('token'),
+        hasAccessToken: !!sessionStorage.getItem('access_token'),
+      });
+    }
+    
+    return token;
   }
 
   private removeToken(): void {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('access_token');
-      sessionStorage.removeItem('crm_access_token');
     }
   }
 
@@ -182,7 +219,12 @@ class CampaignApiService {
   }
 
   /**
-   * Make API request with automatic fallback to proxy on CORS error
+   * Make API request with automatic fallback to proxy on CORS error or 401
+   * 
+   * Why fallback on 401?
+   * - The external API might reject the token for direct calls
+   * - The proxy route (/api/campaigns) might handle authentication differently
+   * - This allows the request to work even if direct call fails with 401
    */
   private async makeRequestWithFallback<T>(
     requestFn: (api: AxiosInstance) => Promise<T>
@@ -194,19 +236,49 @@ class CampaignApiService {
       return requestFn(this.directApi);
     }
 
-    // In browser: try direct call first, fallback to proxy
+    // In browser: try direct call first, fallback to proxy on CORS or 401
     if (this.useDirectCall) {
       try {
         return await requestFn(this.directApi);
       } catch (error: any) {
-        // If CORS error, switch to proxy and retry
-        if (this.isCorsError(error as AxiosError)) {
-          console.warn('[Campaign API] CORS error detected, falling back to proxy');
-          this.useDirectCall = false; // Disable direct calls for future requests
+        const axiosError = error as AxiosError;
+        
+        // Check if it's a CORS error
+        const isCors = this.isCorsError(axiosError);
+        
+        // Check if it's a 401 Unauthorized error
+        // 401 might mean the external API doesn't accept direct calls with this token
+        // The proxy route might handle it better
+        const is401 = axiosError.response?.status === 401;
+        
+        if (isCors || is401) {
+          const reason = isCors ? 'CORS error' : '401 Unauthorized';
+          console.warn(`[Campaign API] ${reason} detected on direct call, falling back to proxy`);
+          
+          // Only disable direct calls permanently for CORS errors
+          // For 401, we might want to try direct again later (token might refresh)
+          if (isCors) {
+            this.useDirectCall = false; // Disable direct calls for future requests
+          }
+          
           // Retry with proxy
-          return requestFn(this.proxyApi);
+          try {
+            return await requestFn(this.proxyApi);
+          } catch (proxyError: any) {
+            // If proxy also fails with 401, it's a real authentication issue
+            // Remove token now since both direct and proxy failed
+            const proxyAxiosError = proxyError as AxiosError;
+            if (proxyAxiosError.response?.status === 401) {
+              console.error('[Campaign API] Both direct and proxy calls failed with 401 - removing token');
+              this.removeToken();
+            }
+            // Don't fallback again, just throw the error
+            console.error('[Campaign API] Proxy also failed:', proxyError);
+            throw proxyError;
+          }
         }
-        // If not CORS error, throw it
+        
+        // If not CORS or 401 error, throw it
         throw error;
       }
     } else {
@@ -225,7 +297,7 @@ class CampaignApiService {
   async getCampaigns(params?: { org_id?: string; limit?: number }): Promise<CrmApiListResponse<CrmCampaign>> {
     try {
       const response = await this.makeRequestWithFallback((api) => 
-        api.get<any>('', { params })
+        api.get<any>('/campaigns', { params })
       ) as unknown as any;
       
       // Handle null/undefined response
@@ -289,7 +361,7 @@ class CampaignApiService {
    */
   async getCampaign(id: number | string): Promise<CrmApiSingleResponse<CrmCampaign>> {
     return this.makeRequestWithFallback((api) => 
-      api.get<CrmCampaign>(`/${id}`)
+      api.get<CrmCampaign>(`/campaigns/${id}`)
     ) as unknown as CrmCampaign;
   }
 
@@ -299,7 +371,7 @@ class CampaignApiService {
    */
   async createCampaign(data: CrmCampaignRequest): Promise<CrmApiSingleResponse<CrmCampaign>> {
     return this.makeRequestWithFallback((api) => 
-      api.post<CrmCampaign>('', data)
+      api.post<CrmCampaign>('/campaigns', data)
     ) as unknown as CrmCampaign;
   }
 }

@@ -1,18 +1,15 @@
 'use client';
 
 import { memo } from 'react';
-import { Eye, Edit, X } from 'lucide-react';
 import { Patient } from '@/types';
 
 interface PatientCardProps {
   patient: Patient;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onClick: () => void;
   getStatusColor: (status: string) => string;
 }
 
-function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: PatientCardProps) {
+function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
 
   // Generate initials if not present
   const getInitials = (name?: string) => {
@@ -56,7 +53,10 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: Pati
   const displayInitials = initials && initials.trim() ? initials : getInitials(patient.name || 'Patient');
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-2.5 md:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+    <div 
+      onClick={onClick}
+      className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-2.5 md:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer"
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-2 md:space-x-3 flex-1 min-w-0">
           <div 
@@ -92,39 +92,6 @@ function PatientCard({ patient, onView, onEdit, onDelete, getStatusColor }: Pati
           <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(patient.status)}`}>
             {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
           </span>
-          {/* Action Icons - Below Status */}
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onView();
-              }}
-              className="p-1 md:p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-              title="View"
-            >
-              <Eye className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              className="p-1 md:p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-              title="Edit"
-            >
-              <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="p-1 md:p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-              title="Delete"
-            >
-              <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
-          </div>
         </div>
       </div>
     </div>

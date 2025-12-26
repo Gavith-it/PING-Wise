@@ -53,7 +53,7 @@ export default function CampaignForm({
     'active': 'Active',
     'inactive': 'Inactive',
     'booked': 'Booked',
-    'follow-up': 'Follow-up',
+    'follow-up': 'FollowUp',
     'new': 'New',
     'birthday': 'Birthday',
   };

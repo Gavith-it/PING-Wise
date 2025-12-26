@@ -149,7 +149,7 @@ export interface ActivityData {
     count: number;
     percentage: number;
   };
-  followUp: {
+  inactive: {
     count: number;
     percentage: number;
   };

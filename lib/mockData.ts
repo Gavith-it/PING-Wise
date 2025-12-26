@@ -144,7 +144,7 @@ export const mockActivityData: ActivityData = {
   total: 1247,
   active: { count: 561, percentage: 45 },
   booked: { count: 374, percentage: 30 },
-  followUp: { count: 312, percentage: 25 }
+  inactive: { count: 312, percentage: 25 }
 };
 
 // Mock Campaigns

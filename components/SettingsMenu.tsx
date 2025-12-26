@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Crown, Gift } from 'lucide-react';
+import { useState, useRef, useEffect, startTransition } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Crown, Gift, Wallet, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
@@ -10,8 +10,10 @@ import ToggleSwitch from '@/components/ui/toggle-switch';
 
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { setIsVisible: setFooterVisible } = useFooterVisibility();
@@ -33,14 +35,49 @@ export default function SettingsMenu() {
   }, [isOpen, setFooterVisible]);
 
   const handleNavigation = (path: string) => {
-    router.push(path);
+    // Get current pathname - use window.location as fallback for first navigation
+    // This ensures we always have the correct current path, even on first click after login
+    const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+    
+    // Close menu immediately to prevent layout shifts
     setIsOpen(false);
+    
+    // Only navigate if we're not already on that path
+    if (currentPath !== path) {
+      // For first navigation after login, pathname might not be set yet
+      // Use window.location to ensure we have the correct current path
+      // Navigate directly using push - Next.js will handle the routing
+      // The key is to ensure we're not going through any redirects
+      if (typeof window !== 'undefined' && !pathname) {
+        // First navigation - ensure direct navigation without going through root
+        // Use replace to avoid going through default routes that might redirect to dashboard
+        router.replace(path);
+      } else {
+        // Subsequent navigations - use push for proper history
+        router.push(path);
+      }
+    }
+    // If already on the path, menu is already closed above
   };
 
   const handleLogout = () => {
     logout();
     setIsOpen(false);
   };
+
+  const handleComingSoon = () => {
+    setShowComingSoon(true);
+    setIsOpen(false); // Close menu when showing coming soon modal
+  };
+
+  // Future: Uncomment when ready to enable navigation
+  // const handlePremiumNavigation = () => {
+  //   handleNavigation('/settings/premium');
+  // };
+  
+  // const handleReferAndWinNavigation = () => {
+  //   handleNavigation('/settings/refer-and-win');
+  // };
 
   const getInitials = (name?: string) => {
     if (!name) return 'U';
@@ -52,7 +89,11 @@ export default function SettingsMenu() {
     <div className="relative inline-block" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        className={`p-1.5 md:p-2 rounded-lg transition-all focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300 ${
+          isOpen
+            ? 'bg-primary/10 text-primary dark:bg-primary/20'
+            : 'text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700'
+        }`}
         aria-label="Settings Menu"
       >
         <Menu className="w-5 h-5 md:w-6 md:h-6" />
@@ -122,8 +163,10 @@ export default function SettingsMenu() {
                 </button>
 
                 <button
-                  onClick={() => handleNavigation('/settings/premium')}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  onClick={handleComingSoon}
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75"
+                  // Future: Uncomment when ready to enable
+                  // onClick={() => handleNavigation('/settings/premium')}
                 >
                   <div className="flex items-center space-x-3">
                     <Crown className="w-5 h-5 text-yellow-500 dark:text-yellow-400 group-hover:text-yellow-600" />
@@ -133,12 +176,25 @@ export default function SettingsMenu() {
                 </button>
 
                 <button
-                  onClick={() => handleNavigation('/settings/refer-and-win')}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  onClick={handleComingSoon}
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75"
+                  // Future: Uncomment when ready to enable
+                  // onClick={() => handleNavigation('/settings/refer-and-win')}
                 >
                   <div className="flex items-center space-x-3">
                     <Gift className="w-5 h-5 text-purple-500 dark:text-purple-400 group-hover:text-purple-600" />
                     <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Refer and Win</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+
+                <button
+                  onClick={() => handleNavigation('/wallet')}
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Wallet className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
+                    <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Wallet</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
@@ -183,6 +239,49 @@ export default function SettingsMenu() {
                 >
                   <LogOut className="w-5 h-5" />
                   <span className="text-sm md:text-base">Log Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Coming Soon Modal */}
+      {showComingSoon && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-[60]"
+            onClick={() => setShowComingSoon(false)}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 relative">
+              {/* Close Button */}
+              <button
+                onClick={() => setShowComingSoon(false)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Content */}
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                  Coming Soon
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm md:text-base mb-6">
+                  This feature is currently under development and will be available soon. Stay tuned for updates!
+                </p>
+                <button
+                  onClick={() => setShowComingSoon(false)}
+                  className="w-full bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-dark transition-colors shadow-md hover:shadow-lg"
+                >
+                  Got it
                 </button>
               </div>
             </div>

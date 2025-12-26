@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Check } from 'lucide-react';
+import { CampaignTag, campaignTagToApiFormat, normalizeCampaignTag } from '@/lib/constants/status';
 
 interface TagSelectorModalProps {
   onClose: () => void;
@@ -9,26 +10,37 @@ interface TagSelectorModalProps {
   selectedTags: string[];
 }
 
+// Standardized campaign tags using constants
+// API values use the standardized format directly (Active, FollowUp, All, etc.)
 const availableTags = [
-  { id: 'all', label: 'All', color: 'bg-gray-500' },
-  { id: 'active', label: 'Active', color: 'bg-green-500' },
-  { id: 'inactive', label: 'Inactive', color: 'bg-gray-400' },
-  { id: 'booked', label: 'Booked', color: 'bg-blue-500' },
-  { id: 'follow-up', label: 'Follow-up', color: 'bg-yellow-500' },
-  { id: 'new', label: 'New', color: 'bg-purple-500' },
-  { id: 'birthday', label: 'Birthday', color: 'bg-pink-500' },
+  { id: CampaignTag.AllTag, label: 'All', color: 'bg-gray-500', apiValue: CampaignTag.AllTag }, // 'All'
+  { id: CampaignTag.Active, label: 'Active', color: 'bg-green-500', apiValue: CampaignTag.Active }, // 'Active'
+  { id: CampaignTag.Inactive, label: 'Inactive', color: 'bg-gray-400', apiValue: CampaignTag.Inactive }, // 'Inactive'
+  { id: CampaignTag.Booked, label: 'Booked', color: 'bg-blue-500', apiValue: CampaignTag.Booked }, // 'Booked'
+  { id: CampaignTag.FollowUp, label: 'FollowUp', color: 'bg-yellow-500', apiValue: CampaignTag.FollowUp }, // 'FollowUp'
+  { id: CampaignTag.NewTag, label: 'New', color: 'bg-purple-500', apiValue: CampaignTag.NewTag }, // 'New'
+  { id: CampaignTag.BirthdayTag, label: 'Birthday', color: 'bg-pink-500', apiValue: CampaignTag.BirthdayTag }, // 'Birthday'
 ];
 
 export default function TagSelectorModal({ onClose, onApply, selectedTags }: TagSelectorModalProps) {
-  const [tags, setTags] = useState<string[]>(selectedTags);
+  // Normalize selected tags to standardized format
+  const normalizedSelectedTags = selectedTags.map(tag => {
+    const normalized = normalizeCampaignTag(tag);
+    return normalized || tag;
+  });
+  
+  const [tags, setTags] = useState<string[]>(normalizedSelectedTags);
 
   const toggleTag = (tagId: string) => {
-    if (tagId === 'all') {
+    const tag = availableTags.find(t => t.id === tagId);
+    if (!tag) return;
+    
+    if (tagId === CampaignTag.AllTag) {
       // If "All" is selected, clear other selections
-      setTags(['all']);
+      setTags([CampaignTag.AllTag]);
     } else {
       // Remove "all" if any specific tag is selected
-      const newTags = tags.filter(t => t !== 'all');
+      const newTags = tags.filter(t => t !== CampaignTag.AllTag);
       
       if (newTags.includes(tagId)) {
         // Deselect tag
@@ -46,11 +58,18 @@ export default function TagSelectorModal({ onClose, onApply, selectedTags }: Tag
   };
 
   const handleApply = () => {
+    // Tags are already in standardized format, use them directly for API
+    const apiFormatTags = tags.map(tag => {
+      const tagObj = availableTags.find(t => t.id === tag);
+      // Use the standardized format directly (API expects this format)
+      return tagObj ? tagObj.apiValue : tag;
+    });
+    
     // Ensure at least one tag is selected
-    if (tags.length === 0) {
-      onApply(['all']);
+    if (apiFormatTags.length === 0) {
+      onApply([CampaignTag.AllTag]);
     } else {
-      onApply(tags);
+      onApply(apiFormatTags);
     }
     onClose();
   };

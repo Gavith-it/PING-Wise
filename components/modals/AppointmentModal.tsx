@@ -121,6 +121,23 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const appointmentDoctorIdRef = useRef<string>(''); // Store appointment's doctor ID for matching
 
   const loadFormData = useCallback(async (showLoading = false) => {
+    // Check cache first - if cache is valid, don't make API calls
+    const cacheAge = Date.now() - formDataCache.timestamp;
+    const isCacheValid = formDataCache.patients.length > 0 && 
+                        formDataCache.doctors.length > 0 && 
+                        cacheAge < CACHE_DURATION;
+    
+    // If cache is valid, use it and skip API calls
+    if (isCacheValid) {
+      setPatients(formDataCache.patients);
+      setDoctors(formDataCache.doctors);
+      if (showLoading) {
+        setLoadingPatients(false);
+        setLoadingDoctors(false);
+      }
+      return;
+    }
+    
     try {
       if (showLoading) {
         setLoadingPatients(true);
@@ -254,47 +271,56 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         }
       }
       
-      // Handle doctor selection
+      // Handle doctor selection - match patient pattern exactly
       if (typeof appointment.doctor === 'object' && appointment.doctor) {
         // If doctor is already an object, use it directly
         const doctorObj = appointment.doctor as User;
-        setSelectedDoctor(doctorObj);
-        // Ensure formData has the correct doctor ID
         if (doctorObj.id) {
-          const doctorIdStr = String(doctorObj.id);
-          setFormData(prev => ({ ...prev, doctor: doctorIdStr }));
-          appointmentDoctorIdRef.current = doctorIdStr;
+          // Use ID directly like patient - no String() conversion
+          const doctorIdValue = doctorObj.id;
+          // Set formData first to ensure Autocomplete has the value
+          setFormData(prev => ({ ...prev, doctor: doctorIdValue }));
+          appointmentDoctorIdRef.current = String(doctorIdValue);
+          
+          // Then try to find the doctor in the list to set selectedDoctor
+          if (doctors.length > 0) {
+            const doctor = doctors.find(d => {
+              // Match like patient - direct ID comparison
+              return d.id === doctorIdValue || String(d.id) === String(doctorIdValue);
+            });
+            if (doctor) {
+              setSelectedDoctor(doctor);
+            } else {
+              // Doctor object exists but not in list - still set it for display
+              setSelectedDoctor(doctorObj);
+            }
+          } else {
+            // Doctors list not loaded yet - set the doctor object directly
+            setSelectedDoctor(doctorObj);
+          }
         }
       } else if (doctorId) {
+        // Doctor is a string ID (from API assigned_to field) - match like patient
+        // Set formData first with the ID as-is
+        setFormData(prev => ({ ...prev, doctor: doctorId }));
+        appointmentDoctorIdRef.current = String(doctorId);
+        
         // Try to find doctor in the list
         if (doctors.length > 0) {
-          // Try multiple ID matching strategies in case of format differences
+          // Match like patient - direct ID comparison
           const doctor = doctors.find(d => {
-            const dId = String(d.id || '');
-            const aptId = String(doctorId || '');
-            // Try exact match, case-insensitive match, and direct comparison
-            return dId === aptId || 
-                   dId.toLowerCase() === aptId.toLowerCase() ||
-                   d.id === doctorId ||
-                   String(d.id) === String(doctorId);
+            return d.id === doctorId || String(d.id) === String(doctorId);
           });
           
           if (doctor) {
             setSelectedDoctor(doctor);
-            // Ensure formData has the correct doctor ID (use the doctor's actual ID format)
-            const doctorIdStr = String(doctor.id);
-            setFormData(prev => ({ ...prev, doctor: doctorIdStr }));
-            appointmentDoctorIdRef.current = doctorIdStr;
-          } else {
-            // If doctor not found, log for debugging
-            console.warn('Doctor not found in list:', { 
-              appointmentDoctorId: doctorId, 
-              doctorsCount: doctors.length, 
-              doctorIds: doctors.map(d => ({ id: d.id, name: d.name, idType: typeof d.id }))
-            });
+            // Ensure formData has the correct doctor ID (use the doctor's actual ID)
+            setFormData(prev => ({ ...prev, doctor: doctor.id }));
+            appointmentDoctorIdRef.current = String(doctor.id);
           }
+          // If not found, formData already has the ID, so Autocomplete can still work
         }
-        // If doctors list is not loaded yet, the doctorId is already in formData
+        // If doctors list not loaded yet, formData already has the ID
         // The useEffect will re-run when doctors are loaded
       }
     } else {
@@ -305,30 +331,30 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     }
   }, [appointment, patients, doctors]);
 
-  // Separate useEffect to retry finding doctor when doctors list loads
+  // Separate useEffect to retry finding doctor when doctors list loads - match patient pattern
   useEffect(() => {
-    // Only run if we have an appointment and a doctor ID to match, but no selected doctor yet
-    if (appointment && appointmentDoctorIdRef.current && !selectedDoctor && doctors.length > 0) {
-      const doctorId = appointmentDoctorIdRef.current;
+    // Run if we have an appointment and a doctor ID to match, but no selected doctor yet
+    if (appointment && doctors.length > 0 && !selectedDoctor) {
+      // Get doctor ID from formData or appointment - match patient pattern
+      const doctorIdToMatch = formData.doctor || 
+                              appointmentDoctorIdRef.current ||
+                              (typeof appointment.doctor === 'string' ? appointment.doctor : appointment.doctor?.id);
       
-      // Try to find the doctor with improved matching
-      const doctor = doctors.find(d => {
-        const dId = String(d.id || '');
-        const aptId = String(doctorId || '');
-        return dId === aptId || 
-               dId.toLowerCase() === aptId.toLowerCase() ||
-               d.id === doctorId ||
-               String(d.id) === String(doctorId);
-      });
-      
-      if (doctor) {
-        setSelectedDoctor(doctor);
-        const doctorIdStr = String(doctor.id);
-        setFormData(prev => ({ ...prev, doctor: doctorIdStr }));
-        appointmentDoctorIdRef.current = doctorIdStr;
+      if (doctorIdToMatch) {
+        // Match like patient - direct ID comparison
+        const doctor = doctors.find(d => {
+          return d.id === doctorIdToMatch || String(d.id) === String(doctorIdToMatch);
+        });
+        
+        if (doctor) {
+          setSelectedDoctor(doctor);
+          // Ensure formData has the correct doctor ID (use the doctor's actual ID)
+          setFormData(prev => ({ ...prev, doctor: doctor.id }));
+          appointmentDoctorIdRef.current = String(doctor.id);
+        }
       }
     }
-  }, [appointment, doctors, selectedDoctor]);
+  }, [appointment, doctors, selectedDoctor, formData.doctor]);
 
   // Optimized field update handler
   const handleFieldChange = useCallback((field: keyof typeof formData) => {
@@ -426,18 +452,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       return;
     }
     
-    if (!formData.reason || formData.reason.trim() === '') {
-      toast.error('Please provide a reason for the visit');
-      return;
-    }
-    
-    // Validate reason has minimum length
-    if (formData.reason.trim().length < 3) {
-      toast.error('Reason for visit must be at least 3 characters long');
-      return;
-    }
-    
-    if (formData.reason.trim().length > 500) {
+    // Reason for visit is optional - only validate length if provided
+    if (formData.reason && formData.reason.trim().length > 500) {
       toast.error('Reason for visit must be less than 500 characters');
       return;
     }
@@ -475,12 +491,32 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         return;
       }
 
+      // Check if we're editing a pending appointment and assigning a doctor
+      const wasPending = appointment && appointment.status === 'pending';
+      const hadNoDoctor = appointment && (!appointment.doctor || 
+        (typeof appointment.doctor === 'string' && !appointment.doctor) ||
+        (typeof appointment.doctor === 'object' && !appointment.doctor?.id));
+      const isAssigningDoctor = doctorId && doctorId.trim() !== '';
+      
+      // If editing a pending appointment and assigning a doctor, set status to confirmed
+      const shouldConfirmEdit = wasPending && isAssigningDoctor && (hadNoDoctor || 
+        (typeof appointment.doctor === 'object' && appointment.doctor?.id !== doctorId) ||
+        (typeof appointment.doctor === 'string' && appointment.doctor !== doctorId));
+      
+      // If creating a NEW appointment with a doctor assigned, set status to confirmed
+      const isNewAppointment = !appointment;
+      const shouldConfirmNew = isNewAppointment && isAssigningDoctor;
+
       // Prepare appointment data with proper IDs
       const appointmentData = {
         ...formData,
         patient: patientId, // Ensure we use the patient ID
         doctor: doctorId, // Ensure we use the doctor ID
         reason: formData.reason || 'General consultation',
+        // Set status to confirmed if:
+        // 1. Editing a pending appointment and assigning a doctor, OR
+        // 2. Creating a new appointment with a doctor assigned
+        ...((shouldConfirmEdit || shouldConfirmNew) ? { status: 'confirmed' as const } : {}),
       };
 
       let responseData: Appointment | undefined;
@@ -601,10 +637,10 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
               <Autocomplete
                 options={doctors.map(d => ({
                   ...d,
-                  id: String(d.id), // Ensure ID is always a string for consistent matching
+                  id: d.id, // Use ID directly like patient - ensure consistent format
                   label: `${d.name} - ${d.department || 'General'}`,
                 }))}
-                value={formData.doctor ? String(formData.doctor) : ''}
+                value={formData.doctor || ''}
                 onChange={handleDoctorChange}
                 onSelect={handleDoctorSelect}
                 placeholder="Type to search doctors..."
@@ -613,7 +649,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 required
                 name="doctor"
                 getOptionLabel={(option) => option.label}
-                getOptionValue={(option) => String(option.id)}
+                getOptionValue={(option) => option.id}
               />
             </div>
 
@@ -669,10 +705,9 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for Visit *
+                Reason for Visit
               </label>
               <textarea
-                required
                 rows={3}
                 value={formData.reason}
                 onChange={handleFieldChange('reason')}

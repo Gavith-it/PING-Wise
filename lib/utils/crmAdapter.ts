@@ -6,6 +6,7 @@
 
 import { CrmCustomer, CrmCustomerRequest } from '@/types/crmApi';
 import { Patient, CreatePatientRequest } from '@/types';
+import { CustomerStatus, normalizeCustomerStatus, customerStatusToApiFormat, apiFormatToCustomerStatus } from '@/lib/constants/status';
 
 /**
  * Convert CRM Customer to UI Patient model
@@ -51,7 +52,7 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     email: customer.email,
     address: customer.address,
     assignedDoctor: customer.assigned_to,
-    status: mapStatusToPatientStatus(customer.status || 'active'),
+    status: apiFormatToCustomerStatus(customer.status || 'active') as 'active' | 'booked' | 'follow-up' | 'inactive',
     medicalNotes: parseMedicalHistory(customer.medical_history || (customer as any).medical_history || null),
     dateOfBirth: dateOfBirth,
     lastVisit: undefined, // Not available in CRM API
@@ -229,44 +230,27 @@ function parseMedicalHistory(medicalHistory: any): string {
 }
 
 /**
- * Map CRM status to Patient status
+ * Map CRM status to Patient status (using standardized constants)
+ * @deprecated Use normalizeCustomerStatus and apiFormatToCustomerStatus from constants instead
  */
 function mapStatusToPatientStatus(crmStatus: string): 'active' | 'booked' | 'follow-up' | 'inactive' {
-  const normalized = crmStatus.toLowerCase().trim();
-  
-  // Check for 'inactive' FIRST before 'active' since 'inactive' contains 'active' as substring
-  if (normalized === 'inactive' || normalized.includes('inactive')) {
-    return 'inactive';
-  }
-  // Then check for 'active' (exact match or contains)
-  if (normalized === 'active' || normalized.includes('active')) {
-    return 'active';
-  }
-  if (normalized === 'booked' || normalized.includes('booked')) {
-    return 'booked';
-  }
-  if (normalized === 'follow-up' || normalized.includes('follow')) {
-    return 'follow-up';
-  }
-  
-  // Default to active if status doesn't match
-  return 'active';
+  // Use standardized constants for normalization
+  const normalized = apiFormatToCustomerStatus(crmStatus);
+  // Convert back to API format for type compatibility
+  return customerStatusToApiFormat(normalized) as 'active' | 'booked' | 'follow-up' | 'inactive';
 }
 
 /**
- * Map Patient status to CRM status
+ * Map Patient status to CRM status (using standardized constants)
+ * API expects standardized format (FollowUp, Active, etc.) - NOT lowercase
+ * So we return standardized format directly
  */
 function mapPatientStatusToCrmStatus(patientStatus: string | undefined): string {
-  if (!patientStatus) return 'active';
+  if (!patientStatus) return CustomerStatus.Active;
   
-  const normalized = patientStatus.toLowerCase();
-  
-  // Return as-is or normalize common statuses
-  if (['active', 'booked', 'follow-up', 'inactive'].includes(normalized)) {
-    return normalized;
-  }
-  
-  return patientStatus;
+  // Normalize to standardized format and return as-is (API expects standardized format)
+  const normalized = normalizeCustomerStatus(patientStatus);
+  return normalized; // Return standardized format directly, not API format
 }
 
 /**

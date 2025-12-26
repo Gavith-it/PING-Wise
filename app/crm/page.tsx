@@ -75,18 +75,22 @@ export default function CRMPage() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'booked':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'follow-up':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+    // Normalize status to standardized format for comparison
+    const normalized = status.toLowerCase();
+    
+    if (normalized === 'active' || normalized.includes('active')) {
+      return 'bg-green-100 text-green-700 border-green-200';
     }
+    if (normalized === 'booked' || normalized.includes('booked')) {
+      return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
+    if (normalized === 'follow-up' || normalized === 'followup' || normalized.includes('follow')) {
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    }
+    if (normalized === 'inactive' || normalized.includes('inactive')) {
+      return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+    return 'bg-gray-100 text-gray-700 border-gray-200';
   };
 
   const handleClearFilters = () => {
@@ -189,9 +193,7 @@ export default function CRMPage() {
                 hasPrevious={hasPrevious}
                 page={page}
                 totalPages={totalPages}
-                onView={handleViewPatient}
-                onEdit={handleEditPatient}
-                onDelete={handleDelete}
+                onCardClick={handleViewPatient}
                 onNextPage={handleNextPage}
                 onPreviousPage={handlePreviousPage}
                 getStatusColor={getStatusColor}
@@ -221,6 +223,11 @@ export default function CRMPage() {
               onEdit={() => {
                 setShowDetailsModal(false);
                 setShowAddModal(true);
+              }}
+              onDelete={(id) => {
+                handleDelete(id);
+                setShowDetailsModal(false);
+                setSelectedPatient(null);
               }}
             />
           )}
