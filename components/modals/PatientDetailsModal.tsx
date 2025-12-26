@@ -157,7 +157,6 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
             <button
               onClick={() => {
                 onEdit();
-                onClose();
               }}
               className="flex-1 flex items-center justify-center gap-1.5 md:gap-2 bg-primary text-white py-2 md:py-2.5 px-3 md:px-4 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:bg-primary-dark transition-colors"
             >

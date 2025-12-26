@@ -54,14 +54,30 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
       let formattedDateOfBirth = '';
       if (patient.dateOfBirth) {
         try {
-          const dob = patient.dateOfBirth instanceof Date 
-            ? patient.dateOfBirth 
-            : new Date(patient.dateOfBirth);
-          if (!isNaN(dob.getTime())) {
-            formattedDateOfBirth = dob.toISOString().split('T')[0];
+          const dobValue: Date | string = patient.dateOfBirth as Date | string;
+          // If it's already a string in YYYY-MM-DD format, use it directly
+          if (typeof dobValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dobValue.trim())) {
+            formattedDateOfBirth = dobValue.trim().split('T')[0].split(' ')[0];
+          } else {
+            // Try to parse as Date
+            let dob: Date;
+            if (dobValue instanceof Date) {
+              dob = dobValue;
+            } else {
+              dob = new Date(dobValue);
+            }
+            
+            // Format the Date object to YYYY-MM-DD
+            if (!isNaN(dob.getTime())) {
+              // Get local date components to avoid timezone issues
+              const year = dob.getFullYear();
+              const month = String(dob.getMonth() + 1).padStart(2, '0');
+              const day = String(dob.getDate()).padStart(2, '0');
+              formattedDateOfBirth = `${year}-${month}-${day}`;
+            }
           }
         } catch (error) {
-          console.error('Error parsing dateOfBirth:', error);
+          console.error('Error parsing dateOfBirth:', error, patient.dateOfBirth);
           formattedDateOfBirth = '';
         }
       }
@@ -362,7 +378,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
-                  +91
+                  91
                 </div>
                 <input
                   type="tel"

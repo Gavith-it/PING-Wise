@@ -4,7 +4,14 @@
  * Service for interacting with the Template API
  * Base URL: https://pw-crm-gateway-1.onrender.com/templates
  * 
- * Uses Next.js API proxy routes to avoid CORS issues
+ * ARCHITECTURE:
+ * - Tries direct backend call first (faster, requires CORS on backend)
+ * - Automatically falls back to Next.js proxy route if CORS error detected
+ * - Proxy route code is kept as fallback (not removed)
+ * - Server-side always uses direct calls (no CORS issues)
+ * 
+ * IMPORTANT: Set environment variable:
+ * NEXT_PUBLIC_CRM_API_BASE_URL=https://pw-crm-gateway-1.onrender.com
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -18,35 +25,70 @@ import {
 
 class TemplateApiService {
   private api: AxiosInstance;
+  private proxyApi: AxiosInstance; // Fallback proxy API
+  private directApi: AxiosInstance; // Direct backend API
   private baseURL: string;
+  private directBaseURL: string;
+  private useDirectCall: boolean = true; // Try direct call first
 
   constructor() {
-    // Use Next.js API routes as proxy to avoid CORS issues
+    const isBrowser = typeof window !== 'undefined';
+    
+    // Direct backend URL (from environment variable)
+    this.directBaseURL = 
+      process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
+      'https://pw-crm-gateway-1.onrender.com';
+    
+    // Proxy URL (Next.js API route)
     this.baseURL = '/api/templates';
+    
+    if (!isBrowser) {
+      // In server: always use direct call
+      this.baseURL = `${this.directBaseURL}/templates`;
+    }
 
-    // Create axios instance
-    this.api = axios.create({
+    // Create direct API instance (for direct backend calls)
+    this.directApi = axios.create({
+      baseURL: `${this.directBaseURL}/templates`,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Create proxy API instance (fallback)
+    this.proxyApi = axios.create({
       baseURL: this.baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
+    // Set default API (will try direct first)
+    this.api = this.directApi;
+
+    // Setup interceptors for both APIs
+    this.setupInterceptors(this.directApi);
+    this.setupInterceptors(this.proxyApi);
+
+  }
+
+  /**
+   * Setup interceptors for an axios instance
+   */
+  private setupInterceptors(apiInstance: AxiosInstance): void {
     // Request interceptor - Add auth token to all requests
-    this.api.interceptors.request.use(
+    apiInstance.interceptors.request.use(
       (config) => {
         const token = this.getToken();
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
-          
-          // Log token in development (only first few chars for security)
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[Template API] Request ${config.method?.toUpperCase()} ${config.url} - Token: ${token.substring(0, 20)}...`);
-          }
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(`[Template API] Request ${config.method?.toUpperCase()} ${config.url} - No token found!`);
-          }
+        }
+        
+        // Log token in development (only first few chars for security)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Template API] Request ${config.method?.toUpperCase()} ${config.url} - Token: ${token ? token.substring(0, 20) + '...' : 'No token'}`);
+        } else if (!token) {
+          console.warn(`[Template API] Request ${config.method?.toUpperCase()} ${config.url} - No token found!`);
         }
         return config;
       },
@@ -56,7 +98,7 @@ class TemplateApiService {
     );
 
     // Response interceptor - Handle errors globally
-    this.api.interceptors.response.use(
+    apiInstance.interceptors.response.use(
       (response) => {
         // Log response in development
         if (process.env.NODE_ENV === 'development') {
@@ -69,7 +111,7 @@ class TemplateApiService {
         }
         return response.data;
       },
-      (error: AxiosError) => {
+      async (error: AxiosError) => {
         // Log error in development
         if (process.env.NODE_ENV === 'development') {
           console.error('[Template API] Request error:', {
@@ -80,6 +122,31 @@ class TemplateApiService {
             data: error.response?.data,
             message: error.message,
           });
+        }
+        
+        // Handle CORS errors - fallback to proxy
+        if (
+          this.useDirectCall &&
+          (error.message?.includes('CORS') || 
+           error.message?.includes('Network Error') ||
+           error.code === 'ERR_NETWORK')
+        ) {
+          console.warn('[Template API] CORS error detected, falling back to proxy route');
+          this.useDirectCall = false;
+          this.api = this.proxyApi;
+          
+          // Retry the request with proxy
+          if (error.config) {
+            const proxyConfig = {
+              ...error.config,
+              baseURL: this.baseURL,
+            };
+            try {
+              return await this.proxyApi.request(proxyConfig);
+            } catch (retryError) {
+              return Promise.reject(retryError);
+            }
+          }
         }
         
         // Handle 401 Unauthorized

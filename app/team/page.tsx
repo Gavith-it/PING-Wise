@@ -149,8 +149,11 @@ export default function TeamPage() {
               setSelectedMember(null);
             }}
             onEdit={(member) => {
+              // Set the member to edit and close details modal
+              setSelectedMember(member);
               setShowDetailsModal(false);
-              handleEdit(member);
+              // Open edit modal (don't clear selectedMember)
+              setShowEditModal(true);
             }}
             onDelete={(id) => {
               handleDelete(id);
@@ -167,24 +170,34 @@ export default function TeamPage() {
           <TeamModal
             teamMember={selectedMember}
             onClose={() => {
-              setShowEditModal(false);
-              setSelectedMember(null);
+              // If we were editing (selectedMember exists), go back to details modal
+              if (selectedMember) {
+                setShowEditModal(false);
+                setShowDetailsModal(true);
+              } else {
+                // If adding new, close completely
+                setShowEditModal(false);
+                setSelectedMember(null);
+              }
             }}
             onSuccess={(createdOrUpdatedMember) => {
-              setShowEditModal(false);
-              setSelectedMember(null);
-              // Optimistically update cache with new/updated member instead of refetching
-              if (createdOrUpdatedMember) {
-                if (selectedMember && selectedMember.id) {
-                  // Update existing member
-                  updateTeamMemberInCache(createdOrUpdatedMember);
-                } else {
-                  // Add new member
-                  addTeamMemberToCache(createdOrUpdatedMember);
-                }
+              // If we were editing (selectedMember exists), update and go back to details modal
+              if (selectedMember && createdOrUpdatedMember) {
+                setSelectedMember(createdOrUpdatedMember);
+                setShowEditModal(false);
+                setShowDetailsModal(true);
+                // Update cache with the updated member
+                updateTeamMemberInCache(createdOrUpdatedMember);
+              } else if (createdOrUpdatedMember) {
+                // If adding new, add to cache and close
+                addTeamMemberToCache(createdOrUpdatedMember);
+                setShowEditModal(false);
+                setSelectedMember(null);
               } else {
                 // Fallback: if we don't have the member data, refresh (shouldn't happen)
                 loadTeamMembers(true, true);
+                setShowEditModal(false);
+                setSelectedMember(null);
               }
             }}
           />

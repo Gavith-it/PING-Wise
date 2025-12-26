@@ -179,19 +179,19 @@ export function formatPhoneForDisplay(phone: string): string {
 }
 
 /**
- * Formats phone number for API submission (adds +91 prefix)
+ * Formats phone number for API submission (adds 91 prefix, no plus sign)
  * Used when submitting data to backend
  */
 export function formatPhoneForApi(phone: string): string {
   if (!phone) return '';
   // Remove all non-digit characters
   const digitsOnly = phone.replace(/\D/g, '').slice(0, 10);
-  // If already has +91, return as is (after cleaning)
-  if (phone.trim().startsWith('+91')) {
-    return `+91${digitsOnly}`;
+  // If already has +91 or 91, return with 91 prefix (no plus)
+  if (phone.trim().startsWith('+91') || phone.trim().startsWith('91')) {
+    return `91${digitsOnly}`;
   }
-  // Add +91 prefix
-  return `+91${digitsOnly}`;
+  // Add 91 prefix (no plus sign)
+  return `91${digitsOnly}`;
 }
 
 /**

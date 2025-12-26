@@ -77,11 +77,16 @@ export default function FAQsPage() {
             {faqs.map((faq, index) => (
               <div
                 key={index}
-                className="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
+                className={`bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden ${
+                  openIndex === index ? '[&>*:first-child]:border-b-0' : ''
+                }`}
               >
                 <button
                   onClick={() => toggleFAQ(index)}
-                  className="w-full flex items-center justify-between p-4 md:p-6 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  className={`w-full flex items-center justify-between p-4 md:p-6 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                    openIndex === index ? 'border-b-0' : ''
+                  }`}
+                  style={openIndex === index ? { borderBottom: 'none' } : {}}
                 >
                   <div className="flex items-start space-x-3 flex-1">
                     <HelpCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
@@ -96,7 +101,10 @@ export default function FAQsPage() {
                   )}
                 </button>
                 {openIndex === index && (
-                  <div className="px-4 md:px-6 pb-4 md:pb-6 pl-12 md:pl-14">
+                  <div 
+                    className="px-4 md:px-6 pb-4 md:pb-6 pl-12 md:pl-14"
+                    style={{ borderTop: 'none' }}
+                  >
                     <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
                       {faq.answer}
                     </p>

@@ -31,15 +31,21 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
 
   // Parse date_of_birth if available (CRM API might have it as date_of_birth or in medical_history)
   let dateOfBirth: Date | undefined;
-  if ((customer as any).date_of_birth) {
+  const dobValue = (customer as any).date_of_birth;
+  if (dobValue && typeof dobValue === 'string' && dobValue.trim() !== '') {
     try {
-      dateOfBirth = new Date((customer as any).date_of_birth);
+      dateOfBirth = new Date(dobValue);
       // Check if date is valid
       if (isNaN(dateOfBirth.getTime())) {
         dateOfBirth = undefined;
       }
     } catch {
       dateOfBirth = undefined;
+    }
+  } else if (dobValue && dobValue instanceof Date) {
+    // If it's already a Date object
+    if (!isNaN(dobValue.getTime())) {
+      dateOfBirth = dobValue;
     }
   }
 

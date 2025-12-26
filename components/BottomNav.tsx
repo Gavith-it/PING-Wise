@@ -114,14 +114,14 @@ export default function BottomNav() {
             <button
               key={item.path}
               onClick={() => router.push(item.path)}
-              className={`flex flex-col items-center justify-center px-1.5 py-1 rounded-lg transition-all min-w-[50px] flex-1 ${
+              className={`flex flex-col items-center justify-center px-1.5 py-1 rounded-lg transition-all duration-200 ease-in-out min-w-[50px] flex-1 focus:outline-none focus:ring-0 active:bg-transparent ${
                 active
-                  ? 'text-primary bg-green-50 dark:bg-green-900/20'
+                  ? 'text-primary'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
-              <Icon className={`w-4 h-4 md:w-5 md:h-5 ${active ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
-              <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 ${active ? 'font-semibold text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
+              <Icon className={`w-4 h-4 md:w-5 md:h-5 transition-colors duration-200 ${active ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
+              <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 transition-colors duration-200 ${active ? 'font-semibold text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
                 {item.label}
               </span>
             </button>

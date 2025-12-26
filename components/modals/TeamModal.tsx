@@ -364,7 +364,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
-                  +91
+                  91
                 </div>
                 <input
                   type="tel"

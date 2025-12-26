@@ -114,8 +114,20 @@ export default function CRMPage() {
     setShowDetailsModal(true);
   };
 
-  const handleEditPatient = (patient: Patient) => {
-    setSelectedPatient(patient);
+  const handleEditPatient = async (patient: Patient) => {
+    // Fetch full patient details to ensure all fields (including dateOfBirth) are available
+    try {
+      const { crmPatientService } = await import('@/lib/services/crmPatientService');
+      const response = await crmPatientService.getPatient(patient.id);
+      if (response.data) {
+        setSelectedPatient(response.data);
+      } else {
+        setSelectedPatient(patient); // Fallback to list patient data
+      }
+    } catch (error) {
+      console.error('Error fetching full patient details:', error);
+      setSelectedPatient(patient); // Fallback to list patient data
+    }
     setShowAddModal(true);
   };
 
@@ -206,10 +218,30 @@ export default function CRMPage() {
             <CRMPatientModal
               patient={selectedPatient}
               onClose={() => {
-                setShowAddModal(false);
-                setSelectedPatient(null);
+                // If we were editing (selectedPatient exists), go back to details modal
+                if (selectedPatient) {
+                  setShowAddModal(false);
+                  setShowDetailsModal(true);
+                } else {
+                  // If adding new, close completely
+                  setShowAddModal(false);
+                  setSelectedPatient(null);
+                }
               }}
-              onSuccess={handlePatientCreatedWithModal}
+              onSuccess={(updatedPatient) => {
+                // If we were editing (selectedPatient exists), update and go back to details modal
+                if (selectedPatient && updatedPatient) {
+                  setSelectedPatient(updatedPatient);
+                  setShowAddModal(false);
+                  setShowDetailsModal(true);
+                  handlePatientCreatedWithModal(updatedPatient);
+                } else {
+                  // If adding new, close and refresh
+                  handlePatientCreatedWithModal(updatedPatient);
+                  setShowAddModal(false);
+                  setSelectedPatient(null);
+                }
+              }}
             />
           )}
 
@@ -221,7 +253,9 @@ export default function CRMPage() {
                 setSelectedPatient(null);
               }}
               onEdit={() => {
+                // Close details modal but preserve selectedPatient for edit modal
                 setShowDetailsModal(false);
+                // Open edit modal with the same patient (don't clear selectedPatient)
                 setShowAddModal(true);
               }}
               onDelete={(id) => {
