@@ -5,10 +5,8 @@
  * Base URL: https://pw-crm-gateway-1.onrender.com/templates
  * 
  * ARCHITECTURE:
- * - Tries direct backend call first (faster, requires CORS on backend)
- * - Automatically falls back to Next.js proxy route if CORS error detected
- * - Proxy route code is kept as fallback (not removed)
- * - Server-side always uses direct calls (no CORS issues)
+ * - Direct backend API calls only
+ * - No proxy routes - connects directly to backend API
  * 
  * IMPORTANT: Set environment variable:
  * NEXT_PUBLIC_CRM_API_BASE_URL=https://pw-crm-gateway-1.onrender.com
@@ -25,51 +23,24 @@ import {
 
 class TemplateApiService {
   private api: AxiosInstance;
-  private proxyApi: AxiosInstance; // Fallback proxy API
-  private directApi: AxiosInstance; // Direct backend API
   private baseURL: string;
-  private directBaseURL: string;
-  private useDirectCall: boolean = true; // Try direct call first
 
   constructor() {
-    const isBrowser = typeof window !== 'undefined';
-    
     // Direct backend URL (from environment variable)
-    this.directBaseURL = 
+    this.baseURL = 
       process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
       'https://pw-crm-gateway-1.onrender.com';
-    
-    // Proxy URL (Next.js API route)
-    this.baseURL = '/api/templates';
-    
-    if (!isBrowser) {
-      // In server: always use direct call
-      this.baseURL = `${this.directBaseURL}/templates`;
-    }
 
-    // Create direct API instance (for direct backend calls)
-    this.directApi = axios.create({
-      baseURL: `${this.directBaseURL}/templates`,
+    // Create API instance (direct backend calls only)
+    this.api = axios.create({
+      baseURL: `${this.baseURL}/templates`,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    // Create proxy API instance (fallback)
-    this.proxyApi = axios.create({
-      baseURL: this.baseURL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    // Set default API (will try direct first)
-    this.api = this.directApi;
-
-    // Setup interceptors for both APIs
-    this.setupInterceptors(this.directApi);
-    this.setupInterceptors(this.proxyApi);
-
+    // Setup interceptors
+    this.setupInterceptors(this.api);
   }
 
   /**
@@ -124,31 +95,6 @@ class TemplateApiService {
           });
         }
         
-        // Handle CORS errors - fallback to proxy
-        if (
-          this.useDirectCall &&
-          (error.message?.includes('CORS') || 
-           error.message?.includes('Network Error') ||
-           error.code === 'ERR_NETWORK')
-        ) {
-          console.warn('[Template API] CORS error detected, falling back to proxy route');
-          this.useDirectCall = false;
-          this.api = this.proxyApi;
-          
-          // Retry the request with proxy
-          if (error.config) {
-            const proxyConfig = {
-              ...error.config,
-              baseURL: this.baseURL,
-            };
-            try {
-              return await this.proxyApi.request(proxyConfig);
-            } catch (retryError) {
-              return Promise.reject(retryError);
-            }
-          }
-        }
-        
         // Handle 401 Unauthorized
         if (error.response?.status === 401) {
           console.warn('[Template API] 401 Unauthorized - Token may be invalid or expired');
@@ -185,7 +131,7 @@ class TemplateApiService {
 
   /**
    * List all templates
-   * GET /api/templates
+   * GET /templates
    * Query params: org_id, limit
    */
   async getTemplates(params?: { org_id?: string; limit?: number }): Promise<CrmApiListResponse<CrmTemplate>> {
@@ -252,7 +198,7 @@ class TemplateApiService {
 
   /**
    * Get template by ID
-   * GET /api/templates/{id}
+   * GET /templates/{id}
    */
   async getTemplate(id: number | string): Promise<CrmApiSingleResponse<CrmTemplate>> {
     return this.api.get<CrmTemplate>(`/${id}`) as unknown as CrmTemplate;
@@ -260,7 +206,7 @@ class TemplateApiService {
 
   /**
    * Create template
-   * POST /api/templates
+   * POST /templates
    */
   async createTemplate(data: CrmTemplateRequest): Promise<CrmApiSingleResponse<CrmTemplate>> {
     return this.api.post<CrmTemplate>('', data) as unknown as CrmTemplate;
@@ -268,7 +214,7 @@ class TemplateApiService {
 
   /**
    * Update template
-   * PUT /api/templates/{id}
+   * PUT /templates/{id}
    */
   async updateTemplate(id: number | string, data: CrmTemplateRequest): Promise<CrmApiSingleResponse<CrmTemplate>> {
     return this.api.put<CrmTemplate>(`/${id}`, data) as unknown as CrmTemplate;
@@ -276,7 +222,7 @@ class TemplateApiService {
 
   /**
    * Delete template
-   * DELETE /api/templates/{id}
+   * DELETE /templates/{id}
    */
   async deleteTemplate(id: number | string): Promise<CrmApiStringResponse> {
     return this.api.delete<CrmApiStringResponse>(`/${id}`) as unknown as CrmApiStringResponse;

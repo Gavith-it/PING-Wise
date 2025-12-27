@@ -4,6 +4,7 @@ import { crmAppointmentService } from '@/lib/services/appointmentService';
 import { crmPatientService } from '@/lib/services/crmPatientService';
 import { Appointment } from '@/types';
 import { Patient } from '@/types';
+import { formDataCache, preloadInProgress } from '@/components/modals/AppointmentModal';
 
 // Cache for today's appointments
 const appointmentsCache: {
@@ -77,9 +78,39 @@ export function useTodayAppointments(): UseTodayAppointmentsReturn {
             .filter((id): id is string => id !== null);
           
           if (patientIds.length > 0) {
-            // Fetch patient data (only once, prevent duplicate calls)
-            const patientsResponse = await crmPatientService.getPatients({ limit: 100 });
-            const patients: Patient[] = patientsResponse.data || [];
+            // Check shared cache first (from AppointmentModal preload) to avoid duplicate API calls
+            const cacheAge = Date.now() - formDataCache.timestamp;
+            const isCacheValid = formDataCache.patients.length > 0 && cacheAge < 15 * 60 * 1000; // 15 minutes
+            
+            let patients: Patient[] = [];
+            
+            // If cache is valid, use it (no API call needed)
+            // If preload is in progress, wait a bit and check cache again to avoid duplicate calls
+            if (isCacheValid) {
+              patients = formDataCache.patients;
+            } else if (preloadInProgress) {
+              // Preload is in progress, wait a bit and check cache again
+              await new Promise(resolve => setTimeout(resolve, 100));
+              const cacheAgeAfterWait = Date.now() - formDataCache.timestamp;
+              const isCacheValidAfterWait = formDataCache.patients.length > 0 && cacheAgeAfterWait < 15 * 60 * 1000;
+              if (isCacheValidAfterWait) {
+                patients = formDataCache.patients;
+              } else {
+                // Preload didn't complete in time, fetch from API
+                const patientsResponse = await crmPatientService.getPatients({ limit: 100 });
+                patients = patientsResponse.data || [];
+                formDataCache.patients = patients;
+                formDataCache.timestamp = Date.now();
+              }
+            } else {
+              // Cache is invalid and preload not in progress, fetch from API
+              const patientsResponse = await crmPatientService.getPatients({ limit: 100 });
+              patients = patientsResponse.data || [];
+              
+              // Update shared cache for future use
+              formDataCache.patients = patients;
+              formDataCache.timestamp = Date.now();
+            }
             
             // Create a map of patient ID to patient object
             const patientMap = new Map<string, Patient>();

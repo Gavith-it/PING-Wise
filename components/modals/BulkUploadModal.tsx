@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { X, Upload, FileSpreadsheet, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { patientService } from '@/lib/services/api';
+import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
 
 interface BulkUploadModalProps {
@@ -54,7 +54,8 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await patientService.bulkUploadPatients(formData);
+      // Use CRM patient service (backend API) instead of Next.js API
+      const response = await crmPatientService.bulkUploadPatients(formData);
       
       if (response.success) {
         const data = response.data as { successCount: number; errors: UploadError[] };
@@ -75,7 +76,8 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
       }
     } catch (error: any) {
       console.error('Bulk upload error:', error);
-      toast.error(error.response?.data?.message || 'Failed to upload file');
+      const errorMessage = error.message || error.response?.data?.message || 'Failed to upload file';
+      toast.error(errorMessage);
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       }

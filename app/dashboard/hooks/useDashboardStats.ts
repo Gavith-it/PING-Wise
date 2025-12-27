@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
-import { dashboardService } from '@/lib/services/api';
 import { reportsApi, DailyReport } from '@/lib/services/reportsApi';
-import { crmApi } from '@/lib/services/crmApi';
-import { crmCustomersToPatients } from '@/lib/utils/crmAdapter';
 
 // Dashboard cache
 const dashboardCache: {
@@ -57,47 +54,43 @@ export function useDashboardStats(): UseDashboardStatsReturn {
         return {};
       });
       
-      // Then fetch stats in parallel
-      const statsData = await dashboardService.getStats();
-
-      const newStats = statsData.data;
+      // Build stats from daily report data ONLY (no other API calls)
+      const report = dailyReportData as DailyReport;
+      const newStats = {
+        totalBookings: {
+          value: report?.totalAppointments || report?.total_appointments || 0,
+          change: 0,
+          trend: 'up' as const
+        },
+        totalPatients: {
+          value: report?.totalCustomers || report?.total_customers || 0,
+          change: 0,
+          trend: 'up' as const
+        },
+        followUps: {
+          value: report?.followupCustomers || report?.followup_customers || 0,
+          change: 0,
+          trend: 'up' as const
+        },
+        revenue: {
+          value: report?.revenue || 0,
+          change: 0,
+          trend: 'up' as const
+        },
+        todayAppointments: {
+          value: report?.totalAppointments || report?.total_appointments || 0
+        },
+        activeCampaigns: {
+          value: 0 // Not available in daily report
+        }
+      };
       
-      // Fetch patients directly from CRM API to get accurate counts by status
-      // This ensures we have the correct data even if daily report doesn't return it
-      let totalCustomers = 0;
-      let activeCustomers = 0;
-      let bookedCustomers = 0;
-      let followupCustomers = 0;
+      // Calculate activity data from daily report API ONLY (no other API calls)
+      const totalCustomers = report?.totalCustomers || report?.total_customers || 0;
+      const activeCustomers = report?.activeCustomers || report?.active_customers || 0;
+      const bookedCustomers = report?.bookedCustomers || report?.booked_customers || 0;
+      const followupCustomers = report?.followupCustomers || report?.followup_customers || 0;
       
-      try {
-        // Fetch all customers directly from CRM API (bypasses pagination)
-        const allCrmCustomers = await crmApi.getCustomers();
-        const allPatients = crmCustomersToPatients(allCrmCustomers || []);
-        
-        totalCustomers = allPatients.length;
-        
-        // Count patients by status
-        allPatients.forEach((patient: any) => {
-          const status = (patient.status || '').toLowerCase();
-          if (status === 'active') {
-            activeCustomers++;
-          } else if (status === 'booked') {
-            bookedCustomers++;
-          } else if (status === 'follow-up' || status === 'followup') {
-            followupCustomers++;
-          }
-        });
-      } catch (error) {
-        console.warn('Failed to fetch patients for activity data, using daily report:', error);
-        // Fallback to daily report data if patient fetch fails
-        const report = dailyReportData as DailyReport;
-        totalCustomers = report?.totalCustomers || report?.total_customers || 0;
-        activeCustomers = report?.activeCustomers || report?.active_customers || 0;
-        bookedCustomers = report?.bookedCustomers || report?.booked_customers || 0;
-        followupCustomers = report?.followupCustomers || report?.followup_customers || 0;
-      }
-      
-      // Calculate activity data from real backend data
       const newActivity = {
         total: totalCustomers,
         active: {

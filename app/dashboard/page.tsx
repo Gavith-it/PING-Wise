@@ -28,7 +28,7 @@ const AppointmentModal = dynamic(() => import('@/components/modals/AppointmentMo
   ssr: false
 });
 
-const PatientModal = dynamic(() => import('@/components/modals/PatientModal'), {
+const CRMPatientModal = dynamic(() => import('@/components/modals/CRMPatientModal'), {
   loading: () => null,
   ssr: false
 });
@@ -103,13 +103,24 @@ export default function DashboardPage() {
     loadAppointments();
   }, [addNotification, loadDashboardData, loadAppointments]);
 
-  const handlePatientSuccess = useCallback(() => {
+  const handlePatientSuccess = useCallback((createdPatient?: any) => {
     setShowPatientModal(false);
     addNotification({
       type: 'patient',
       title: 'New Patient Registered',
       message: 'A new patient has been successfully added to the system.',
     });
+    
+    // Invalidate CRM cache so the new patient appears in CRM page immediately
+    if (typeof window !== 'undefined') {
+      // Import and call invalidatePatientsCache to refresh CRM page cache
+      import('@/app/crm/hooks/usePatients').then((module) => {
+        if (module.invalidatePatientsCache) {
+          module.invalidatePatientsCache();
+        }
+      });
+    }
+    
     loadDashboardData();
     loadAppointments();
   }, [addNotification, loadDashboardData, loadAppointments]);
@@ -225,7 +236,7 @@ export default function DashboardPage() {
         )}
 
         {showPatientModal && (
-          <PatientModal
+          <CRMPatientModal
             onClose={() => setShowPatientModal(false)}
             onSuccess={handlePatientSuccess}
           />

@@ -75,6 +75,9 @@ export async function preloadFormData() {
     } finally {
       preloadInProgress = false;
     }
+  } else {
+    // Cache is valid, no need to preload
+    return;
   }
 }
 
@@ -116,11 +119,17 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
   const hasLoadedRef = useRef(false); // Track if data has been loaded to prevent duplicate calls
+  const isLoadingRef = useRef(false); // Prevent concurrent API calls
   const isSubmittingRef = useRef(false); // Prevent duplicate form submissions
   const hasCalledSuccessRef = useRef(false); // Prevent duplicate onSuccess calls
   const appointmentDoctorIdRef = useRef<string>(''); // Store appointment's doctor ID for matching
 
   const loadFormData = useCallback(async (showLoading = false) => {
+    // Prevent duplicate calls
+    if (isLoadingRef.current) {
+      return;
+    }
+    
     // Check cache first - if cache is valid, don't make API calls
     const cacheAge = Date.now() - formDataCache.timestamp;
     const isCacheValid = formDataCache.patients.length > 0 && 
@@ -139,6 +148,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     }
     
     try {
+      isLoadingRef.current = true;
       if (showLoading) {
         setLoadingPatients(true);
         setLoadingDoctors(true);
@@ -170,6 +180,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     } catch (error) {
       toast.error('Failed to load form data');
     } finally {
+      isLoadingRef.current = false;
       if (showLoading) {
         setLoadingPatients(false);
         setLoadingDoctors(false);
@@ -503,21 +514,25 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         (typeof appointment.doctor === 'object' && appointment.doctor?.id !== doctorId) ||
         (typeof appointment.doctor === 'string' && appointment.doctor !== doctorId));
       
-      // If creating a NEW appointment with a doctor assigned, set status to confirmed
+      // If creating a NEW appointment, always set status to confirmed (not pending)
       const isNewAppointment = !appointment;
+      // New appointments should always be confirmed when created from quick action (if doctor is assigned)
       const shouldConfirmNew = isNewAppointment && isAssigningDoctor;
 
       // Prepare appointment data with proper IDs
-      const appointmentData = {
+      const appointmentData: any = {
         ...formData,
         patient: patientId, // Ensure we use the patient ID
         doctor: doctorId, // Ensure we use the doctor ID
         reason: formData.reason || 'General consultation',
-        // Set status to confirmed if:
-        // 1. Editing a pending appointment and assigning a doctor, OR
-        // 2. Creating a new appointment with a doctor assigned
-        ...((shouldConfirmEdit || shouldConfirmNew) ? { status: 'confirmed' as const } : {}),
       };
+      
+      // Set status to confirmed if:
+      // 1. Editing a pending appointment and assigning a doctor, OR
+      // 2. Creating a new appointment with a doctor assigned (always confirmed for new appointments)
+      if (shouldConfirmEdit || shouldConfirmNew) {
+        appointmentData.status = 'confirmed';
+      }
 
       let responseData: Appointment | undefined;
       if (appointment) {

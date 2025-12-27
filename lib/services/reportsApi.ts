@@ -8,10 +8,8 @@
  * NEXT_PUBLIC_CRM_API_BASE_URL=https://pw-crm-gateway-1.onrender.com
  * 
  * ARCHITECTURE:
- * - Tries direct backend call first (faster, requires CORS on backend)
- * - Automatically falls back to Next.js proxy route if CORS error detected
- * - Proxy route code is kept as fallback (not removed)
- * - Server-side always uses direct calls (no CORS issues)
+ * - Direct backend API calls only
+ * - No proxy routes - connects directly to backend API
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -42,50 +40,24 @@ export interface DailyReport {
 
 class ReportsApiService {
   private api: AxiosInstance;
-  private proxyApi: AxiosInstance; // Fallback proxy API
-  private directApi: AxiosInstance; // Direct backend API
   private baseURL: string;
-  private directBaseURL: string;
-  private useDirectCall: boolean = true; // Try direct call first
 
   constructor() {
-    const isBrowser = typeof window !== 'undefined';
-    
     // Direct backend URL (from environment variable)
-    this.directBaseURL = 
+    this.baseURL = 
       process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 
       'https://pw-crm-gateway-1.onrender.com';
-    
-    // Proxy URL (Next.js API route)
-    this.baseURL = '/api/reports';
-    
-    if (!isBrowser) {
-      // In server: always use direct call
-      this.baseURL = this.directBaseURL;
-    }
 
-    // Create direct API instance (for direct backend calls)
-    this.directApi = axios.create({
-      baseURL: this.directBaseURL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    // Create proxy API instance (fallback)
-    this.proxyApi = axios.create({
+    // Create API instance (direct backend calls only)
+    this.api = axios.create({
       baseURL: this.baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    // Set default API (will try direct first)
-    this.api = this.directApi;
-
-    // Setup interceptors for both APIs
-    this.setupInterceptors(this.directApi);
-    this.setupInterceptors(this.proxyApi);
+    // Setup interceptors
+    this.setupInterceptors(this.api);
   }
 
   /**
@@ -154,61 +126,6 @@ class ReportsApiService {
     );
   }
 
-  /**
-   * Check if error is a CORS error
-   */
-  private isCorsError(error: AxiosError): boolean {
-    // CORS errors typically have:
-    // - No response (network error)
-    // - Message containing "CORS" or "cross-origin"
-    // - Code like "ERR_NETWORK" or "ERR_FAILED"
-    if (!error.response) {
-      const message = error.message?.toLowerCase() || '';
-      const code = error.code?.toLowerCase() || '';
-      return (
-        message.includes('cors') ||
-        message.includes('cross-origin') ||
-        message.includes('network error') ||
-        code === 'err_network' ||
-        code === 'err_failed'
-      );
-    }
-    return false;
-  }
-
-  /**
-   * Make API request with automatic fallback to proxy on CORS error
-   */
-  private async makeRequestWithFallback<T>(
-    requestFn: (api: AxiosInstance) => Promise<T>
-  ): Promise<T> {
-    const isBrowser = typeof window !== 'undefined';
-    
-    // In server-side, always use direct call
-    if (!isBrowser) {
-      return requestFn(this.directApi);
-    }
-
-    // In browser: try direct call first, fallback to proxy
-    if (this.useDirectCall) {
-      try {
-        return await requestFn(this.directApi);
-      } catch (error: any) {
-        // If CORS error, switch to proxy and retry
-        if (this.isCorsError(error as AxiosError)) {
-          console.warn('[Reports API] CORS error detected, falling back to proxy');
-          this.useDirectCall = false; // Disable direct calls for future requests
-          // Retry with proxy
-          return requestFn(this.proxyApi);
-        }
-        // If not CORS error, throw it
-        throw error;
-      }
-    } else {
-      // Already using proxy, use it directly
-      return requestFn(this.proxyApi);
-    }
-  }
 
   // ==================== TOKEN MANAGEMENT ====================
 
@@ -230,14 +147,12 @@ class ReportsApiService {
 
   /**
    * Get daily report
-   * GET /reports/daily (direct) or /api/reports/daily (proxy fallback)
+   * GET /reports/daily
    * Query params: date (optional, defaults to today)
    */
   async getDailyReport(params: { date?: string } = {}): Promise<DailyReport> {
     try {
-      const response = await this.makeRequestWithFallback((api) => 
-        api.get<any>('/reports/daily', { params })
-      ) as unknown as any;
+      const response = await this.api.get<any>('/reports/daily', { params }) as unknown as any;
       
       // Handle null/undefined response
       if (response === null || response === undefined) {

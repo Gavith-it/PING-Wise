@@ -14,8 +14,14 @@ export default function Header() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Prevent hydration mismatch by only rendering client-side content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -131,7 +137,7 @@ export default function Header() {
               className="relative p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
-              {unreadCount > 0 && (
+              {mounted && unreadCount > 0 && (
                 <div className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 rounded-full flex items-center justify-center">
                   <span className="text-[8px] md:text-xs font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
                 </div>

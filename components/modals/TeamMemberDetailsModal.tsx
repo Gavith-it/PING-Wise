@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, Edit, Trash2, Phone, Mail, Briefcase, Award, Star } from 'lucide-react';
-import { teamService } from '@/lib/services/api';
+import { teamApi } from '@/lib/services/teamApi';
 import toast from 'react-hot-toast';
 import { User } from '@/types';
 import StarRating from '@/components/ui/star-rating';
@@ -33,12 +33,12 @@ export default function TeamMemberDetailsModal({
 
     try {
       setLoading(true);
-      await teamService.deleteTeamMember(teamMember.id);
+      await teamApi.deleteTeam(teamMember.id);
       toast.success('Team member deleted successfully');
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to delete team member');
+      toast.error(error.response?.data?.message || error.message || 'Failed to delete team member');
     } finally {
       setLoading(false);
     }
