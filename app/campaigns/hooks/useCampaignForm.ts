@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { campaignApi } from '@/lib/services/campaignApi';
 import { campaignToCrmCampaign } from '@/lib/utils/campaignAdapter';
+import { Template } from '@/lib/utils/templateAdapter';
 
 interface CampaignFormErrors {
   title?: string;
@@ -31,7 +32,7 @@ interface UseCampaignFormReturn {
   setScheduledTime: (time: string) => void;
   handleTagApply: (tags: string[]) => void;
   handleSchedule: (date: string, time: string) => void;
-  handleTemplateClick: (templateMessage: string, templateId: string) => void;
+  handleTemplateClick: (template: Template) => void;
   validateForm: () => boolean;
   handleSend: () => Promise<void>;
   resetForm: () => void;
@@ -46,6 +47,9 @@ export function useCampaignForm({ onSuccess }: UseCampaignFormParams): UseCampai
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [errors, setErrors] = useState<CampaignFormErrors>({});
   const [loading, setLoading] = useState(false);
+  
+  // Track current content index for each template (templateId -> contentIndex)
+  const templateContentIndexRef = useRef<Map<string, number>>(new Map());
 
   const validateForm = useCallback((): boolean => {
     const newErrors: CampaignFormErrors = {};
@@ -118,10 +122,43 @@ export function useCampaignForm({ onSuccess }: UseCampaignFormParams): UseCampai
     }
   }, []);
 
-  const handleTemplateClick = useCallback((templateMessage: string, templateId: string) => {
-    setMessage(templateMessage);
-    setSelectedTemplate(templateId);
-  }, []);
+  const handleTemplateClick = useCallback((template: Template) => {
+    // Get template content array
+    const contentArray = template.content || [];
+    
+    if (contentArray.length === 0) {
+      // No content available, set empty message
+      setMessage('');
+      setSelectedTemplate(template.id);
+      return;
+    }
+    
+    // Check if this is the same template that was previously selected
+    const isSameTemplate = selectedTemplate === template.id;
+    
+    // Get current index for this template (default to 0 if not set)
+    const currentIndex = templateContentIndexRef.current.get(template.id) || 0;
+    
+    // Determine next index
+    let nextIndex: number;
+    if (isSameTemplate) {
+      // Same template clicked again - cycle to next content line
+      nextIndex = (currentIndex + 1) % contentArray.length;
+    } else {
+      // Different template clicked - start from first content line
+      nextIndex = 0;
+    }
+    
+    // Update the index for this template
+    templateContentIndexRef.current.set(template.id, nextIndex);
+    
+    // Get the content at the next index
+    const nextContent = contentArray[nextIndex];
+    
+    // Update message and selected template
+    setMessage(nextContent);
+    setSelectedTemplate(template.id);
+  }, [selectedTemplate]);
 
   const handleSend = useCallback(async () => {
     // Validate form before submission
@@ -194,6 +231,8 @@ export function useCampaignForm({ onSuccess }: UseCampaignFormParams): UseCampai
     setScheduledDate('');
     setScheduledTime('');
     setErrors({});
+    // Reset template content indices when form is reset
+    templateContentIndexRef.current.clear();
   }, []);
 
   const setCampaignTitleWithErrorClear = useCallback((value: string) => {

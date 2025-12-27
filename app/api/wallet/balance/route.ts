@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import { logger } from '@/lib/utils/logger';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const USE_MOCK_API = process.env.USE_MOCK_API === 'true';
 
 // Mark this route as dynamic since it uses request headers
 export const dynamic = 'force-dynamic';
@@ -23,11 +22,6 @@ function getUserIdFromToken(req: NextRequest): string | null {
     return null;
   }
 
-  // Handle mock tokens when in mock API mode
-  if (USE_MOCK_API && token.startsWith('mock-jwt-token-')) {
-    return '1'; // Return a consistent mock user ID
-  }
-
   try {
     const decoded = jwt.verify(token.trim(), JWT_SECRET) as { id: string };
     return decoded.id;
@@ -38,13 +32,6 @@ function getUserIdFromToken(req: NextRequest): string | null {
 
 export async function GET(req: NextRequest) {
   try {
-    // Handle mock API mode
-    if (USE_MOCK_API) {
-      const { mockApi } = await import('@/lib/mockApi');
-      const mockResponse = await mockApi.wallet.getBalance();
-      return NextResponse.json(mockResponse);
-    }
-
     const userId = getUserIdFromToken(req);
     
     // If no user ID, return default balance instead of error
@@ -58,10 +45,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // For now, return a mock balance
-    // NOTE: Wallet balance integration pending - will be replaced with actual database query
-    // when wallet service is fully implemented
-    const balance = 0; // Default balance
+    // NOTE: Wallet balance integration pending - will be replaced with actual backend API call
+    // when wallet service is fully implemented by client
+    // For now, return default balance to allow page to work
+    const balance = 0;
 
     return NextResponse.json({
       success: true,
@@ -72,6 +59,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     logger.error('Wallet balance error', error);
     // Return default balance on error instead of 500
+    // This ensures the wallet page can still open and display
     return NextResponse.json({
       success: true,
       data: {

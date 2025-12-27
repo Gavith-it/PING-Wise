@@ -45,12 +45,9 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
   };
 
   const getStatusDots = (dayAppointments: Appointment[]) => {
-    // Group appointments by status and return array of statuses (one per appointment)
-    const statusArray: string[] = [];
-    dayAppointments.forEach(apt => {
-      statusArray.push(apt.status || 'pending');
-    });
-    return statusArray;
+    // Only show pending appointments - return single dot if any pending appointments exist
+    const hasPending = dayAppointments.some(apt => apt.status === 'pending');
+    return hasPending ? ['pending'] : [];
   };
 
   const nextMonth = () => {
@@ -116,20 +113,12 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
               }`}
             >
               <div className="text-xs md:text-sm">{format(day, 'd')}</div>
-              {dayAppointments.length > 0 && isCurrentMonth && (
-                <div className="flex justify-center items-center flex-wrap gap-0.5 md:gap-1 mt-0.5 md:mt-1 max-w-full">
-                  {statusDots.slice(0, 6).map((status, index) => (
-                    <div
-                      key={`${status}-${index}`}
-                      className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor(status)}`}
-                      title={`${dayAppointments.length} appointment${dayAppointments.length > 1 ? 's' : ''} on ${format(day, 'MMM d')}`}
-                    />
-                  ))}
-                  {dayAppointments.length > 6 && (
-                    <span className="text-[8px] md:text-[10px] text-gray-500 dark:text-gray-400 font-semibold ml-0.5">
-                      +{dayAppointments.length - 6}
-                    </span>
-                  )}
+              {statusDots.length > 0 && isCurrentMonth && (
+                <div className="flex justify-center items-center mt-0.5 md:mt-1">
+                  <div
+                    className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor('pending')}`}
+                    title={`Pending appointment${dayAppointments.filter(apt => apt.status === 'pending').length > 1 ? 's' : ''} on ${format(day, 'MMM d')}`}
+                  />
                 </div>
               )}
             </button>

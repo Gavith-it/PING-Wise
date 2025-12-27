@@ -59,20 +59,18 @@ export default function CampaignsPage() {
   const handleMessageChange = useCallback((value: string) => {
     setMessage(value);
     // Clear template selection if message is manually edited
+    // Check if the message matches any content line from the selected template
     if (selectedTemplate && displayTemplates.find(t => t.id === selectedTemplate)) {
       const selectedTemp = displayTemplates.find(t => t.id === selectedTemplate);
-      if (selectedTemp && selectedTemp.content[0] !== value) {
+      if (selectedTemp && !selectedTemp.content.includes(value)) {
         setSelectedTemplate(null);
       }
     }
   }, [setMessage, selectedTemplate, displayTemplates, setSelectedTemplate]);
 
   const handleTemplateClickWrapper = useCallback((template: any) => {
-    // Use first content item as message (templates have content as array)
-    const templateMessage = template.content && template.content.length > 0 
-      ? template.content[0] 
-      : '';
-    handleTemplateClick(templateMessage, template.id);
+    // Pass the full template object to handle cycling through content lines
+    handleTemplateClick(template);
   }, [handleTemplateClick]);
 
   const handleTagApplyWrapper = useCallback((tags: string[]) => {

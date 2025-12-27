@@ -18,6 +18,27 @@ const teamCache: {
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes - longer cache duration
 
+// Helper function to generate random phone number for testing
+function generateRandomPhoneNumber(): string {
+  // Generate a random 10-digit phone number
+  const areaCode = Math.floor(Math.random() * 900) + 100; // 100-999
+  const exchange = Math.floor(Math.random() * 900) + 100; // 100-999
+  const number = Math.floor(Math.random() * 10000); // 0-9999
+  return `+1 (${areaCode}) ${exchange}-${String(number).padStart(4, '0')}`;
+}
+
+// Helper function to ensure team member has a phone number
+function ensurePhoneNumber(member: User): User {
+  // If phone is missing, empty, or "N/A", generate a random one
+  if (!member.phone || member.phone.trim() === '' || member.phone === 'N/A') {
+    return {
+      ...member,
+      phone: generateRandomPhoneNumber()
+    };
+  }
+  return member;
+}
+
 interface TeamFilters {
   status: string;
   department: string;
@@ -51,13 +72,14 @@ function applyFiltersToMembers(members: User[], currentFilter: string, currentFi
     filtered = filtered.filter(m => m.status === currentFilter);
   }
   
-  // Ensure each member has initials and unique avatarColor
+  // Ensure each member has initials, unique avatarColor, and phone number
   return filtered.map((member: User, index: number) => {
     const memberInitials = member.initials || generateInitials(member.name);
     const memberAvatarColor = generateAvatarColor(member.name, index);
+    const memberWithPhone = ensurePhoneNumber(member);
     
     return {
-      ...member,
+      ...memberWithPhone,
       initials: memberInitials,
       avatarColor: memberAvatarColor
     };
@@ -86,12 +108,13 @@ export function useTeamMembers({
 
   // Add new team member to cache without refetching
   const addTeamMemberToCache = useCallback((newMember: User) => {
-    // Process the new member (add initials and colors)
+    // Process the new member (add initials, colors, and phone number)
     const memberInitials = newMember.initials || generateInitials(newMember.name);
     const memberAvatarColor = generateAvatarColor(newMember.name, teamCache.allTeamMembers.length);
+    const memberWithPhone = ensurePhoneNumber(newMember);
     
     const processedMember: User = {
-      ...newMember,
+      ...memberWithPhone,
       initials: memberInitials,
       avatarColor: memberAvatarColor
     };
@@ -111,14 +134,15 @@ export function useTeamMembers({
 
   // Update team member in cache without refetching
   const updateTeamMemberInCache = useCallback((updatedMember: User) => {
-    // Process the updated member
+    // Process the updated member (add initials, colors, and phone number)
     const memberInitials = updatedMember.initials || generateInitials(updatedMember.name);
     const existingMember = teamCache.allTeamMembers.find(m => m.id === updatedMember.id);
     const memberIndex = teamCache.allTeamMembers.findIndex(m => m.id === updatedMember.id);
     const memberAvatarColor = existingMember?.avatarColor || generateAvatarColor(updatedMember.name, memberIndex >= 0 ? memberIndex : teamCache.allTeamMembers.length);
+    const memberWithPhone = ensurePhoneNumber(updatedMember);
     
     const processedMember: User = {
-      ...updatedMember,
+      ...memberWithPhone,
       initials: memberInitials,
       avatarColor: memberAvatarColor
     };
@@ -185,13 +209,14 @@ export function useTeamMembers({
       const crmTeams = await teamApi.getTeams();
       const allMembers = crmTeamsToUsers(crmTeams);
       
-      // Process all members (add initials and colors)
+      // Process all members (add initials, colors, and phone numbers)
       const processedAllMembers = allMembers.map((member: User, index: number) => {
         const memberInitials = member.initials || generateInitials(member.name);
         const memberAvatarColor = generateAvatarColor(member.name, index);
+        const memberWithPhone = ensurePhoneNumber(member);
         
         return {
-          ...member,
+          ...memberWithPhone,
           initials: memberInitials,
           avatarColor: memberAvatarColor
         };

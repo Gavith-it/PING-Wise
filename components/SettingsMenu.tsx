@@ -11,6 +11,7 @@ import ToggleSwitch from '@/components/ui/toggle-switch';
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -34,31 +35,34 @@ export default function SettingsMenu() {
     setFooterVisible(!isOpen);
   }, [isOpen, setFooterVisible]);
 
+  // Close menu when navigation completes (pathname changes)
+  useEffect(() => {
+    if (navigatingTo && pathname === navigatingTo) {
+      // Navigation completed, close menu
+      setIsOpen(false);
+      setNavigatingTo(null);
+    }
+  }, [pathname, navigatingTo]);
+
   const handleNavigation = (path: string) => {
-    // Get current pathname - use window.location as fallback for first navigation
-    // This ensures we always have the correct current path, even on first click after login
+    // Get current path to check if we need to navigate
     const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
-    
-    // Close menu immediately to prevent layout shifts
-    setIsOpen(false);
     
     // Only navigate if we're not already on that path
     if (currentPath !== path) {
-      // For first navigation after login, pathname might not be set yet
-      // Use window.location to ensure we have the correct current path
-      // Navigate directly using push - Next.js will handle the routing
-      // The key is to ensure we're not going through any redirects
-      if (typeof window !== 'undefined' && !pathname) {
-        // First navigation - ensure direct navigation without going through root
-        // Use replace to avoid going through default routes that might redirect to dashboard
-        router.replace(path);
-      } else {
-        // Subsequent navigations - use push for proper history
-        router.push(path);
-      }
+      // Set navigating state - this keeps menu open during navigation
+      setNavigatingTo(path);
+      
+      // Navigate immediately - menu stays open until navigation completes
+      // This prevents showing the old page (dashboard) while menu closes
+      router.replace(path);
+    } else {
+      // Already on the path, just close menu
+      setIsOpen(false);
     }
-    // If already on the path, menu is already closed above
   };
+
+  // No prefetching needed - these are static pages that don't require API calls
 
   const handleLogout = () => {
     logout();
@@ -142,7 +146,7 @@ export default function SettingsMenu() {
               <div className="flex-1 overflow-y-auto py-2">
                 <button
                   onClick={() => handleNavigation('/profile')}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
                     <User className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
@@ -153,7 +157,7 @@ export default function SettingsMenu() {
 
                 <button
                   onClick={() => handleNavigation('/settings')}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
                     <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
@@ -164,7 +168,7 @@ export default function SettingsMenu() {
 
                 <button
                   onClick={handleComingSoon}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75 focus:outline-none"
                   // Future: Uncomment when ready to enable
                   // onClick={() => handleNavigation('/settings/premium')}
                 >
@@ -177,7 +181,7 @@ export default function SettingsMenu() {
 
                 <button
                   onClick={handleComingSoon}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75 focus:outline-none"
                   // Future: Uncomment when ready to enable
                   // onClick={() => handleNavigation('/settings/refer-and-win')}
                 >
@@ -190,7 +194,7 @@ export default function SettingsMenu() {
 
                 <button
                   onClick={() => handleNavigation('/wallet')}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
                     <Wallet className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
@@ -201,7 +205,7 @@ export default function SettingsMenu() {
 
                 <button
                   onClick={toggleTheme}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
                     {isDark ? (
@@ -221,7 +225,7 @@ export default function SettingsMenu() {
 
                 <button
                   onClick={() => handleNavigation('/faqs')}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
                     <HelpCircle className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
@@ -235,7 +239,7 @@ export default function SettingsMenu() {
               <div className="p-4 md:p-5 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors focus:outline-none"
                 >
                   <LogOut className="w-5 h-5" />
                   <span className="text-sm md:text-base">Log Out</span>

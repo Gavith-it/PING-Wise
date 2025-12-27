@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Patient } from '@/types';
 import { FilterOptions } from '@/components/modals/FilterModal';
 import { normalizeCustomerStatus } from '@/lib/constants/status';
+import { formDataCache, preloadInProgress } from '@/components/modals/AppointmentModal';
 
 // Patients cache - stores ALL patients (not filtered)
 const patientsCache: {
@@ -71,6 +72,60 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     try {
       isLoadingRef.current = true;
       
+      // Check shared cache from AppointmentModal first (prevents duplicate API calls)
+      const sharedCacheAge = Date.now() - formDataCache.timestamp;
+      const isSharedCacheValid = formDataCache.patients.length > 0 && sharedCacheAge < CACHE_DURATION;
+      
+      // If shared cache is valid and we're not waiting for a preload, use it
+      if (isSharedCacheValid && !preloadInProgress) {
+        // Use shared cache to avoid duplicate API call
+        const sharedPatients = formDataCache.patients;
+        setAllPatients(sharedPatients);
+        patientsCache.allPatients = sharedPatients;
+        patientsCache.timestamp = Date.now();
+        
+        if (!skipLoadingSpinner) {
+          setLoading(false);
+        }
+        isLoadingRef.current = false;
+        
+        // If shared cache is small (only 50 patients), fetch more in background
+        if (sharedPatients.length < 100) {
+          // Continue fetching in background to get all patients
+          // This ensures we have complete data but doesn't block the UI
+        } else {
+          // Shared cache has enough data, we're done
+          return;
+        }
+      }
+      
+      // Wait for preload to complete if it's in progress (prevents duplicate calls)
+      if (preloadInProgress) {
+        // Wait up to 5 seconds for preload to complete
+        let waitCount = 0;
+        while (preloadInProgress && waitCount < 50) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          waitCount++;
+        }
+        
+        // Check shared cache again after waiting
+        const sharedCacheAgeAfterWait = Date.now() - formDataCache.timestamp;
+        const isSharedCacheValidAfterWait = formDataCache.patients.length > 0 && sharedCacheAgeAfterWait < CACHE_DURATION;
+        
+        if (isSharedCacheValidAfterWait) {
+          const sharedPatients = formDataCache.patients;
+          setAllPatients(sharedPatients);
+          patientsCache.allPatients = sharedPatients;
+          patientsCache.timestamp = Date.now();
+          
+          if (!skipLoadingSpinner) {
+            setLoading(false);
+          }
+          isLoadingRef.current = false;
+          return;
+        }
+      }
+      
       if (!skipLoadingSpinner) {
         setLoading(true);
       }
@@ -102,6 +157,10 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
       setAllPatients(allLoadedPatients);
       patientsCache.allPatients = allLoadedPatients;
       patientsCache.timestamp = Date.now();
+      
+      // Also update shared cache for AppointmentModal
+      formDataCache.patients = allLoadedPatients;
+      formDataCache.timestamp = Date.now();
       
     } catch (error) {
       toast.error('Failed to load patients');

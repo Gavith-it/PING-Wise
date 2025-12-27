@@ -44,6 +44,18 @@ export default function TeamMemberDetailsModal({
     }
   };
 
+  const handleContact = () => {
+    if (!teamMember) return;
+    
+    // Only work with phone numbers (like CRM page)
+    if (teamMember.phone && teamMember.phone !== 'N/A' && teamMember.phone.trim() !== '') {
+      // Show confirmation before opening phone dialer
+      if (confirm(`Do you want to call ${teamMember.phone}?`)) {
+        window.location.href = `tel:${teamMember.phone}`;
+      }
+    }
+  };
+
   if (!teamMember) return null;
 
   return (
@@ -167,10 +179,11 @@ export default function TeamMemberDetailsModal({
               <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span>Delete</span>
             </button>
-            {/* Contact button disabled as per requirements */}
             <button
-              disabled
-              className="flex-1 flex items-center justify-center gap-1.5 md:gap-2 bg-gray-200 text-gray-500 py-2 md:py-2.5 px-3 md:px-4 rounded-lg md:rounded-xl text-xs md:text-sm font-medium cursor-not-allowed opacity-50"
+              type="button"
+              onClick={handleContact}
+              disabled={!teamMember.phone || teamMember.phone === 'N/A' || teamMember.phone.trim() === ''}
+              className="flex-1 flex items-center justify-center gap-1.5 md:gap-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 md:py-2.5 px-3 md:px-4 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Phone className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span>Contact</span>

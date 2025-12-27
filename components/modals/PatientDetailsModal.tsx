@@ -32,8 +32,12 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
 
   const handleContact = () => {
     if (patient.phone) {
-      window.location.href = `tel:${patient.phone}`;
+      // Show confirmation before opening phone dialer
+      if (confirm(`Do you want to call ${patient.phone}?`)) {
+        window.location.href = `tel:${patient.phone}`;
+      }
     } else if (patient.email) {
+      // Open email client directly without confirmation
       window.location.href = `mailto:${patient.email}`;
     }
   };
@@ -172,6 +176,7 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
               <span>Delete</span>
             </button>
             <button
+              type="button"
               onClick={handleContact}
               className="flex-1 flex items-center justify-center gap-1.5 md:gap-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 md:py-2.5 px-3 md:px-4 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >

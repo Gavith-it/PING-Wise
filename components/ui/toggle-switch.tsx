@@ -60,7 +60,7 @@ export default function ToggleSwitch({
       onClick={handleToggle}
       disabled={disabled}
       className={`
-        relative inline-flex items-center focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+        relative inline-flex items-center focus:outline-none
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${className}
       `}

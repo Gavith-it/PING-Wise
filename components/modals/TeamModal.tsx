@@ -30,6 +30,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     specialization: teamMember?.specialization || '',
     phone: teamMember?.phone || '',
     experience: teamMember?.experience || '',
+    status: (teamMember?.status || 'active') as 'active' | 'inactive',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,6 +50,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         specialization: teamMember.specialization || '',
         phone: formatPhoneForDisplay(teamMember.phone || ''),
         experience: teamMember.experience || '',
+        status: (teamMember.status || 'active') as 'active' | 'inactive',
       });
     } else {
       // Add mode - reset form to defaults
@@ -59,6 +61,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         specialization: '',
         phone: '',
         experience: '',
+        status: 'active',
       });
     }
   }, [teamMember]);
@@ -167,6 +170,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         specialization: formData.specialization,
         phone: formatPhoneForApi(formData.phone),
         experience: formData.experience,
+        status: formData.status,
       });
 
       let createdOrUpdatedMember: User | undefined;
@@ -195,7 +199,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               specialization: formData.specialization,
               phone: formData.phone,
               experience: formData.experience,
-              status: teamMember.status || 'inactive',
+                status: formData.status,
               department: teamMember.department || '',
             } as User;
           }
@@ -224,7 +228,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 specialization: formData.specialization,
                 phone: formData.phone,
                 experience: formData.experience,
-                status: 'inactive',
+                status: formData.status,
                 department: '',
               } as User;
             }
@@ -406,6 +410,21 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
                 placeholder="e.g., 3"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Status *
+              </label>
+              <select
+                required
+                value={formData.status}
+                onChange={handleFieldChange('status')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
 
             <div className="flex space-x-3 pt-4">
