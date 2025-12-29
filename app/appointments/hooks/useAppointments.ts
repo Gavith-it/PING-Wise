@@ -3,7 +3,6 @@ import { format, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import toast from 'react-hot-toast';
 import { Appointment } from '@/types';
-import { preloadFormData } from '@/components/modals/AppointmentModal';
 
 // Appointments cache
 const appointmentsCache: {
@@ -223,9 +222,9 @@ export function useAppointments({
       loadAppointmentsForDate(false);
     }
     
-    // Preload patients and doctors data for appointment modal (in background)
-    // Only preload if cache is old or doesn't exist - prevents unnecessary calls
-    preloadFormData().catch(() => {}); // Silently fail if preload fails
+    // DO NOT preload patients and doctors data here - it causes unnecessary API calls
+    // The AppointmentModal will load the data when it opens, and it has its own cache checking
+    // This prevents customer and team APIs from being called on every page load/date change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 

@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Appointment, Patient, User } from '@/types';
 import Autocomplete from '@/components/ui/autocomplete';
+import { SimpleDatePicker } from '@/components/ui/simple-date-picker';
 
 interface AppointmentModalProps {
   appointment?: Appointment | null;
@@ -50,6 +51,7 @@ export async function preloadFormData() {
                       cacheAge < CACHE_DURATION;
   
   // Only preload if cache is invalid (don't preload if cache is still fresh)
+  // This prevents unnecessary API calls when navigating between pages
   if (!isCacheValid) {
     try {
       preloadInProgress = true;
@@ -76,7 +78,7 @@ export async function preloadFormData() {
       preloadInProgress = false;
     }
   } else {
-    // Cache is valid, no need to preload
+    // Cache is valid, no need to preload - return immediately to prevent API calls
     return;
   }
 }
@@ -114,8 +116,15 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   });
   
   const [loading, setLoading] = useState(false);
-  const [loadingPatients, setLoadingPatients] = useState(false);
-  const [loadingDoctors, setLoadingDoctors] = useState(false);
+  // Initialize loading states based on cache availability
+  const [loadingPatients, setLoadingPatients] = useState(() => {
+    // Only show loading if cache is empty
+    return formDataCache.patients.length === 0;
+  });
+  const [loadingDoctors, setLoadingDoctors] = useState(() => {
+    // Only show loading if cache is empty
+    return formDataCache.doctors.length === 0;
+  });
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
   const hasLoadedRef = useRef(false); // Track if data has been loaded to prevent duplicate calls
@@ -195,6 +204,14 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     hasLoadedRef.current = false;
   }, [appointment]);
 
+  // Update date field when selectedDate changes (only for new appointments, not editing)
+  useEffect(() => {
+    if (!appointment && selectedDate) {
+      const newDate = format(selectedDate, 'yyyy-MM-dd');
+      setFormData(prev => ({ ...prev, date: newDate }));
+    }
+  }, [selectedDate, appointment]);
+
   useEffect(() => {
     // Prevent duplicate calls (React strict mode can trigger useEffect twice)
     if (hasLoadedRef.current) {
@@ -214,33 +231,17 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     // In create mode, only use fresh cache or show loading
     const isEditMode = !!appointment;
     
-    if (isCacheValid) {
-      // Fresh cache - use immediately
+    // ALWAYS check if cache exists first - use it regardless of age to avoid API calls
+    if (formDataCache.patients.length > 0 && formDataCache.doctors.length > 0) {
+      // Cache exists - use it immediately, no API calls, no loading
       setPatients(formDataCache.patients);
       setDoctors(formDataCache.doctors);
+      setLoadingPatients(false); // Ensure loading is false when using cache
+      setLoadingDoctors(false); // Ensure loading is false when using cache
       hasLoadedRef.current = true;
-      // Refresh in background only if cache is older than 2 minutes (silent refresh)
-      if (cacheAge > 2 * 60 * 1000) {
-        loadFormData(false).catch(() => {});
-      }
-    } else if (isEditMode && isStaleCacheValid) {
-      // Edit mode with stale cache - use it without loading spinner
-      // This prevents unnecessary API calls when just viewing/editing
-      setPatients(formDataCache.patients);
-      setDoctors(formDataCache.doctors);
-      hasLoadedRef.current = true;
-      // Refresh in background silently (no loading state)
-      loadFormData(false).catch(() => {});
-    } else if (isEditMode && formDataCache.patients.length > 0 && formDataCache.doctors.length > 0) {
-      // Edit mode with very old cache - still use it, refresh in background
-      // Better UX than showing loading spinner
-      setPatients(formDataCache.patients);
-      setDoctors(formDataCache.doctors);
-      hasLoadedRef.current = true;
-      // Refresh in background silently
-      loadFormData(false).catch(() => {});
+      // DO NOT make any API calls - use cached data
     } else {
-      // No cache or creating new appointment - load with loading spinner
+      // Truly no cache - only then load with API calls
       hasLoadedRef.current = true;
       loadFormData(true);
     }
@@ -524,7 +525,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         ...formData,
         patient: patientId, // Ensure we use the patient ID
         doctor: doctorId, // Ensure we use the doctor ID
-        reason: formData.reason || 'General consultation',
+        reason: formData.reason || '', // No default value - send empty string if no reason provided
       };
       
       // Set status to confirmed if:
@@ -670,16 +671,18 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Date *
                 </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.date}
-                  min={format(new Date(), 'yyyy-MM-dd')}
-                  onChange={handleFieldChange('date')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+                <SimpleDatePicker
+                  date={formData.date ? new Date(formData.date) : undefined}
+                  onDateChange={(date) => {
+                    const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
+                    setFormData(prev => ({ ...prev, date: dateStr }));
+                  }}
+                  placeholder="Select date"
+                  minDate={new Date()}
+                  className="w-full"
                 />
               </div>
               <div>
@@ -731,20 +734,30 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
               />
             </div>
 
-            <div className="flex space-x-3 pt-4">
+            <div className="flex space-x-2 md:space-x-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 md:py-2.5 px-3 md:px-4 rounded-lg md:rounded-xl text-sm md:text-base font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
+                className="flex-1 bg-primary text-white py-2 md:py-2.5 px-3 md:px-4 rounded-lg md:rounded-xl text-sm md:text-base font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 shadow-md hover:shadow-lg whitespace-nowrap"
               >
-                {loading ? 'Saving...' : appointment ? 'Update Appointment' : 'Schedule Appointment'}
+                {loading ? 'Saving...' : appointment ? (
+                  <>
+                    <span className="hidden md:inline">Update Appointment</span>
+                    <span className="md:hidden">Update</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden md:inline">Schedule Appointment</span>
+                    <span className="md:hidden">Schedule</span>
+                  </>
+                )}
               </button>
             </div>
           </form>

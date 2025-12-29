@@ -1,17 +1,18 @@
 'use client';
 
 import { memo } from 'react';
-import { Edit, X } from 'lucide-react';
+import { Edit, X, Check } from 'lucide-react';
 import { Appointment } from '@/types';
-import { formatTime, maskPhoneNumber } from '../utils/formatUtils';
+import { formatTime } from '../utils/formatUtils';
 
 interface AppointmentCardProps {
   appointment: Appointment;
   onEdit: () => void;
   onDelete: () => void;
+  onFollowUp: () => void;
 }
 
-function AppointmentCard({ appointment, onEdit, onDelete }: AppointmentCardProps) {
+function AppointmentCard({ appointment, onEdit, onDelete, onFollowUp }: AppointmentCardProps) {
   const patient = typeof appointment.patient === 'object' ? appointment.patient : null;
   const doctor = typeof appointment.doctor === 'object' ? appointment.doctor : null;
 
@@ -60,20 +61,20 @@ function AppointmentCard({ appointment, onEdit, onDelete }: AppointmentCardProps
               {appointment.type || 'Consultation'}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
-              {maskPhoneNumber(patient?.phone)}
+              {patient?.phone ? (patient.phone.startsWith('+') ? patient.phone : `+${patient.phone}`) : 'N/A'}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">
               {formatTime(appointment.time)}
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0 ml-1">
+        <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0">
           {/* Status Badge - Top Right */}
           <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(appointment.status)}`}>
             {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
           </span>
           {/* Action Icons - Below Status */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center -space-x-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -83,6 +84,16 @@ function AppointmentCard({ appointment, onEdit, onDelete }: AppointmentCardProps
               title="Edit"
             >
               <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onFollowUp();
+              }}
+              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+              title="Follow-up"
+            >
+              <Check className="w-3 h-3 md:w-3.5 md:h-3.5" />
             </button>
             <button
               onClick={(e) => {

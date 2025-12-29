@@ -108,7 +108,8 @@ export function userToCrmTeam(user: Partial<User> & { name: string }): CrmTeamRe
     org_id: undefined, // Will be set by backend if needed
     role: apiRole,
     status: apiStatus,
-    additional_info: Object.keys(additionalInfo).length > 0 ? JSON.stringify(additionalInfo) : undefined,
+    // Send as JSON object, not stringified - backend expects map[string]interface{}
+    additional_info: Object.keys(additionalInfo).length > 0 ? additionalInfo : undefined,
   };
 }
 

@@ -7,17 +7,92 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
 import ToggleSwitch from '@/components/ui/toggle-switch';
+import { walletService } from '@/lib/services/api';
+
+// Shared cache for wallet balance (same as useWalletBalance hook)
+const walletBalanceCache: {
+  balance: number;
+  timestamp: number;
+} = {
+  balance: 0,
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  // Initialize from cache if available (from dashboard page)
+  const [walletBalance, setWalletBalance] = useState<number>(() => {
+    const cacheAge = Date.now() - walletBalanceCache.timestamp;
+    if (walletBalanceCache.timestamp > 0 && cacheAge < CACHE_DURATION) {
+      return walletBalanceCache.balance;
+    }
+    return 0;
+  });
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { setIsVisible: setFooterVisible } = useFooterVisibility();
+
+  // Load wallet balance only when menu opens (lazy loading)
+  useEffect(() => {
+    if (!isOpen) {
+      return; // Don't fetch if menu is closed
+    }
+
+    // Check cache first - if cache is valid, use it and skip API call
+    const cacheAge = Date.now() - walletBalanceCache.timestamp;
+    const isCacheValid = walletBalanceCache.timestamp > 0 && cacheAge < CACHE_DURATION;
+    
+    if (isCacheValid) {
+      // Use cached balance
+      setWalletBalance(walletBalanceCache.balance);
+      return;
+    }
+
+    // Only fetch if cache is invalid or empty
+    const fetchBalance = async () => {
+      if (isLoadingBalance) return;
+      
+      // Check if user is authenticated
+      if (!user) return;
+      
+      // Check if token exists
+      if (typeof window !== 'undefined') {
+        const token = sessionStorage.getItem('token');
+        if (!token) return;
+      }
+
+      try {
+        setIsLoadingBalance(true);
+        const response = await walletService.getBalance();
+        const balance = response.data?.balance || 0;
+        setWalletBalance(balance);
+        // Update shared cache
+        walletBalanceCache.balance = balance;
+        walletBalanceCache.timestamp = Date.now();
+      } catch (error: any) {
+        // Silently handle errors - use cached value or 0
+        const status = error?.response?.status;
+        if (status === 401 || status === 404) {
+          // Use cached value if available, otherwise 0
+          setWalletBalance(walletBalanceCache.balance || 0);
+        } else {
+          setWalletBalance(walletBalanceCache.balance || 0);
+        }
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, [isOpen, user]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -200,12 +275,16 @@ export default function SettingsMenu() {
                     <Wallet className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
                     <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Wallet</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">
+                      {walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
                 </button>
 
-                <button
-                  onClick={toggleTheme}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
+                <div
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
                 >
                   <div className="flex items-center space-x-3">
                     {isDark ? (
@@ -221,7 +300,7 @@ export default function SettingsMenu() {
                     label="Dark Theme"
                     size="md"
                   />
-                </button>
+                </div>
 
                 <button
                   onClick={() => handleNavigation('/faqs')}

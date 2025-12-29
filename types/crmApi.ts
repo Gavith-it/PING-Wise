@@ -67,7 +67,7 @@ export interface CrmTeamRequest {
   org_id?: string;
   role?: string;
   status?: string;
-  additional_info?: string;
+  additional_info?: Record<string, any>; // Backend expects JSON object, not string
 }
 
 // ==================== USER ====================
@@ -153,6 +153,7 @@ export interface CrmAppointmentRequest {
   customer_id: string;
   appointment_type?: string;
   assigned_to?: string;
+  assigned_to_id?: string;
   scheduled_at: string;
   duration?: number;
   status?: string;

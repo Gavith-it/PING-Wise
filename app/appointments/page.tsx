@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar, MessageSquare } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import AppointmentModal from '@/components/modals/AppointmentModal';
+import FollowUpConfirmationModal from './components/FollowUpConfirmationModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import ToggleSwitch from '@/components/ui/toggle-switch';
@@ -17,6 +18,10 @@ import CalendarView from './components/CalendarView';
 import AppointmentSearchBar from './components/AppointmentSearchBar';
 import AppointmentList from './components/AppointmentList';
 import UpcomingAppointmentsList from './components/UpcomingAppointmentsList';
+import { crmPatientService } from '@/lib/services/crmPatientService';
+import { crmAppointmentService } from '@/lib/services/appointmentService';
+import toast from 'react-hot-toast';
+import { invalidatePatientsCache } from '@/app/crm/hooks/usePatients';
 
 export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -26,6 +31,8 @@ export default function AppointmentsPage() {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [whatsappReminders, setWhatsappReminders] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [selectedFollowUpAppointment, setSelectedFollowUpAppointment] = useState<Appointment | null>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
   // Use patient enrichment hook
@@ -44,24 +51,30 @@ export default function AppointmentsPage() {
     enrichAppointmentsWithPatients,
   });
 
-  // Filter appointments to only show today's appointments in the top section
+  // Get today's date for comparison
   const today = useMemo(() => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     return date;
   }, []);
 
-  const todayAppointments = useMemo(() => {
+  // Filter appointments to show appointments for the selected date (not just today)
+  const selectedDateAppointments = useMemo(() => {
     return appointments.filter(apt => {
       const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
-      return isSameDay(aptDate, today);
+      return isSameDay(aptDate, selectedDate);
     });
-  }, [appointments, today]);
+  }, [appointments, selectedDate]);
 
-  // Use filter hook for today's appointments
-  const filteredAppointments = useAppointmentFilters(todayAppointments, searchTerm, statusFilter);
+  // Filter out completed appointments and then apply filters
+  const appointmentsWithoutCompleted = useMemo(() => {
+    return selectedDateAppointments.filter(apt => apt.status !== 'completed');
+  }, [selectedDateAppointments]);
 
-  // Use upcoming appointments hook - shows appointments for selected date (if not today) and other future dates
+  // Use filter hook for selected date appointments (excluding completed)
+  const filteredAppointments = useAppointmentFilters(appointmentsWithoutCompleted, searchTerm, statusFilter);
+
+  // Use upcoming appointments hook - shows appointments for dates other than selected date
   const upcomingAppointments = useUpcomingAppointments(allMonthAppointments, appointments, selectedDate, today);
 
   // Use edit hook
@@ -102,6 +115,67 @@ export default function AppointmentsPage() {
     setShowAddModal(false);
     clearSelected();
     await handleAppointmentCreated(updatedAppointment);
+  };
+
+  const handleFollowUpClick = (appointment: Appointment) => {
+    setSelectedFollowUpAppointment(appointment);
+    setShowFollowUpModal(true);
+  };
+
+  const handleFollowUpYes = async () => {
+    if (!selectedFollowUpAppointment) return;
+
+    try {
+      const patient = typeof selectedFollowUpAppointment.patient === 'object' 
+        ? selectedFollowUpAppointment.patient 
+        : null;
+      
+      if (!patient || !patient.id) {
+        toast.error('Patient information not available');
+        setShowFollowUpModal(false);
+        setSelectedFollowUpAppointment(null);
+        return;
+      }
+
+      // Update customer status to FollowUp using PATCH method
+      // API: PATCH /customers/{id} with body: { status: "FollowUp" }
+      const { crmApi } = await import('@/lib/services/crmApi');
+      await crmApi.patchCustomer(patient.id, { status: 'FollowUp' });
+      
+      // Invalidate patients cache so CRM page shows updated status
+      invalidatePatientsCache();
+      
+      toast.success('Patient marked for follow-up');
+      setShowFollowUpModal(false);
+      setSelectedFollowUpAppointment(null);
+      
+      // Refresh appointments to reflect any changes
+      await handleAppointmentCreated();
+    } catch (error: any) {
+      console.error('Error updating patient status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update patient status');
+    }
+  };
+
+  const handleFollowUpNo = async () => {
+    if (!selectedFollowUpAppointment) return;
+
+    try {
+      // Mark appointment as completed
+      await crmAppointmentService.updateAppointment(selectedFollowUpAppointment.id, { 
+        status: 'completed' 
+      });
+      
+      toast.success('Appointment marked as completed');
+      setShowFollowUpModal(false);
+      setSelectedFollowUpAppointment(null);
+      
+      // Refresh appointments - completed appointment will be filtered out
+      await handleAppointmentCreated();
+    } catch (error: any) {
+      console.error('Error updating appointment status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update appointment status');
+    }
   };
 
   return (
@@ -157,7 +231,7 @@ export default function AppointmentsPage() {
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div>
                 <h3 className="text-sm md:text-lg font-semibold text-gray-900 dark:text-white">
-                  Appointments for {format(today, 'MMMM d, yyyy')}
+                  Appointments for {format(selectedDate, 'MMMM d, yyyy')}
                 </h3>
                 <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? 's' : ''} {statusFilter !== 'all' ? `(${statusFilter})` : ''}
@@ -172,6 +246,7 @@ export default function AppointmentsPage() {
               statusFilter={statusFilter}
               onEdit={handleEditClick}
               onDelete={handleDeleteAppointment}
+              onFollowUp={handleFollowUpClick}
               onAddClick={handleAddClick}
             />
           </div>
@@ -198,6 +273,22 @@ export default function AppointmentsPage() {
                 clearSelected();
               }}
               onSuccess={handleAppointmentCreatedWithModal}
+            />
+          )}
+
+          {showFollowUpModal && selectedFollowUpAppointment && (
+            <FollowUpConfirmationModal
+              patientName={
+                typeof selectedFollowUpAppointment.patient === 'object' 
+                  ? selectedFollowUpAppointment.patient?.name || 'Unknown'
+                  : 'Unknown'
+              }
+              onYes={handleFollowUpYes}
+              onNo={handleFollowUpNo}
+              onClose={() => {
+                setShowFollowUpModal(false);
+                setSelectedFollowUpAppointment(null);
+              }}
             />
           )}
         </div>

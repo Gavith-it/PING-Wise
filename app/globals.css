@@ -8,6 +8,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "react-day-picker/dist/style.css";
+
 /* Base styles */
 * {
   margin: 0;

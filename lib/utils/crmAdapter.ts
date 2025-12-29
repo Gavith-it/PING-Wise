@@ -81,32 +81,38 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
   const lastName = nameParts.slice(1).join(' ') || '';
 
   // Convert medical notes to CRM API format
-  // CRM API expects: [{"Key":"notes","Value":"text"}] or {"notes":"text"}
-  let medicalHistory: any | undefined;
+  // Backend expects: map[string]interface{} (JSON object), not array
+  let medicalHistory: Record<string, any> | undefined;
   if ('medicalNotes' in patient && patient.medicalNotes && patient.medicalNotes.trim()) {
     const notesText = patient.medicalNotes.trim();
     
-    // If it's already in the expected array format, try to parse it
+    // If it's already a JSON string, try to parse it
     if (notesText.startsWith('[') || notesText.startsWith('{')) {
       try {
         const parsed = JSON.parse(notesText);
-        // If it's already in the correct format, use it
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].Key === 'notes') {
-          medicalHistory = parsed;
+        // If it's an array, convert to object format
+        if (Array.isArray(parsed)) {
+          // Convert array to object - extract notes value
+          const notesValue = parsed.length > 0 && parsed[0]?.Value 
+            ? parsed[0].Value 
+            : parsed.length > 0 && parsed[0]?.value 
+            ? parsed[0].value 
+            : notesText;
+          medicalHistory = { notes: notesValue };
         } else if (typeof parsed === 'object' && parsed !== null) {
-          // If it's an object, convert to array format
-          medicalHistory = [{ Key: 'notes', Value: parsed.notes || parsed.Value || notesText }];
+          // Already an object - use it directly
+          medicalHistory = parsed;
         } else {
-          // Fallback: wrap in expected format
-          medicalHistory = [{ Key: 'notes', Value: notesText }];
+          // Fallback: create object with notes
+          medicalHistory = { notes: notesText };
         }
       } catch {
-        // If parsing fails, treat as plain text and format it
-        medicalHistory = [{ Key: 'notes', Value: notesText }];
+        // If parsing fails, treat as plain text and create object
+        medicalHistory = { notes: notesText };
       }
     } else {
-      // Plain text - format as CRM API expects
-      medicalHistory = [{ Key: 'notes', Value: notesText }];
+      // Plain text - create JSON object (backend expects object, not array)
+      medicalHistory = { notes: notesText };
     }
   }
 
@@ -145,7 +151,7 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
  * - String format: "text"
  * - JSON string: "[{\"Key\":\"notes\",\"Value\":\"text\"}]"
  */
-function parseMedicalHistory(medicalHistory: any): string {
+export function parseMedicalHistory(medicalHistory: any): string {
   if (!medicalHistory) {
     return '';
   }

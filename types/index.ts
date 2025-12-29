@@ -200,6 +200,7 @@ export interface CreateAppointmentRequest {
   notes?: string;
   type?: string;
   reason?: string;
+  status?: string;
 }
 
 export interface CreateCampaignRequest {

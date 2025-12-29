@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { X, Filter } from 'lucide-react';
+import { SimpleDatePicker } from '@/components/ui/simple-date-picker';
+import { format } from 'date-fns';
 
 interface FilterModalProps {
   onClose: () => void;
@@ -85,31 +87,34 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={filters.dateRange.start}
-                    onChange={(e) =>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start Date</label>
+                  <SimpleDatePicker
+                    date={filters.dateRange.start ? new Date(filters.dateRange.start) : undefined}
+                    onDateChange={(date) => {
+                      const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
                       setFilters({
                         ...filters,
-                        dateRange: { ...filters.dateRange, start: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        dateRange: { ...filters.dateRange, start: dateStr },
+                      });
+                    }}
+                    placeholder="Start date"
+                    className="w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={filters.dateRange.end}
-                    onChange={(e) =>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End Date</label>
+                  <SimpleDatePicker
+                    date={filters.dateRange.end ? new Date(filters.dateRange.end) : undefined}
+                    onDateChange={(date) => {
+                      const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
                       setFilters({
                         ...filters,
-                        dateRange: { ...filters.dateRange, end: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        dateRange: { ...filters.dateRange, end: dateStr },
+                      });
+                    }}
+                    placeholder="End date"
+                    minDate={filters.dateRange.start ? new Date(filters.dateRange.start) : undefined}
+                    className="w-full"
                   />
                 </div>
               </div>

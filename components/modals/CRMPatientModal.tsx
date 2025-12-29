@@ -12,6 +12,7 @@ import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
 import { Patient, CreatePatientRequest } from '@/types';
 import { patientToCrmCustomer, crmCustomerToPatient } from '@/lib/utils/crmAdapter';
+import { parseMedicalHistory } from '@/lib/utils/crmAdapter';
 import {
   validateName,
   validatePhone,
@@ -25,6 +26,8 @@ import {
   formatPhoneForApi,
 } from '@/lib/utils/formValidation';
 import { CustomerStatus, normalizeCustomerStatus, customerStatusToApiFormat } from '@/lib/constants/status';
+import { SimpleDatePicker } from '@/components/ui/simple-date-picker';
+import { format } from 'date-fns';
 
 interface CRMPatientModalProps {
   patient?: Patient | null;
@@ -82,6 +85,14 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
         }
       }
 
+      // Extract medical notes - handle both converted format and raw API format
+      let medicalNotes = patient.medicalNotes || '';
+      
+      // If medicalNotes is empty but patient has raw medical_history (shouldn't happen, but safety check)
+      if (!medicalNotes && (patient as any).medical_history) {
+        medicalNotes = parseMedicalHistory((patient as any).medical_history);
+      }
+      
       setFormData({
         name: patient.name || '',
         age: patient.age?.toString() || '',
@@ -92,7 +103,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
         address: patient.address || '',
         assignedDoctor: typeof patient.assignedDoctor === 'string' ? patient.assignedDoctor : '',
         status: patient.status || 'active',
-        medicalNotes: patient.medicalNotes || '',
+        medicalNotes: medicalNotes,
       });
     } else {
       // Reset form when no patient (adding new)
@@ -363,12 +374,15 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Date of Birth
               </label>
-              <input
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={handleFieldChange('dateOfBirth')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                max={new Date().toISOString().split('T')[0]}
+              <SimpleDatePicker
+                date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                onDateChange={(date) => {
+                  const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
+                  setFormData(prev => ({ ...prev, dateOfBirth: dateStr }));
+                }}
+                placeholder="Select date of birth"
+                maxDate={new Date()}
+                className="w-full"
               />
             </div>
 
@@ -378,7 +392,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
-                  91
+                  +91
                 </div>
                 <input
                   type="tel"
@@ -386,7 +400,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                   inputMode="numeric"
                   value={formData.phone}
                   onChange={handleFieldChange('phone')}
-                  className={`w-full pl-12 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                  className={`w-full pl-14 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
                     errors.phone ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                   placeholder="10 digits (numbers only)"

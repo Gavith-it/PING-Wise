@@ -107,7 +107,9 @@ export default function TeamMemberDetailsModal({
                 <Phone className="w-3.5 h-3.5 md:w-5 md:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Phone</p>
-                  <p className="text-xs md:text-base text-gray-900 dark:text-white">{teamMember.phone || 'N/A'}</p>
+                  <p className="text-xs md:text-base text-gray-900 dark:text-white">
+                    {teamMember.phone ? (teamMember.phone.startsWith('+') ? teamMember.phone : `+${teamMember.phone}`) : 'N/A'}
+                  </p>
                 </div>
               </div>
 

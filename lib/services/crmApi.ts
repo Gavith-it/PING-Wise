@@ -310,6 +310,14 @@ class CrmApiService {
   }
 
   /**
+   * Patch customer (partial update)
+   * PATCH /customers/{id}
+   */
+  async patchCustomer(id: number | string, data: Partial<CrmCustomerRequest>): Promise<CrmApiSingleResponse<CrmCustomer>> {
+    return this.api.patch<CrmCustomer>(`/customers/${id}`, data) as unknown as CrmCustomer;
+  }
+
+  /**
    * Delete customer
    * DELETE /customers/{id}
    */

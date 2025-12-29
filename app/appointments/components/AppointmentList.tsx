@@ -12,6 +12,7 @@ interface AppointmentListProps {
   statusFilter: 'all' | 'confirmed' | 'pending' | 'cancelled';
   onEdit: (appointment: Appointment) => void;
   onDelete: (id: string) => void;
+  onFollowUp: (appointment: Appointment) => void;
   onAddClick: () => void;
 }
 
@@ -22,6 +23,7 @@ function AppointmentList({
   statusFilter,
   onEdit,
   onDelete,
+  onFollowUp,
   onAddClick,
 }: AppointmentListProps) {
   if (loading) {
@@ -64,6 +66,7 @@ function AppointmentList({
           appointment={appointment}
           onEdit={() => onEdit(appointment)}
           onDelete={() => onDelete(appointment.id)}
+          onFollowUp={() => onFollowUp(appointment)}
         />
       ))}
     </div>

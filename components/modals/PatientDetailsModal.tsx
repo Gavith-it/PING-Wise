@@ -85,7 +85,7 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
             <div className="space-y-1.5 md:space-y-2">
               <div className="flex items-center space-x-2 md:space-x-3">
                 <Phone className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                <span className="text-xs md:text-sm text-gray-700 dark:text-gray-300 break-all">{patient.phone}</span>
+                <span className="text-xs md:text-sm text-gray-700 dark:text-gray-300 break-all">{patient.phone ? (patient.phone.startsWith('+') ? patient.phone : `+${patient.phone}`) : 'N/A'}</span>
               </div>
               <div className="flex items-center space-x-2 md:space-x-3">
                 <Mail className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />

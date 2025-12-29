@@ -26,6 +26,7 @@ export interface CrmAppointment {
 export interface CrmAppointmentRequest {
   appointment_type?: string;
   assigned_to?: string;
+  assigned_to_id?: string;
   attachments?: string[];
   customer_id?: string;
   duration?: number;
@@ -140,13 +141,16 @@ export function appointmentToCrmAppointment(
 
   // Extract assigned_to (doctor ID) - ensure it's a valid string
   let assigned_to: string | undefined;
+  let assigned_to_id: string | undefined;
   if (appointment.doctor) {
     if (typeof appointment.doctor === 'string') {
       // If it's already a string, use it directly (should be the doctor ID)
       assigned_to = appointment.doctor.trim();
+      assigned_to_id = appointment.doctor.trim();
     } else if (typeof appointment.doctor === 'object' && appointment.doctor !== null) {
       // If it's an object, extract the ID
       assigned_to = appointment.doctor.id?.toString().trim();
+      assigned_to_id = appointment.doctor.id?.toString().trim();
     }
   }
 
@@ -158,6 +162,7 @@ export function appointmentToCrmAppointment(
   return {
     appointment_type: appointment.type,
     assigned_to: assigned_to,
+    assigned_to_id: assigned_to_id,
     customer_id: customer_id,
     duration: appointment.duration,
     location: undefined, // Not in UI model

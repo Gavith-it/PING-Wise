@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from 'react';
 interface ActivityData {
   labels: string[];
   new: number[];
-  active: number[];
   returning: number[];
   churned: number[];
 }
@@ -13,7 +12,6 @@ interface ActivityData {
 const weeklyActivityData: ActivityData = {
   labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
   new: [120, 150, 140, 180],
-  active: [580, 620, 595, 650],
   returning: [320, 380, 350, 420],
   churned: [45, 38, 52, 41],
 };
@@ -21,7 +19,6 @@ const weeklyActivityData: ActivityData = {
 const monthlyActivityData: ActivityData = {
   labels: ['Jan', 'Feb', 'Mar', 'Apr'],
   new: [480, 600, 560, 720],
-  active: [2320, 2480, 2380, 2600],
   returning: [1280, 1520, 1400, 1680],
   churned: [180, 152, 208, 164],
 };
@@ -29,7 +26,6 @@ const monthlyActivityData: ActivityData = {
 const quarterlyActivityData: ActivityData = {
   labels: ['Q1', 'Q2', 'Q3', 'Q4'],
   new: [1920, 2400, 2240, 2880],
-  active: [9280, 9920, 9520, 10400],
   returning: [5120, 6080, 5600, 6720],
   churned: [720, 608, 832, 656],
 };
@@ -37,13 +33,12 @@ const quarterlyActivityData: ActivityData = {
 const annuallyActivityData: ActivityData = {
   labels: ['2021', '2022', '2023', '2024'],
   new: [7680, 9600, 8960, 11520],
-  active: [37120, 39680, 38080, 41600],
   returning: [20480, 24320, 22400, 26880],
   churned: [2880, 2432, 3328, 2624],
 };
 
-// Colors: New Customers (Purple), Returning Customers (Pink/Red), Churned Customers (Blue), Active (keep existing)
-const colors = ['#9333EA', '#EC4899', '#3B82F6', '#6366F1']; // New (Purple), Returning (Pink), Churned (Blue), Active (Indigo)
+// Colors: New Customers (Purple), Returning Customers (Pink/Red), Churned Customers (Blue)
+const colors = ['#9333EA', '#EC4899', '#3B82F6']; // New (Purple), Returning (Pink), Churned (Blue)
 
 interface TooltipPosition {
   x: number;
@@ -112,8 +107,8 @@ export default function CustomerActivityTrendChart() {
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
-    // Order: new, returning, churned, active (to match color order)
-    const orderedDatasets = ['new', 'returning', 'churned', 'active'] as const;
+    // Order: new, returning, churned (to match color order)
+    const orderedDatasets = ['new', 'returning', 'churned'] as const;
 
     // Calculate max value
     let maxValue = 0;
@@ -211,7 +206,6 @@ export default function CustomerActivityTrendChart() {
           const relativeY = (barTopY * scaleY) - 12; // Position above the bar top
           
           const datasetLabel = dataset === 'new' ? 'New Customers' : 
-                              dataset === 'active' ? 'Active' :
                               dataset === 'returning' ? 'Returning Customers' : 'Churned Customers';
 
           // Position tooltip relative to chart container
@@ -373,10 +367,6 @@ export default function CustomerActivityTrendChart() {
         <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
           <div className="w-4 h-4 rounded bg-[#3B82F6]" />
           <span>Churned Customers</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#6366F1]" />
-          <span>Active</span>
         </div>
       </div>
     </>

@@ -37,7 +37,7 @@ function TeamMemberCard({
               {member.name}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
-              {member.phone || 'N/A'}
+              {member.phone ? (member.phone.startsWith('+') ? member.phone : `+${member.phone}`) : 'N/A'}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">
               {member.email}

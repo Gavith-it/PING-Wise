@@ -368,7 +368,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
-                  91
+                  +91
                 </div>
                 <input
                   type="tel"
@@ -376,7 +376,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                   required
                   value={formData.phone}
                   onChange={handleFieldChange('phone')}
-                  className={`w-full pl-12 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                  className={`w-full pl-14 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
                     errors.phone ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                   placeholder="10 digits (numbers only)"

@@ -69,7 +69,7 @@ function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
               {patient.name}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
-              {patient.age} years • {patient.phone}
+              {patient.age} years • {patient.phone ? (patient.phone.startsWith('+') ? patient.phone : `+${patient.phone}`) : 'N/A'}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-1">
               {patient.email}
