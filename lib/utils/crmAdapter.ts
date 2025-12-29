@@ -49,11 +49,29 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     }
   }
 
+  // Convert gender from capitalized full words (Male, Female, Other) to lowercase full words (male, female, other)
+  let gender: 'male' | 'female' | 'other' | '' = '';
+  if (customer.gender) {
+    const genderLower = customer.gender.toLowerCase();
+    if (genderLower === 'male' || genderLower === 'm') {
+      gender = 'male';
+    } else if (genderLower === 'female' || genderLower === 'f') {
+      gender = 'female';
+    } else if (genderLower === 'other' || genderLower === 'o') {
+      gender = 'other';
+    } else {
+      // If it's already in lowercase full word format, use as-is
+      if (genderLower === 'male' || genderLower === 'female' || genderLower === 'other') {
+        gender = genderLower as 'male' | 'female' | 'other';
+      }
+    }
+  }
+
   return {
     id: String(customerId), // Ensure id is a string
     name: `${customer.first_name} ${customer.last_name}`.trim(),
     age: customer.age || 0,
-    gender: (customer.gender?.toLowerCase() as 'male' | 'female' | 'other') || '',
+    gender: gender,
     phone: customer.phone || '',
     email: customer.email,
     address: customer.address,
@@ -116,6 +134,32 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
     }
   }
 
+  // Convert gender from lowercase full words (male, female, other) to capitalized full words (Male, Female, Other)
+  // API expects: "Male", "Female", or "Other" (capitalized full words)
+  let gender: string | undefined;
+  if (patient.gender) {
+    const genderLower = patient.gender.toLowerCase().trim();
+    if (genderLower === 'male' || genderLower === 'm') {
+      gender = 'Male';
+    } else if (genderLower === 'female' || genderLower === 'f') {
+      gender = 'Female';
+    } else if (genderLower === 'other' || genderLower === 'o') {
+      gender = 'Other';
+    } else {
+      // If already in capitalized format or unexpected format, ensure proper capitalization
+      const trimmed = patient.gender.trim();
+      gender = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+      // Ensure it matches one of the expected values
+      if (gender.toLowerCase() !== 'male' && gender.toLowerCase() !== 'female' && gender.toLowerCase() !== 'other') {
+        // If it doesn't match, default to empty (will be undefined)
+        gender = undefined;
+      } else {
+        // Re-capitalize to ensure proper format
+        gender = gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+      }
+    }
+  }
+
   // Include date_of_birth if available
   const crmRequest: CrmCustomerRequest & { date_of_birth?: string } = {
     first_name: firstName,
@@ -124,7 +168,7 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
     phone: patient.phone,
     address: patient.address,
     age: patient.age || undefined,
-    gender: patient.gender || undefined,
+    gender: gender,
     assigned_to: 'assignedDoctor' in patient ? patient.assignedDoctor : undefined,
     status: mapPatientStatusToCrmStatus(patient.status),
     medical_history: medicalHistory,
