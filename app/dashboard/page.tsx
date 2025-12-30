@@ -92,13 +92,26 @@ export default function DashboardPage() {
     }
   }, [isMounted, authLoading, isAuthenticated, user, token]);
 
-  const handleAppointmentSuccess = useCallback(() => {
+  const handleAppointmentSuccess = useCallback(async (createdAppointment?: any) => {
     setShowAppointmentModal(false);
     addNotification({
       type: 'appointment',
       title: 'New Appointment Scheduled',
       message: 'A new appointment has been successfully scheduled.',
     });
+    
+    // Invalidate appointments cache so appointments page shows the new appointment
+    if (typeof window !== 'undefined') {
+      try {
+        const { invalidateAppointmentsCache } = await import('@/app/appointments/hooks/useAppointments');
+        if (invalidateAppointmentsCache) {
+          invalidateAppointmentsCache();
+        }
+      } catch (error) {
+        console.error('Error invalidating appointments cache:', error);
+      }
+    }
+    
     loadDashboardData();
     loadAppointments();
   }, [addNotification, loadDashboardData, loadAppointments]);

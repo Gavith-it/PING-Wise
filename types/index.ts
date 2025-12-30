@@ -8,7 +8,7 @@ export interface User {
   specialization?: string;
   experience?: string;
   phone?: string;
-  status: 'active' | 'leave' | 'inactive';
+  status: 'active' | 'OnLeave' | 'inactive';
   initials?: string;
   avatarColor?: string;
   rating?: number; // 1-5 star rating

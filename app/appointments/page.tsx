@@ -8,7 +8,7 @@ import FollowUpConfirmationModal from './components/FollowUpConfirmationModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import ToggleSwitch from '@/components/ui/toggle-switch';
-import { Appointment } from '@/types';
+import { Appointment, CreateAppointmentRequest } from '@/types';
 import { useAppointments } from './hooks/useAppointments';
 import { usePatientEnrichment } from './hooks/usePatientEnrichment';
 import { useAppointmentFilters } from './hooks/useAppointmentFilters';
@@ -66,13 +66,9 @@ export default function AppointmentsPage() {
     });
   }, [appointments, selectedDate]);
 
-  // Filter out completed appointments and then apply filters
-  const appointmentsWithoutCompleted = useMemo(() => {
-    return selectedDateAppointments.filter(apt => apt.status !== 'completed');
-  }, [selectedDateAppointments]);
-
-  // Use filter hook for selected date appointments (excluding completed)
-  const filteredAppointments = useAppointmentFilters(appointmentsWithoutCompleted, searchTerm, statusFilter);
+  // Keep all appointments (including completed) - they will show with "completed" status
+  // Use filter hook for selected date appointments (including completed)
+  const filteredAppointments = useAppointmentFilters(selectedDateAppointments, searchTerm, statusFilter);
 
   // Use upcoming appointments hook - shows appointments for dates other than selected date
   const upcomingAppointments = useUpcomingAppointments(allMonthAppointments, appointments, selectedDate, today);
@@ -114,6 +110,7 @@ export default function AppointmentsPage() {
   const handleAppointmentCreatedWithModal = async (updatedAppointment?: Appointment) => {
     setShowAddModal(false);
     clearSelected();
+    // Always pass the appointment data to ensure it's added to the list
     await handleAppointmentCreated(updatedAppointment);
   };
 
@@ -142,10 +139,37 @@ export default function AppointmentsPage() {
       const { crmApi } = await import('@/lib/services/crmApi');
       await crmApi.patchCustomer(patient.id, { status: 'FollowUp' });
       
+      // Update appointment status to completed using PUT method
+      // API: PUT /appointments/{id} - requires full body, but only status will change
+      // Convert appointment to CreateAppointmentRequest format
+      const patientId = typeof selectedFollowUpAppointment.patient === 'object' 
+        ? selectedFollowUpAppointment.patient.id 
+        : selectedFollowUpAppointment.patient;
+      const doctorId = typeof selectedFollowUpAppointment.doctor === 'object' 
+        ? selectedFollowUpAppointment.doctor.id 
+        : selectedFollowUpAppointment.doctor;
+      
+      const appointmentDate = selectedFollowUpAppointment.date instanceof Date 
+        ? selectedFollowUpAppointment.date 
+        : new Date(selectedFollowUpAppointment.date);
+      const dateStr = format(appointmentDate, 'yyyy-MM-dd');
+      
+      const fullAppointmentData: Partial<CreateAppointmentRequest> = {
+        patient: patientId,
+        doctor: doctorId || '',
+        date: dateStr,
+        time: selectedFollowUpAppointment.time,
+        status: 'completed', // Only change the status, all other fields remain the same
+        type: selectedFollowUpAppointment.type,
+        notes: selectedFollowUpAppointment.notes,
+        reason: selectedFollowUpAppointment.reason,
+      };
+      await crmAppointmentService.updateAppointment(selectedFollowUpAppointment.id, fullAppointmentData);
+      
       // Invalidate patients cache so CRM page shows updated status
       invalidatePatientsCache();
       
-      toast.success('Patient marked for follow-up');
+      toast.success('Patient marked for follow-up and appointment completed');
       setShowFollowUpModal(false);
       setSelectedFollowUpAppointment(null);
       
@@ -161,20 +185,61 @@ export default function AppointmentsPage() {
     if (!selectedFollowUpAppointment) return;
 
     try {
-      // Mark appointment as completed
-      await crmAppointmentService.updateAppointment(selectedFollowUpAppointment.id, { 
-        status: 'completed' 
-      });
+      const patient = typeof selectedFollowUpAppointment.patient === 'object' 
+        ? selectedFollowUpAppointment.patient 
+        : null;
       
-      toast.success('Appointment marked as completed');
+      if (!patient || !patient.id) {
+        toast.error('Patient information not available');
+        setShowFollowUpModal(false);
+        setSelectedFollowUpAppointment(null);
+        return;
+      }
+
+      // Update customer status to Active using PATCH method
+      // API: PATCH /customers/{id} with body: { status: "Active" }
+      const { crmApi } = await import('@/lib/services/crmApi');
+      await crmApi.patchCustomer(patient.id, { status: 'Active' });
+      
+      // Update appointment status to completed using PUT method
+      // API: PUT /appointments/{id} - requires full body, but only status will change
+      // Convert appointment to CreateAppointmentRequest format
+      const patientId = typeof selectedFollowUpAppointment.patient === 'object' 
+        ? selectedFollowUpAppointment.patient.id 
+        : selectedFollowUpAppointment.patient;
+      const doctorId = typeof selectedFollowUpAppointment.doctor === 'object' 
+        ? selectedFollowUpAppointment.doctor.id 
+        : selectedFollowUpAppointment.doctor;
+      
+      const appointmentDate = selectedFollowUpAppointment.date instanceof Date 
+        ? selectedFollowUpAppointment.date 
+        : new Date(selectedFollowUpAppointment.date);
+      const dateStr = format(appointmentDate, 'yyyy-MM-dd');
+      
+      const fullAppointmentData: Partial<CreateAppointmentRequest> = {
+        patient: patientId,
+        doctor: doctorId || '',
+        date: dateStr,
+        time: selectedFollowUpAppointment.time,
+        status: 'completed', // Only change the status, all other fields remain the same
+        type: selectedFollowUpAppointment.type,
+        notes: selectedFollowUpAppointment.notes,
+        reason: selectedFollowUpAppointment.reason,
+      };
+      await crmAppointmentService.updateAppointment(selectedFollowUpAppointment.id, fullAppointmentData);
+      
+      // Invalidate patients cache so CRM page shows updated status
+      invalidatePatientsCache();
+      
+      toast.success('Patient status updated to Active and appointment completed');
       setShowFollowUpModal(false);
       setSelectedFollowUpAppointment(null);
       
-      // Refresh appointments - completed appointment will be filtered out
+      // Refresh appointments to reflect any changes
       await handleAppointmentCreated();
     } catch (error: any) {
-      console.error('Error updating appointment status:', error);
-      toast.error(error.response?.data?.message || 'Failed to update appointment status');
+      console.error('Error updating patient status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update patient status');
     }
   };
 

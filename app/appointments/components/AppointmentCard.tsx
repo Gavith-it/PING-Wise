@@ -74,38 +74,49 @@ function AppointmentCard({ appointment, onEdit, onDelete, onFollowUp }: Appointm
             {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
           </span>
           {/* Action Icons - Below Status */}
-          <div className="flex items-center -space-x-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-              title="Edit"
-            >
-              <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onFollowUp();
-              }}
-              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-              title="Follow-up"
-            >
-              <Check className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-              title="Cancel"
-            >
-              <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            </button>
-          </div>
+          {appointment.status !== 'completed' && (
+            <div className="flex items-center -space-x-1">
+              {/* Edit button - visible for confirmed and pending */}
+              {(appointment.status === 'confirmed' || appointment.status === 'pending') && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                  className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                  title="Edit"
+                >
+                  <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                </button>
+              )}
+              {/* Follow-up button (tick mark) - only visible for confirmed status */}
+              {appointment.status === 'confirmed' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFollowUp();
+                  }}
+                  className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                  title="Follow-up"
+                >
+                  <Check className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                </button>
+              )}
+              {/* Delete button - visible for confirmed and pending */}
+              {(appointment.status === 'confirmed' || appointment.status === 'pending') && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  title="Cancel"
+                >
+                  <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

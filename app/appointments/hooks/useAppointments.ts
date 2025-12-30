@@ -19,6 +19,19 @@ const appointmentsCache: {
 
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
+/**
+ * Invalidate appointments cache - call this when appointments are created/updated/deleted from other pages
+ * This ensures the appointments page shows the latest data
+ */
+export function invalidateAppointmentsCache(): void {
+  // Clear all cached appointments
+  appointmentsCache.appointments = {};
+  appointmentsCache.monthAppointments = {};
+  // Reset timestamps to force fresh fetch
+  appointmentsCache.timestamp = 0;
+  appointmentsCache.monthTimestamp = 0;
+}
+
 interface UseAppointmentsParams {
   selectedDate: Date;
   currentMonth: Date;
@@ -86,31 +99,9 @@ export function useAppointments({
       appointmentsCache.appointments[dateStr] = filteredAppointments;
       appointmentsCache.timestamp = Date.now();
       
-      // Only update state if data has changed (for smooth background refresh)
-      setAppointments(prev => {
-        // Compare appointment IDs to detect changes
-        const prevIds = new Set(prev.map(apt => apt.id));
-        const newIds = new Set(filteredAppointments.map(apt => apt.id));
-        
-        // If IDs are different, update (smooth transition)
-        if (prevIds.size !== newIds.size || 
-            ![...prevIds].every(id => newIds.has(id)) ||
-            ![...newIds].every(id => prevIds.has(id))) {
-          return filteredAppointments;
-        }
-        
-        // If same IDs, check if any appointment data changed
-        const hasChanges = prev.some(prevApt => {
-          const newApt = filteredAppointments.find(apt => apt.id === prevApt.id);
-          if (!newApt) return true;
-          // Compare key fields
-          return prevApt.status !== newApt.status ||
-                 prevApt.time !== newApt.time ||
-                 format(new Date(prevApt.date), 'yyyy-MM-dd') !== format(new Date(newApt.date), 'yyyy-MM-dd');
-        });
-        
-        return hasChanges ? filteredAppointments : prev;
-      });
+      // Always update state to ensure latest data is shown
+      // This is important when appointments are created from other pages
+      setAppointments(filteredAppointments);
     } catch (error) {
       // Only show error toast if not a background refresh (to avoid interrupting user)
       if (!isBackgroundRefresh) {
@@ -172,17 +163,9 @@ export function useAppointments({
       appointmentsCache.monthAppointments[monthStr] = uniqueAppts;
       appointmentsCache.monthTimestamp = Date.now();
       
-      // Only update if data changed (for smooth background refresh)
-      setAllMonthAppointments(prev => {
-        const prevIds = new Set(prev.map(apt => apt.id));
-        const newIds = new Set(uniqueAppts.map(apt => apt.id));
-        
-        if (prevIds.size !== newIds.size || 
-            ![...prevIds].every(id => newIds.has(id))) {
-          return uniqueAppts;
-        }
-        return prev;
-      });
+      // Always update to ensure latest data is shown
+      // This is important when appointments are created from other pages
+      setAllMonthAppointments(uniqueAppts);
     } catch (error) {
       // Silently fail - calendar dots are optional
       console.error('Load month appointments error:', error);
@@ -232,27 +215,28 @@ export function useAppointments({
   useEffect(() => {
     const monthStr = format(currentMonth, 'yyyy-MM');
     
-    // Prevent duplicate calls for the same month
-    if (lastLoadedMonth.current === monthStr && isLoadingMonthRef.current) {
+    // Check cache first
+    const cacheAge = Date.now() - appointmentsCache.monthTimestamp;
+    const cachedMonthAppts = appointmentsCache.monthAppointments[monthStr];
+    const isCacheValid = cachedMonthAppts && cachedMonthAppts.length >= 0 && cacheAge < CACHE_DURATION;
+    
+    // Prevent duplicate calls for the same month only if cache is valid
+    if (lastLoadedMonth.current === monthStr && isLoadingMonthRef.current && isCacheValid) {
       return;
     }
     
     // Prevent concurrent calls (React strict mode can trigger useEffect twice)
-    if (isLoadingMonthRef.current) {
+    if (isLoadingMonthRef.current && !isCacheValid) {
       return;
     }
     
     lastLoadedMonth.current = monthStr;
     
-    // Check cache first for instant display
-    const cacheAge = Date.now() - appointmentsCache.monthTimestamp;
-    const cachedMonthAppts = appointmentsCache.monthAppointments[monthStr];
-    const isCacheValid = cachedMonthAppts && cachedMonthAppts.length >= 0 && cacheAge < CACHE_DURATION;
-    
     if (isCacheValid) {
       // Display cached data instantly
       setAllMonthAppointments(cachedMonthAppts);
-      // Fetch fresh data in background
+      // Always fetch fresh data in background to ensure we have latest appointments
+      // This is important when appointments are created from other pages
       loadMonthAppointments(true);
     } else {
       // No cache or expired, load normally
@@ -262,11 +246,21 @@ export function useAppointments({
   }, [currentMonth]);
 
   const handleAppointmentCreated = useCallback(async (updatedAppointment?: Appointment) => {
+    // Always invalidate cache first to ensure fresh data
+    const currentDateStr = format(selectedDate, 'yyyy-MM-dd');
+    const monthStr = format(currentMonth, 'yyyy-MM');
+    
     if (!updatedAppointment) {
-      // No appointment data provided, just reload current date (fallback)
-      const currentDateStr = format(selectedDate, 'yyyy-MM-dd');
+      // No appointment data provided, invalidate cache and reload
       delete appointmentsCache.appointments[currentDateStr];
+      delete appointmentsCache.monthAppointments[monthStr];
+      appointmentsCache.timestamp = 0;
+      appointmentsCache.monthTimestamp = 0;
+      // Reset refs to allow useEffect to trigger
+      lastSelectedDate.current = '';
+      lastLoadedMonth.current = '';
       await loadAppointmentsForDate(false);
+      await loadMonthAppointments(false);
       return;
     }
     
@@ -274,8 +268,13 @@ export function useAppointments({
     let enrichedAppointment = updatedAppointment;
     if (typeof updatedAppointment.patient === 'string') {
       // Patient is just an ID, need to enrich it
-      const enriched = await enrichAppointmentsWithPatients([updatedAppointment]);
-      enrichedAppointment = enriched[0] || updatedAppointment;
+      try {
+        const enriched = await enrichAppointmentsWithPatients([updatedAppointment]);
+        enrichedAppointment = enriched[0] || updatedAppointment;
+      } catch (error) {
+        console.error('Error enriching appointment:', error);
+        // Continue with unenriched appointment if enrichment fails
+      }
     }
     
     // Get the date from the updated appointment
@@ -283,49 +282,19 @@ export function useAppointments({
       ? enrichedAppointment.date 
       : new Date(enrichedAppointment.date);
     const updatedDateStr = format(updatedDate, 'yyyy-MM-dd');
-    const currentDateStr = format(selectedDate, 'yyyy-MM-dd');
-    const monthStr = format(currentMonth, 'yyyy-MM');
+    const updatedMonthStr = format(updatedDate, 'yyyy-MM');
     
-    if (updatedDateStr !== currentDateStr) {
-      // Date changed - remove from current date, add to new date
-      setAppointments(prev => prev.filter(apt => apt.id !== enrichedAppointment.id));
-      
-      // Update cache for current date (remove appointment)
-      if (appointmentsCache.appointments[currentDateStr]) {
-        appointmentsCache.appointments[currentDateStr] = 
-          appointmentsCache.appointments[currentDateStr].filter(apt => apt.id !== enrichedAppointment.id);
-      }
-      
-      // Show message that appointment date was changed
-      toast.success(`Appointment moved to ${format(updatedDate, 'MMMM d, yyyy')}`);
-      
-      // Only load appointments for the new date if it's in the current month
-      const updatedMonthStr = format(updatedDate, 'yyyy-MM');
-      if (updatedMonthStr === monthStr) {
-        // New date is in current month - load it from API
-        delete appointmentsCache.appointments[updatedDateStr];
-        try {
-          const response = await crmAppointmentService.searchAppointments({ date: updatedDateStr });
-          let newAppointments = response.data || [];
-          newAppointments = await enrichAppointmentsWithPatients(newAppointments);
-          
-          // Filter to exact date
-          const filteredAppointments = newAppointments.filter(apt => {
-            const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
-            return isSameDay(aptDate, updatedDate);
-          });
-          
-      // Update cache
-      appointmentsCache.appointments[updatedDateStr] = filteredAppointments;
-      appointmentsCache.timestamp = Date.now();
-      // Update lastSelectedDate to prevent useEffect from triggering
-      lastSelectedDate.current = updatedDateStr;
-        } catch (error) {
-          console.error('Failed to load appointments for new date:', error);
-        }
-      }
-    } else {
-      // Same date - update/add appointment directly in state (optimistic update)
+    // Always invalidate cache for the appointment's date to ensure fresh data
+    delete appointmentsCache.appointments[updatedDateStr];
+    if (updatedMonthStr === monthStr) {
+      delete appointmentsCache.monthAppointments[monthStr];
+    }
+    
+    // If appointment is for a different date than selected, we still need to show it when user navigates to that date
+    // So we'll refresh both the selected date and the appointment's date
+    
+    if (updatedDateStr === currentDateStr) {
+      // Same date - add/update appointment in state immediately
       setAppointments(prev => {
         const existingIndex = prev.findIndex(apt => apt.id === enrichedAppointment.id);
         if (existingIndex >= 0) {
@@ -339,96 +308,45 @@ export function useAppointments({
         }
       });
       
-      // Update cache for current date
-      if (appointmentsCache.appointments[currentDateStr]) {
-        const existingIndex = appointmentsCache.appointments[currentDateStr].findIndex(
-          apt => apt.id === enrichedAppointment.id
-        );
-        if (existingIndex >= 0) {
-          // Update existing
-          appointmentsCache.appointments[currentDateStr][existingIndex] = enrichedAppointment;
-        } else {
-          // Add new
-          appointmentsCache.appointments[currentDateStr] = [
-            enrichedAppointment,
-            ...appointmentsCache.appointments[currentDateStr]
-          ];
-        }
-      } else {
-        // Create new cache entry
-        appointmentsCache.appointments[currentDateStr] = [enrichedAppointment];
-      }
-      appointmentsCache.timestamp = Date.now();
-      // Update lastSelectedDate to prevent useEffect from triggering
-      lastSelectedDate.current = currentDateStr;
-    }
-    
-    // Also update cache for the appointment's date if it's different from selected date
-    // This ensures confirmed appointments appear when viewing their date
-    if (updatedDateStr !== currentDateStr && appointmentsCache.appointments[updatedDateStr]) {
-      const existingIndex = appointmentsCache.appointments[updatedDateStr].findIndex(
-        apt => apt.id === enrichedAppointment.id
-      );
-      if (existingIndex >= 0) {
-        // Update existing in the appointment's date cache
-        appointmentsCache.appointments[updatedDateStr][existingIndex] = enrichedAppointment;
-      } else {
-        // Add to the appointment's date cache
-        appointmentsCache.appointments[updatedDateStr] = [
-          enrichedAppointment,
-          ...appointmentsCache.appointments[updatedDateStr]
-        ];
-      }
-      appointmentsCache.timestamp = Date.now();
-    }
-    
-    // Update month appointments cache directly (no API call needed)
-    setAllMonthAppointments(prev => {
-      const existingIndex = prev.findIndex(apt => apt.id === enrichedAppointment.id);
-      if (existingIndex >= 0) {
-        // Update existing
-        const updated = [...prev];
-        updated[existingIndex] = enrichedAppointment;
-        return updated;
-      } else {
-        // Add new (only if it's in the current month)
-        const appointmentMonthStr = format(updatedDate, 'yyyy-MM');
-        if (appointmentMonthStr === monthStr) {
-          return [enrichedAppointment, ...prev];
-        }
-        return prev;
-      }
-    });
-    
-    // Update month cache
-    if (appointmentsCache.monthAppointments[monthStr]) {
-      const existingIndex = appointmentsCache.monthAppointments[monthStr].findIndex(
-        apt => apt.id === enrichedAppointment.id
-      );
-      if (existingIndex >= 0) {
-        // Update existing
-        appointmentsCache.monthAppointments[monthStr][existingIndex] = enrichedAppointment;
-      } else {
-        // Add new (only if in current month)
-        const appointmentMonthStr = format(updatedDate, 'yyyy-MM');
-        if (appointmentMonthStr === monthStr) {
-          appointmentsCache.monthAppointments[monthStr] = [
-            enrichedAppointment,
-            ...appointmentsCache.monthAppointments[monthStr]
-          ];
-        }
-      }
+      // Also refresh from API to ensure we have all appointments for this date
+      // Reset ref to allow refresh
+      lastSelectedDate.current = '';
+      await loadAppointmentsForDate(true); // Background refresh
     } else {
-      // Create new cache entry if in current month
-      const appointmentMonthStr = format(updatedDate, 'yyyy-MM');
-      if (appointmentMonthStr === monthStr) {
-        appointmentsCache.monthAppointments[monthStr] = [enrichedAppointment];
+      // Different date - refresh selected date to remove if it was there, and load appointment's date
+      // Reset ref to allow refresh
+      lastSelectedDate.current = '';
+      await loadAppointmentsForDate(true); // Background refresh to remove if it was there
+      
+      // Load appointments for the appointment's date if it's in current month
+      if (updatedMonthStr === monthStr) {
+        try {
+          const response = await crmAppointmentService.searchAppointments({ date: updatedDateStr });
+          let newAppointments = response.data || [];
+          newAppointments = await enrichAppointmentsWithPatients(newAppointments);
+          
+          // Filter to exact date
+          const filteredAppointments = newAppointments.filter(apt => {
+            const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
+            return isSameDay(aptDate, updatedDate);
+          });
+          
+          // Update cache
+          appointmentsCache.appointments[updatedDateStr] = filteredAppointments;
+          appointmentsCache.timestamp = Date.now();
+        } catch (error) {
+          console.error('Failed to load appointments for appointment date:', error);
+        }
       }
+      
+      // Show message if date is different
+      toast.success(`Appointment scheduled for ${format(updatedDate, 'MMMM d, yyyy')}`);
     }
-    appointmentsCache.monthTimestamp = Date.now();
-    // Update lastLoadedMonth to prevent useEffect from triggering
-    lastLoadedMonth.current = monthStr;
-  }, [selectedDate, currentMonth, enrichAppointmentsWithPatients, appointments, allMonthAppointments]);
+    
+    // Always refresh month appointments to ensure calendar dots are updated
+    lastLoadedMonth.current = '';
+    await loadMonthAppointments(true); // Background refresh
+  }, [selectedDate, currentMonth, enrichAppointmentsWithPatients, loadAppointmentsForDate, loadMonthAppointments]);
 
   const handleDeleteAppointment = useCallback(async (id: string) => {
     if (!window.confirm('Cancel this appointment?')) {

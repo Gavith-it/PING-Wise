@@ -154,7 +154,7 @@ export function appointmentToCrmAppointment(
     }
   }
 
-  // Validate customer_id is not empty
+  // Validate customer_id is not empty (required for all operations)
   if (!customer_id || customer_id === '') {
     throw new Error('Customer ID (patient) is required and must be a valid ID');
   }

@@ -39,11 +39,15 @@ export function generateAvatarColor(name: string, index: number): string {
  * Get status color classes
  */
 export function getStatusColor(status: string): string {
-  switch (status) {
+  switch (status?.toLowerCase()) {
     case 'active':
       return 'bg-green-100 text-green-700 border-green-200';
     case 'leave':
+    case 'onleave':
+    case 'on leave': // Handle both UI format (OnLeave) and API format (onleave)
       return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    case 'inactive':
+      return 'bg-gray-100 text-gray-700 border-gray-200';
     default:
       return 'bg-gray-100 text-gray-700 border-gray-200';
   }

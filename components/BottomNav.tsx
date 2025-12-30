@@ -105,7 +105,7 @@ export default function BottomNav() {
         finalVisibility ? 'translate-y-0' : 'translate-y-full'
       }`}
     >
-      <div className="flex items-center justify-around px-1 py-1.5">
+      <div className="flex items-center justify-between px-2 py-1.5 gap-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -114,17 +114,17 @@ export default function BottomNav() {
             <button
               key={item.path}
               onClick={() => router.push(item.path)}
-              className={`flex flex-col items-center justify-center px-1.5 py-1 rounded-lg transition-all duration-200 ease-in-out min-w-[50px] flex-1 focus:outline-none focus:ring-0 active:bg-transparent ${
-                active
-                  ? 'text-primary'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              <Icon className={`w-4 h-4 md:w-5 md:h-5 transition-colors duration-200 ${active ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
-              <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 transition-colors duration-200 ${active ? 'font-semibold text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
-                {item.label}
-              </span>
-            </button>
+              className={`flex flex-col items-center justify-center py-1 rounded-lg transition-all duration-200 ease-in-out flex-1 focus:outline-none focus:ring-0 active:bg-transparent ${
+                  active
+                    ? 'text-primary'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <Icon className={`w-4 h-4 md:w-5 md:h-5 transition-colors duration-200 ${active ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
+                <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 transition-colors duration-200 ${active ? 'font-semibold text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
+                  {item.label}
+                </span>
+              </button>
           );
         })}
       </div>

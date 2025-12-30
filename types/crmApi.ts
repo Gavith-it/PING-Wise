@@ -32,6 +32,8 @@ export interface CrmCustomer {
   assigned_to?: string;
   status?: string;
   medical_history?: Record<string, any>;
+  date_of_birth?: string;
+  last_visit?: string;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +49,8 @@ export interface CrmCustomerRequest {
   assigned_to?: string;
   status?: string;
   medical_history?: Record<string, any>;
+  date_of_birth?: string;
+  last_visit?: string;
 }
 
 // ==================== TEAM ====================
@@ -58,6 +62,11 @@ export interface CrmTeam {
   role?: string;
   status?: string;
   additional_info?: string; // According to Swagger, it's a string
+  department?: string;
+  experience?: string;
+  phone?: string;
+  specialization?: string;
+  appointment_count?: number; // Read-only field from API response
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +77,10 @@ export interface CrmTeamRequest {
   role?: string;
   status?: string;
   additional_info?: Record<string, any>; // Backend expects JSON object, not string
+  department?: string;
+  experience?: string;
+  phone?: string;
+  specialization?: string;
 }
 
 // ==================== USER ====================

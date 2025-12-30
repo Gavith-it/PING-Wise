@@ -516,9 +516,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         (typeof appointment.doctor === 'string' && appointment.doctor !== doctorId));
       
       // If creating a NEW appointment, always set status to confirmed (not pending)
+      // This applies to all new appointments regardless of date or doctor assignment
       const isNewAppointment = !appointment;
-      // New appointments should always be confirmed when created from quick action (if doctor is assigned)
-      const shouldConfirmNew = isNewAppointment && isAssigningDoctor;
 
       // Prepare appointment data with proper IDs
       const appointmentData: any = {
@@ -529,9 +528,13 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       };
       
       // Set status to confirmed if:
-      // 1. Editing a pending appointment and assigning a doctor, OR
-      // 2. Creating a new appointment with a doctor assigned (always confirmed for new appointments)
-      if (shouldConfirmEdit || shouldConfirmNew) {
+      // 1. Creating a new appointment (always confirmed for any date), OR
+      // 2. Editing a pending appointment and assigning a doctor
+      if (isNewAppointment) {
+        // All new appointments should be confirmed regardless of date
+        appointmentData.status = 'confirmed';
+      } else if (shouldConfirmEdit) {
+        // Only change status when editing pending and assigning doctor
         appointmentData.status = 'confirmed';
       }
 
@@ -546,10 +549,17 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         responseData = response.data;
       }
       
+      // Always call onSuccess with the appointment data - parent needs it to update the list
       // Call onSuccess only once - parent will handle closing the modal
       if (!hasCalledSuccessRef.current) {
         hasCalledSuccessRef.current = true;
-        onSuccess(responseData);
+        // Ensure we pass the appointment data even if response structure is different
+        if (responseData) {
+          onSuccess(responseData);
+        } else {
+          // If no data returned, still call onSuccess to trigger refresh
+          onSuccess(undefined);
+        }
       }
     } catch (error: any) {
       // Handle different types of errors

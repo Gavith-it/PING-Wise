@@ -25,7 +25,7 @@ export default function TeamFilterModal({
   const statusOptions = [
     { value: 'all', label: 'All Status' },
     { value: 'active', label: 'Active' },
-    { value: 'leave', label: 'On Leave' },
+    { value: 'OnLeave', label: 'On Leave' },
     { value: 'inactive', label: 'Inactive' },
   ];
 

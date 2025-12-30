@@ -99,7 +99,7 @@ export default function TeamPage() {
               />
               <FilterCard
                 icon={CalendarX}
-                value={teamMembers.filter(m => m.status === 'leave').length}
+                value={teamMembers.filter(m => m.status === 'OnLeave').length}
                 label="On Leave"
                 active={false}
                 color="orange"

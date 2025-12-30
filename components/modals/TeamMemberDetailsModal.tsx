@@ -151,12 +151,14 @@ export default function TeamMemberDetailsModal({
                 <div className="w-3.5 h-3.5 md:w-5 md:h-5 flex-shrink-0 mt-0.5 flex items-center justify-center">
                   <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full ${
                     teamMember.status === 'active' ? 'bg-green-500' : 
-                    teamMember.status === 'leave' ? 'bg-orange-500' : 'bg-gray-400'
+                    teamMember.status === 'OnLeave' ? 'bg-orange-500' : 'bg-gray-400'
                   }`} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500 mb-0.5">Status</p>
-                  <p className="text-xs md:text-base text-gray-900 capitalize">{teamMember.status}</p>
+                  <p className="text-xs md:text-base text-gray-900 capitalize">
+                    {teamMember.status === 'OnLeave' ? 'On Leave' : teamMember.status}
+                  </p>
                 </div>
               </div>
             </div>

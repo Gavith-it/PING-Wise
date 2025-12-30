@@ -47,7 +47,7 @@ function TeamMemberCard({
         <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0 ml-1">
           {/* Status Badge - Top Right */}
           <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(member.status)}`}>
-            {member.status === 'active' ? 'Active' : member.status === 'leave' ? 'On Leave' : 'Inactive'}
+            {member.status === 'active' ? 'Active' : member.status === 'OnLeave' ? 'On Leave' : 'Inactive'}
           </span>
         </div>
       </div>

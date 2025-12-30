@@ -30,7 +30,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     specialization: teamMember?.specialization || '',
     phone: teamMember?.phone || '',
     experience: teamMember?.experience || '',
-    status: (teamMember?.status || 'active') as 'active' | 'inactive',
+    status: (teamMember?.status || 'active') as 'active' | 'inactive' | 'OnLeave',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -50,7 +50,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         specialization: teamMember.specialization || '',
         phone: formatPhoneForDisplay(teamMember.phone || ''),
         experience: teamMember.experience || '',
-        status: (teamMember.status || 'active') as 'active' | 'inactive',
+        status: (teamMember.status || 'active') as 'active' | 'inactive' | 'OnLeave',
       });
     } else {
       // Add mode - reset form to defaults
@@ -424,6 +424,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
+                <option value="OnLeave">OnLeave</option>
               </select>
             </div>
 

@@ -42,13 +42,13 @@ export function crmTeamToUser(crmTeam: CrmTeam): User {
   }
 
   // Map status from API to UI status
-  let uiStatus: 'active' | 'leave' | 'inactive' = 'inactive';
+  let uiStatus: 'active' | 'OnLeave' | 'inactive' = 'inactive';
   if (crmTeam.status) {
     const statusLower = crmTeam.status.toLowerCase();
     if (statusLower === 'active') {
       uiStatus = 'active';
-    } else if (statusLower === 'leave' || statusLower === 'on leave') {
-      uiStatus = 'leave';
+    } else if (statusLower === 'leave' || statusLower === 'on leave' || statusLower === 'onleave') {
+      uiStatus = 'OnLeave';
     } else {
       uiStatus = 'inactive';
     }
@@ -101,7 +101,11 @@ export function userToCrmTeam(user: Partial<User> & { name: string }): CrmTeamRe
   let apiRole = user.role || 'staff';
   
   // Map UI status to API status
-  let apiStatus = user.status || 'inactive';
+  // Convert 'OnLeave' to 'onleave' for API compatibility
+  let apiStatus: string = user.status || 'inactive';
+  if (apiStatus === 'OnLeave') {
+    apiStatus = 'onleave';
+  }
 
   return {
     name: user.name,

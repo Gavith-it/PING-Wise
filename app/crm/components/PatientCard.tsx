@@ -72,7 +72,7 @@ function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
               {patient.age} years • {patient.phone ? (patient.phone.startsWith('+') ? patient.phone : `+${patient.phone}`) : 'N/A'}
             </p>
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-1">
-              {patient.email}
+              {patient.email || 'N/A'}
             </p>
             {/* Last Visit */}
             <div className="flex items-center gap-4 md:gap-6 text-[10px] md:text-xs text-gray-500 dark:text-gray-400">

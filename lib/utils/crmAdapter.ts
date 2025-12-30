@@ -49,6 +49,27 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     }
   }
 
+  // Parse last_visit if available
+  let lastVisit: Date | undefined;
+  const lastVisitValue = customer.last_visit;
+  if (lastVisitValue && typeof lastVisitValue === 'string' && lastVisitValue.trim() !== '') {
+    try {
+      lastVisit = new Date(lastVisitValue);
+      // Check if date is valid
+      if (isNaN(lastVisit.getTime())) {
+        lastVisit = undefined;
+      }
+    } catch {
+      lastVisit = undefined;
+    }
+  } else if (lastVisitValue && typeof lastVisitValue === 'object' && 'getTime' in lastVisitValue && typeof (lastVisitValue as any).getTime === 'function') {
+    // If it's already a Date object (check by duck typing)
+    const dateValue = lastVisitValue as Date;
+    if (!isNaN(dateValue.getTime())) {
+      lastVisit = dateValue;
+    }
+  }
+
   // Convert gender from capitalized full words (Male, Female, Other) to lowercase full words (male, female, other)
   let gender: 'male' | 'female' | 'other' | '' = '';
   if (customer.gender) {
@@ -67,19 +88,24 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     }
   }
 
+  // Extract email - ensure it's a valid string, not empty or undefined
+  const email = customer.email && typeof customer.email === 'string' && customer.email.trim() !== ''
+    ? customer.email.trim()
+    : '';
+
   return {
     id: String(customerId), // Ensure id is a string
     name: `${customer.first_name} ${customer.last_name}`.trim(),
     age: customer.age || 0,
     gender: gender,
     phone: customer.phone || '',
-    email: customer.email,
-    address: customer.address,
+    email: email,
+    address: customer.address || '',
     assignedDoctor: customer.assigned_to,
     status: apiFormatToCustomerStatus(customer.status || 'active') as 'active' | 'booked' | 'follow-up' | 'inactive',
     medicalNotes: parseMedicalHistory(customer.medical_history || (customer as any).medical_history || null),
     dateOfBirth: dateOfBirth,
-    lastVisit: undefined, // Not available in CRM API
+    lastVisit: lastVisit,
     nextAppointment: undefined, // Not available in CRM API
     initials: `${customer.first_name?.[0] || ''}${customer.last_name?.[0] || ''}`.toUpperCase() || 'P',
     avatarColor: undefined, // Will be generated in UI
@@ -160,12 +186,17 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
     }
   }
 
-  // Include date_of_birth if available
-  const crmRequest: CrmCustomerRequest & { date_of_birth?: string } = {
+  // Extract and validate email - ensure it's a valid string
+  const email = patient.email && typeof patient.email === 'string' && patient.email.trim() !== ''
+    ? patient.email.trim()
+    : '';
+
+  // Include date_of_birth and last_visit if available
+  const crmRequest: CrmCustomerRequest = {
     first_name: firstName,
     last_name: lastName,
-    email: patient.email,
-    phone: patient.phone,
+    email: email,
+    phone: patient.phone || '',
     address: patient.address,
     age: patient.age || undefined,
     gender: gender,
@@ -181,6 +212,16 @@ export function patientToCrmCustomer(patient: Patient | CreatePatientRequest): C
       : new Date(patient.dateOfBirth);
     if (!isNaN(dob.getTime())) {
       crmRequest.date_of_birth = dob.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    }
+  }
+
+  // Add last_visit if available (format as ISO string)
+  if ('lastVisit' in patient && patient.lastVisit) {
+    const lastVisit = patient.lastVisit instanceof Date 
+      ? patient.lastVisit 
+      : new Date(patient.lastVisit);
+    if (!isNaN(lastVisit.getTime())) {
+      crmRequest.last_visit = lastVisit.toISOString().split('T')[0]; // Format as YYYY-MM-DD
     }
   }
 
