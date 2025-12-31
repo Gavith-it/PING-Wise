@@ -39,9 +39,9 @@ function TodayAppointmentsList({ appointments, loading, dataLoaded }: TodayAppoi
   }
 
   if (appointments.length > 0) {
-    // Show appointments if we have any
+    // Show appointments if we have any - with spacing between cards, no background container
     return (
-      <div className="divide-y divide-gray-100">
+      <div className="space-y-3">
         {appointmentCards}
       </div>
     );

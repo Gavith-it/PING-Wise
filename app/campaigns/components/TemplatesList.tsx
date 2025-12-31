@@ -21,13 +21,13 @@ function TemplatesList({ templates, selectedTemplate, onTemplateClick }: Templat
           {/* First 4 templates in centered 2x2 grid */}
           <div className="flex-shrink-0 snap-start w-full flex justify-center px-4">
             <div className="grid grid-cols-2 gap-4 w-full max-w-[600px]">
-              {templates.slice(0, 4).map((template) => (
+              {templates.slice(0, 4).map((template, index) => (
                 <TemplateCard
                   key={template.id}
                   icon={getTemplateIcon(template.name)}
                   title={template.name}
                   subtitle="Template"
-                  gradientClasses={getTemplateGradient(template.name)}
+                  gradientClasses={getTemplateGradient(index)}
                   isSelected={selectedTemplate === template.id}
                   onClick={() => onTemplateClick(template)}
                 />
@@ -42,7 +42,7 @@ function TemplatesList({ templates, selectedTemplate, onTemplateClick }: Templat
                   icon={getTemplateIcon(templates[4].name)}
                   title={templates[4].name}
                   subtitle="Template"
-                  gradientClasses={getTemplateGradient(templates[4].name)}
+                  gradientClasses={getTemplateGradient(4)}
                   isSelected={selectedTemplate === templates[4].id}
                   onClick={() => onTemplateClick(templates[4])}
                 />
@@ -54,13 +54,13 @@ function TemplatesList({ templates, selectedTemplate, onTemplateClick }: Templat
       </div>
       {/* Desktop: All cards in a single row */}
       <div className="hidden md:grid md:grid-cols-5 gap-4">
-        {templates.map((template) => (
+        {templates.map((template, index) => (
           <TemplateCard
             key={template.id}
             icon={getTemplateIcon(template.name)}
             title={template.name}
             subtitle="Template"
-            gradientClasses={getTemplateGradient(template.name)}
+            gradientClasses={getTemplateGradient(index)}
             isSelected={selectedTemplate === template.id}
             onClick={() => onTemplateClick(template)}
           />

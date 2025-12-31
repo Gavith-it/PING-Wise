@@ -196,7 +196,7 @@ export default function DashboardPage() {
                 View All
               </button>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden max-h-[400px] overflow-y-auto">
+            <div className="max-h-[400px] overflow-y-auto">
               <TodayAppointmentsList
                 appointments={todayAppointments}
                 loading={appointmentsLoading}

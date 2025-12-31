@@ -21,7 +21,7 @@ function TeamMemberCard({
   return (
     <div 
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-2.5 md:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer"
+      className="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl p-2 md:p-3 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer"
     >
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-2 md:space-x-3 flex-1 min-w-0">
@@ -39,7 +39,7 @@ function TeamMemberCard({
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
               {member.phone ? (member.phone.startsWith('+') ? member.phone : `+${member.phone}`) : 'N/A'}
             </p>
-            <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">
+            <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-1.5 md:mb-2">
               {member.email}
             </p>
           </div>
@@ -50,6 +50,19 @@ function TeamMemberCard({
             {member.status === 'active' ? 'Active' : member.status === 'OnLeave' ? 'On Leave' : 'Inactive'}
           </span>
         </div>
+      </div>
+      
+      {/* Divider line (inset like first image) */}
+      <div className="w-full border-t border-gray-200/60 dark:border-gray-600/40 my-2"></div>
+      
+      {/* Bottom row - Experience and Specialization */}
+      <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-500 dark:text-gray-400">
+        <span>
+          Experience: {member.experience || 'N/A'}
+        </span>
+        <span className="text-right">
+          Specialization: {member.specialization || 'N/A'}
+        </span>
       </div>
     </div>
   );

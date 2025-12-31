@@ -102,7 +102,7 @@ export default function TeamPage() {
                 value={teamMembers.filter(m => m.status === 'OnLeave').length}
                 label="On Leave"
                 active={false}
-                color="orange"
+                color="red"
               />
               <FilterCard
                 icon={Building}

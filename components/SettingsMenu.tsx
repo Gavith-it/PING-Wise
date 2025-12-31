@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, startTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Crown, Gift, Wallet, Sparkles } from 'lucide-react';
+import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Wallet, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
@@ -22,6 +22,8 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [shouldShow, setShouldShow] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   // Initialize from cache if available (from dashboard page)
@@ -105,6 +107,29 @@ export default function SettingsMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle menu mount/unmount for smooth transitions
+  useEffect(() => {
+    if (isOpen) {
+      // Mount first with closed state
+      setIsMounted(true);
+      setShouldShow(false);
+      // Then trigger open state on next frame to enable transition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setShouldShow(true);
+        });
+      });
+    } else {
+      // Start closing transition
+      setShouldShow(false);
+      // Wait for transition to complete before unmounting
+      const timer = setTimeout(() => {
+        setIsMounted(false);
+      }, 300); // Match transition duration
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   // Hide footer when menu is open
   useEffect(() => {
     setFooterVisible(!isOpen);
@@ -178,16 +203,26 @@ export default function SettingsMenu() {
         <Menu className="w-5 h-5 md:w-6 md:h-6" />
       </button>
 
-      {isOpen && (
+      {isMounted && (
         <>
           {/* Backdrop for both mobile and desktop */}
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-black z-40 transition-opacity duration-300 ease-in-out"
+            style={{
+              opacity: shouldShow ? 0.5 : 0,
+              pointerEvents: shouldShow ? 'auto' : 'none',
+            }}
             onClick={() => setIsOpen(false)}
           />
           
           {/* Menu Panel - Sidebar for both mobile and desktop */}
-          <div className="fixed left-0 top-0 h-full w-[280px] md:w-[320px] bg-white dark:bg-gray-900 shadow-2xl z-50">
+          <div 
+            className="fixed left-0 top-0 h-full w-[280px] md:w-[320px] bg-white dark:bg-gray-900 shadow-2xl z-50 transition-transform duration-300 ease-in-out"
+            style={{
+              transform: shouldShow ? 'translateX(0)' : 'translateX(-100%)',
+              pointerEvents: shouldShow ? 'auto' : 'none',
+            }}
+          >
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-4 md:p-5 border-b border-gray-200 dark:border-gray-700">
@@ -237,32 +272,6 @@ export default function SettingsMenu() {
                   <div className="flex items-center space-x-3">
                     <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
                     <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Settings</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </button>
-
-                <button
-                  onClick={handleComingSoon}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75 focus:outline-none"
-                  // Future: Uncomment when ready to enable
-                  // onClick={() => handleNavigation('/settings/premium')}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Crown className="w-5 h-5 text-yellow-500 dark:text-yellow-400 group-hover:text-yellow-600" />
-                    <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Get Premium</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </button>
-
-                <button
-                  onClick={handleComingSoon}
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group opacity-75 focus:outline-none"
-                  // Future: Uncomment when ready to enable
-                  // onClick={() => handleNavigation('/settings/refer-and-win')}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Gift className="w-5 h-5 text-purple-500 dark:text-purple-400 group-hover:text-purple-600" />
-                    <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Refer and Win</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>

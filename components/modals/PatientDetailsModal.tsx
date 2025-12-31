@@ -15,10 +15,8 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this patient?')) {
-      return;
-    }
-
+    // No confirmation here - let the parent handleDelete show the confirmation
+    // This prevents duplicate confirmations
     try {
       setLoading(true);
       onDelete(patient.id);
@@ -43,16 +41,24 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-700';
-      case 'booked':
-        return 'bg-blue-100 text-blue-700';
-      case 'follow-up':
-        return 'bg-yellow-100 text-yellow-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
+    // Normalize status to lowercase for comparison
+    const normalized = status.toLowerCase();
+    
+    // Check inactive FIRST (before active) because "inactive" contains "active" as substring
+    if (normalized === 'inactive') {
+      return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
     }
+    if (normalized === 'active') {
+      return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
+    }
+    if (normalized === 'booked') {
+      return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
+    }
+    if (normalized === 'follow-up' || normalized === 'followup') {
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
+    }
+    // Fallback
+    return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
   };
 
   return (
@@ -129,23 +135,13 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg md:rounded-xl p-3 md:p-4 mb-3 md:mb-6">
             <h5 className="font-semibold text-sm md:text-base text-gray-900 dark:text-white mb-2 md:mb-3">Medical Information</h5>
             <div className="space-y-2 md:space-y-3">
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
-                <div>
-                  <label className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Last Visit</label>
-                  <p className="text-xs md:text-sm text-gray-900 dark:text-white">
-                    {patient.lastVisit 
-                      ? new Date(patient.lastVisit).toLocaleDateString() 
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Next Appointment</label>
-                  <p className="text-xs md:text-sm text-gray-900 dark:text-white">
-                    {patient.nextAppointment 
-                      ? new Date(patient.nextAppointment).toLocaleDateString() 
-                      : 'N/A'}
-                  </p>
-                </div>
+              <div>
+                <label className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Last Visit</label>
+                <p className="text-xs md:text-sm text-gray-900 dark:text-white">
+                  {patient.lastVisit 
+                    ? new Date(patient.lastVisit).toLocaleDateString() 
+                    : 'N/A'}
+                </p>
               </div>
               {patient.medicalNotes && (
                 <div>

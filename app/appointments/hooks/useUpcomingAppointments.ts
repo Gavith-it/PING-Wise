@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { Appointment } from '@/types';
+import { isSameDay } from 'date-fns';
 
 // Calculates appointments for pending section
-// Currently, all appointments are created from the application, so pending should be empty
-// Later, this will filter for external/client-created appointments only
+// Shows appointments with status "pending" (typically created externally via Postman, DB, etc.)
+// Appointments created from the application are always "confirmed", so they won't appear here
 export function useUpcomingAppointments(
   allMonthAppointments: Appointment[],
   appointments: Appointment[],
@@ -11,15 +12,41 @@ export function useUpcomingAppointments(
   today: Date
 ): Appointment[] {
   return useMemo(() => {
-    // For now, return empty array since all appointments are created from the application
-    // Appointments created from the application should only appear in the main "Appointments for [date]" list
-    // Later, we'll filter for external bookings here (e.g., by checking source field or status)
+    // Filter for appointments with status "pending"
+    // These are typically external appointments (created via Postman, DB, etc.)
+    // Appointments created from the application are always "confirmed", so they won't be included
+    const pendingAppointments = allMonthAppointments.filter(apt => {
+      // Only include appointments with "pending" status
+      if (apt.status !== 'pending') {
+        return false;
+      }
+      
+      // Exclude appointments for the selected date (they appear in the main list)
+      const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
+      if (isSameDay(aptDate, selectedDate)) {
+        return false;
+      }
+      
+      return true;
+    });
     
-    // TODO: When external booking is implemented, filter appointments here:
-    // - Check if appointment has source === 'external' or similar field
-    // - Or check if status indicates external booking
-    // - Return only external/client-created appointments
+    // Sort by date (earliest first), then by time
+    pendingAppointments.sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+      
+      // First sort by date
+      const dateDiff = dateA.getTime() - dateB.getTime();
+      if (dateDiff !== 0) {
+        return dateDiff;
+      }
+      
+      // If same date, sort by time
+      const timeA = a.time || '';
+      const timeB = b.time || '';
+      return timeA.localeCompare(timeB);
+    });
     
-    return [];
-  }, [allMonthAppointments, appointments, selectedDate, today]);
+    return pendingAppointments;
+  }, [allMonthAppointments, selectedDate]);
 }

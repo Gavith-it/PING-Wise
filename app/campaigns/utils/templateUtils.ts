@@ -15,16 +15,12 @@ export function getTemplateIcon(templateName: string) {
 }
 
 /**
- * Get template gradient classes based on template name
+ * Get template gradient classes based on template index (fixed colors)
+ * All templates use the same primary blue gradient (PingWise brand color)
  */
-export function getTemplateGradient(templateName: string): string {
-  const lowerName = templateName.toLowerCase();
-  if (lowerName.includes('festival') || lowerName.includes('promotion')) return 'from-purple-500 to-blue-500';
-  if (lowerName.includes('pre-surgery')) return 'from-pink-500 to-orange-500';
-  if (lowerName.includes('post-surgery') || lowerName.includes('care')) return 'from-blue-500 to-cyan-500';
-  if (lowerName.includes('offer')) return 'from-green-500 to-teal-500';
-  if (lowerName.includes('seasonal')) return 'from-cyan-500 to-blue-500';
-  return 'from-purple-500 to-blue-500';
+export function getTemplateGradient(index: number): string {
+  // All templates use the same primary blue gradient
+  return 'from-[#1A3E9E] to-[#2E5BC7]';
 }
 
 /**

@@ -95,13 +95,25 @@ export default function TagSelectorModal({ onClose, onApply, selectedTags }: Tag
             <div className="grid grid-cols-2 gap-2">
               {availableTags.map((tag) => {
                 const isSelected = tags.includes(tag.id);
+                // Map color classes to border and text colors
+                const getColorClasses = (colorClass: string) => {
+                  if (colorClass === 'bg-green-500') return { border: 'border-green-500', bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400' };
+                  if (colorClass === 'bg-gray-400') return { border: 'border-gray-400', bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300' };
+                  if (colorClass === 'bg-blue-500') return { border: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400' };
+                  if (colorClass === 'bg-yellow-500') return { border: 'border-yellow-500', bg: 'bg-yellow-50 dark:bg-yellow-900/20', text: 'text-yellow-700 dark:text-yellow-400' };
+                  if (colorClass === 'bg-purple-500') return { border: 'border-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400' };
+                  if (colorClass === 'bg-pink-500') return { border: 'border-pink-500', bg: 'bg-pink-50 dark:bg-pink-900/20', text: 'text-pink-700 dark:text-pink-400' };
+                  if (colorClass === 'bg-gray-500') return { border: 'border-gray-500', bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300' };
+                  return { border: 'border-gray-500', bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300' };
+                };
+                const colorClasses = getColorClasses(tag.color);
                 return (
                   <button
                     key={tag.id}
                     onClick={() => toggleTag(tag.id)}
                     className={`p-3 rounded-xl border-2 transition-all text-left ${
                       isSelected
-                        ? 'border-primary bg-primary/10 dark:bg-primary/20'
+                        ? `${colorClasses.border} ${colorClasses.bg}`
                         : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700'
                     }`}
                   >
@@ -109,13 +121,13 @@ export default function TagSelectorModal({ onClose, onApply, selectedTags }: Tag
                       <div className="flex items-center space-x-2">
                         <div className={`w-3 h-3 rounded-full ${tag.color}`}></div>
                         <span className={`font-medium text-sm ${
-                          isSelected ? 'text-primary' : 'text-gray-700 dark:text-gray-300'
+                          isSelected ? colorClasses.text : 'text-gray-700 dark:text-gray-300'
                         }`}>
                           {tag.label}
                         </span>
                       </div>
                       {isSelected && (
-                        <Check className="w-4 h-4 text-primary" />
+                        <Check className={`w-4 h-4 ${colorClasses.text}`} />
                       )}
                     </div>
                   </button>
@@ -131,10 +143,22 @@ export default function TagSelectorModal({ onClose, onApply, selectedTags }: Tag
                 {tags.map((tagId) => {
                   const tag = availableTags.find(t => t.id === tagId);
                   if (!tag) return null;
+                  // Map color classes to background and text colors for selected tags
+                  const getTagColorClasses = (colorClass: string) => {
+                    if (colorClass === 'bg-green-500') return { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400' };
+                    if (colorClass === 'bg-gray-400') return { bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300' };
+                    if (colorClass === 'bg-blue-500') return { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400' };
+                    if (colorClass === 'bg-yellow-500') return { bg: 'bg-yellow-50 dark:bg-yellow-900/20', text: 'text-yellow-700 dark:text-yellow-400' };
+                    if (colorClass === 'bg-purple-500') return { bg: 'bg-purple-50 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400' };
+                    if (colorClass === 'bg-pink-500') return { bg: 'bg-pink-50 dark:bg-pink-900/20', text: 'text-pink-700 dark:text-pink-400' };
+                    if (colorClass === 'bg-gray-500') return { bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300' };
+                    return { bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300' };
+                  };
+                  const tagColorClasses = getTagColorClasses(tag.color);
                   return (
                     <span
                       key={tagId}
-                      className="inline-flex items-center space-x-1 px-2 py-1 bg-primary/10 text-primary rounded-lg text-xs"
+                      className={`inline-flex items-center space-x-1 px-2 py-1 ${tagColorClasses.bg} ${tagColorClasses.text} rounded-lg text-xs`}
                     >
                       <div className={`w-2 h-2 rounded-full ${tag.color}`}></div>
                       <span>{tag.label}</span>

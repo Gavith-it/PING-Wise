@@ -25,23 +25,23 @@ export default function AppointmentSearchBar({
 }: AppointmentSearchBarProps) {
   return (
     <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-6">
-      <div className="flex-1 md:flex-none md:flex-1 relative">
+      <div className="flex-1 relative">
         <Search className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-gray-400" />
         <input
           type="text"
           placeholder="Search appointments..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-7 md:pl-10 pr-2 md:pr-4 py-1.5 md:py-2.5 bg-white dark:bg-gray-700 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xs md:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+          className="w-full h-[36px] md:h-[44px] pl-7 md:pl-10 pr-2 md:pr-4 bg-white dark:bg-gray-700 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xs md:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
         />
       </div>
       <div className="relative flex-shrink-0" ref={filterMenuRef}>
         <button
           onClick={onFilterMenuToggle}
-          className="p-2 md:p-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg md:rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors h-[36px] md:h-auto"
+          className="w-[36px] h-[36px] md:w-[44px] md:h-[44px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg md:rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
           title="Filter"
         >
-          <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-600" />
+          <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-600 dark:text-gray-400" />
         </button>
         {showFilterMenu && (
           <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">

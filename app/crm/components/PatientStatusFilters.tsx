@@ -1,17 +1,16 @@
 'use client';
 
-import { Filter } from 'lucide-react';
 import { CustomerStatus, normalizeCustomerStatus, customerStatusToApiFormat } from '@/lib/constants/status';
 
 interface PatientStatusFiltersProps {
   statusFilter: string;
   onStatusChange: (status: string) => void;
-  onFilterClick: () => void;
+  onFilterClick?: () => void;
 }
 
 export default function PatientStatusFilters({ statusFilter, onStatusChange, onFilterClick }: PatientStatusFiltersProps) {
-  // Standardized status list with 'all' option
-  const statusOptions = ['all', ...Object.values(CustomerStatus)];
+  // Standardized status list with 'all' option - reordered: All, Active, Inactive, Booked, FollowUp
+  const statusOptions = ['all', CustomerStatus.Active, CustomerStatus.Inactive, CustomerStatus.Booked, CustomerStatus.FollowUp];
   
   // Normalize the current filter to compare properly
   const normalizedFilter = statusFilter === 'all' ? 'all' : normalizeCustomerStatus(statusFilter);
@@ -60,13 +59,6 @@ export default function PatientStatusFilters({ statusFilter, onStatusChange, onF
           <span>{getStatusDisplayName(status)}</span>
         </button>
       ))}
-      {/* Filter Button - Icon Only - Moved to Last */}
-      <button
-        onClick={onFilterClick}
-        className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md"
-      >
-        <Filter className="w-4 h-4 md:w-5 md:h-5" />
-      </button>
     </div>
   );
 }

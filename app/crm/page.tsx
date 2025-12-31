@@ -78,19 +78,33 @@ export default function CRMPage() {
     // Normalize status to standardized format for comparison
     const normalized = status.toLowerCase();
     
-    if (normalized === 'active' || normalized.includes('active')) {
-      return 'bg-green-100 text-green-700 border-green-200';
+    // Check inactive FIRST (before active) because "inactive" contains "active" as substring
+    if (normalized === 'inactive') {
+      return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
     }
-    if (normalized === 'booked' || normalized.includes('booked')) {
-      return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (normalized === 'active') {
+      return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
     }
-    if (normalized === 'follow-up' || normalized === 'followup' || normalized.includes('follow')) {
-      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    if (normalized === 'booked') {
+      return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
     }
-    if (normalized === 'inactive' || normalized.includes('inactive')) {
-      return 'bg-gray-100 text-gray-700 border-gray-200';
+    if (normalized === 'follow-up' || normalized === 'followup') {
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
     }
-    return 'bg-gray-100 text-gray-700 border-gray-200';
+    // Fallback for includes checks (only if exact match didn't work)
+    if (normalized.includes('inactive')) {
+      return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
+    }
+    if (normalized.includes('active')) {
+      return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
+    }
+    if (normalized.includes('booked')) {
+      return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
+    }
+    if (normalized.includes('follow')) {
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
+    }
+    return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
   };
 
   const handleClearFilters = () => {
@@ -171,15 +185,15 @@ export default function CRMPage() {
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onAddClick={handleAddPatient}
+                onFilterClick={() => setShowFilterModal(true)}
               />
             </div>
 
-            {/* Status Filter Pills with Filter Button */}
+            {/* Status Filter Pills */}
             <div>
               <PatientStatusFilters
                 statusFilter={statusFilter}
                 onStatusChange={setStatusFilter}
-                onFilterClick={() => setShowFilterModal(true)}
               />
             </div>
           </div>

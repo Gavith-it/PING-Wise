@@ -308,7 +308,46 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this patient?')) {
+    // Find the patient to check their status
+    const patient = allPatients.find(p => p.id === id);
+    
+    // Check if patient has appointments based on status
+    // "booked" and "followup"/"follow-up" statuses indicate the patient has appointments scheduled
+    // "active" and "inactive" statuses indicate no appointments
+    let hasAppointments = false;
+    
+    if (patient) {
+      const status = (patient.status || '').toLowerCase();
+      // Normalize status variations
+      const normalizedStatus = status === 'follow-up' || status === 'followup' ? 'followup' : status;
+      
+      // Statuses that indicate appointments: "booked", "followup"
+      hasAppointments = normalizedStatus === 'booked' || normalizedStatus === 'followup';
+      
+      console.log('[Delete Patient] Status check:', {
+        patientId: id,
+        patientName: patient.name,
+        status: patient.status,
+        normalizedStatus,
+        hasAppointments
+      });
+    } else {
+      console.warn('[Delete Patient] Patient not found in list, assuming no appointments');
+      hasAppointments = false;
+    }
+
+    // Show appropriate confirmation message based on patient status
+    // Only show appointment warning if patient status indicates appointments
+    const confirmationMessage = hasAppointments
+      ? 'This patient has appointments scheduled. Are you sure you want to delete? The appointments will show as "Unknown" patient.'
+      : 'Are you sure you want to delete this patient?';
+
+    console.log('[Delete Patient] Showing confirmation:', {
+      hasAppointments,
+      message: confirmationMessage
+    });
+
+    if (!window.confirm(confirmationMessage)) {
       return;
     }
 
@@ -321,6 +360,7 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
       console.log('[Delete Patient] ============================================');
       console.log('[Delete Patient] STARTING DELETE OPERATION');
       console.log('[Delete Patient] Patient ID:', id);
+      console.log('[Delete Patient] Has Appointments:', hasAppointments);
       console.log('[Delete Patient] ============================================');
       
       // IMPORTANT: Call API FIRST and WAIT for response before updating UI

@@ -11,11 +11,11 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#10b981',
-          light: '#34d399',
-          dark: '#059669',
-          lighter: '#d1fae5',
-          darker: '#047857'
+          DEFAULT: '#1A3E9E',
+          light: '#2E5BC7',
+          dark: '#0F2A7A',
+          lighter: '#E6EDFF',
+          darker: '#0A1F5C'
         },
         medical: {
           green: '#10b981',

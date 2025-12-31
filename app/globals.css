@@ -86,7 +86,7 @@ html {
 
 /* Focus styles for accessibility */
 *:focus {
-  outline: 2px solid #10b981;
+  outline: 2px solid #1A3E9E;
   outline-offset: 2px;
 }
 
@@ -94,7 +94,7 @@ button:focus,
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid #10b981;
+  outline: 2px solid #1A3E9E;
   outline-offset: 2px;
 }
 
@@ -140,11 +140,11 @@ textarea:focus {
 
 /* Gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: linear-gradient(135deg, #1A3E9E 0%, #2E5BC7 100%);
 }
 
 .gradient-success {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: linear-gradient(135deg, #1A3E9E 0%, #2E5BC7 100%);
 }
 
 .gradient-warning {
@@ -157,11 +157,11 @@ textarea:focus {
 
 /* Medical theme colors */
 .medical-green {
-  background-color: #10b981;
+  background-color: #1A3E9E;
 }
 
 .medical-green-light {
-  background-color: #d1fae5;
+  background-color: #E6EDFF;
 }
 
 /* Mobile-first responsive improvements */

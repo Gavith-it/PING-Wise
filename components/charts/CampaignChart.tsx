@@ -18,7 +18,7 @@ const allCampaignData: CampaignData = {
   dates: ['2024-01-15', '2024-02-20', '2024-03-10', '2024-04-05'],
 };
 
-const colors = ['#6366F1', '#F59E0B', '#10B981']; // Opens (blue), Clicks (yellow), Conversions (green)
+const colors = ['#6366F1', '#F59E0B', '#1A3E9E']; // Opens (blue), Clicks (yellow), Conversions (blue)
 
 interface TooltipPosition {
   x: number;
@@ -352,7 +352,7 @@ export default function CampaignChart() {
           <span>Clicks</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#10B981]" />
+          <div className="w-4 h-4 rounded bg-[#1A3E9E]" />
           <span>Conversions</span>
         </div>
       </div>

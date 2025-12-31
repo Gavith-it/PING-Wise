@@ -91,6 +91,9 @@ export function useDashboardStats(): UseDashboardStatsReturn {
       const bookedCustomers = report?.bookedCustomers || report?.booked_customers || 0;
       const followupCustomers = report?.followupCustomers || report?.followup_customers || 0;
       
+      // Calculate inactive customers: total - active - booked - followup
+      const inactiveCustomers = Math.max(0, totalCustomers - activeCustomers - bookedCustomers - followupCustomers);
+      
       const newActivity = {
         total: totalCustomers,
         active: {
@@ -101,9 +104,9 @@ export function useDashboardStats(): UseDashboardStatsReturn {
           count: bookedCustomers,
           percentage: totalCustomers > 0 ? Math.round((bookedCustomers / totalCustomers) * 100) : 0
         },
-        followUp: {
-          count: followupCustomers,
-          percentage: totalCustomers > 0 ? Math.round((followupCustomers / totalCustomers) * 100) : 0
+        inactive: {
+          count: inactiveCustomers,
+          percentage: totalCustomers > 0 ? Math.round((inactiveCustomers / totalCustomers) * 100) : 0
         }
       };
       
@@ -153,6 +156,9 @@ export function useDashboardStats(): UseDashboardStatsReturn {
       const bookedCustomers = cachedReport?.bookedCustomers || cachedReport?.booked_customers || 0;
       const followupCustomers = cachedReport?.followupCustomers || cachedReport?.followup_customers || 0;
       
+      // Calculate inactive customers: total - active - booked - followup
+      const inactiveCustomers = Math.max(0, totalCustomers - activeCustomers - bookedCustomers - followupCustomers);
+      
       const cachedActivity = {
         total: totalCustomers,
         active: {
@@ -163,9 +169,9 @@ export function useDashboardStats(): UseDashboardStatsReturn {
           count: bookedCustomers,
           percentage: totalCustomers > 0 ? Math.round((bookedCustomers / totalCustomers) * 100) : 0
         },
-        followUp: {
-          count: followupCustomers,
-          percentage: totalCustomers > 0 ? Math.round((followupCustomers / totalCustomers) * 100) : 0
+        inactive: {
+          count: inactiveCustomers,
+          percentage: totalCustomers > 0 ? Math.round((inactiveCustomers / totalCustomers) * 100) : 0
         }
       };
       

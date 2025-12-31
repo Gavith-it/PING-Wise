@@ -83,11 +83,19 @@ export const normalizeCustomerStatus = (status: string | undefined | null): Cust
   // Map from lowercase/legacy format to standardized format
   const lowerStatus = normalized.toLowerCase();
   
-  if (lowerStatus === 'active' || lowerStatus.includes('active')) {
+  // Check inactive FIRST (before active) because "inactive" contains "active" as substring
+  // Use exact match first, then includes as fallback
+  if (lowerStatus === 'inactive') {
+    return CustomerStatus.Inactive;
+  }
+  if (lowerStatus === 'active') {
     return CustomerStatus.Active;
   }
-  if (lowerStatus === 'inactive' || lowerStatus.includes('inactive')) {
+  if (lowerStatus.includes('inactive')) {
     return CustomerStatus.Inactive;
+  }
+  if (lowerStatus.includes('active')) {
+    return CustomerStatus.Active;
   }
   if (lowerStatus === 'booked' || lowerStatus.includes('booked')) {
     return CustomerStatus.Booked;

@@ -1,6 +1,7 @@
 'use client';
 
 import { Send, Clock, Tag, Image as ImageIcon, X } from 'lucide-react';
+import { CampaignTag, normalizeCampaignTag } from '@/lib/constants/status';
 
 interface CampaignFormProps {
   campaignTitle: string;
@@ -56,6 +57,23 @@ export default function CampaignForm({
     'follow-up': 'FollowUp',
     'new': 'New',
     'birthday': 'Birthday',
+  };
+
+  // Tag color mapping
+  const getTagColor = (tagId: string) => {
+    const normalized = normalizeCampaignTag(tagId);
+    if (!normalized) {
+      // Fallback for unknown tags
+      return { bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300', dot: 'bg-gray-500' };
+    }
+    if (normalized === CampaignTag.AllTag) return { bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300', dot: 'bg-gray-500' };
+    if (normalized === CampaignTag.Active) return { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400', dot: 'bg-green-500' };
+    if (normalized === CampaignTag.Inactive) return { bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300', dot: 'bg-gray-400' };
+    if (normalized === CampaignTag.Booked) return { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500' };
+    if (normalized === CampaignTag.FollowUp) return { bg: 'bg-yellow-50 dark:bg-yellow-900/20', text: 'text-yellow-700 dark:text-yellow-400', dot: 'bg-yellow-500' };
+    if (normalized === CampaignTag.NewTag) return { bg: 'bg-purple-50 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400', dot: 'bg-purple-500' };
+    if (normalized === CampaignTag.BirthdayTag) return { bg: 'bg-pink-50 dark:bg-pink-900/20', text: 'text-pink-700 dark:text-pink-400', dot: 'bg-pink-500' };
+    return { bg: 'bg-gray-50 dark:bg-gray-700/50', text: 'text-gray-700 dark:text-gray-300', dot: 'bg-gray-500' };
   };
 
   return (
@@ -162,14 +180,18 @@ export default function CampaignForm({
           <>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Selected tags:</p>
             <div className="flex flex-wrap gap-2">
-              {selectedTags.map((tagId) => (
-                <span
-                  key={tagId}
-                  className="inline-flex items-center space-x-1 px-2 py-1 bg-primary/10 text-primary rounded-lg text-xs"
-                >
-                  <span>{tagLabels[tagId] || tagId}</span>
-                </span>
-              ))}
+              {selectedTags.map((tagId) => {
+                const tagColor = getTagColor(tagId);
+                return (
+                  <span
+                    key={tagId}
+                    className={`inline-flex items-center space-x-1 px-2 py-1 ${tagColor.bg} ${tagColor.text} rounded-lg text-xs`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${tagColor.dot}`}></div>
+                    <span>{tagLabels[tagId.toLowerCase()] || tagId}</span>
+                  </span>
+                );
+              })}
             </div>
           </>
         ) : (

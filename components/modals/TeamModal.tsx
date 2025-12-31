@@ -23,10 +23,27 @@ interface TeamModalProps {
 }
 
 export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalProps) {
+  // Helper function to split name into first and last name
+  const splitName = (fullName: string) => {
+    if (!fullName) return { firstName: '', lastName: '' };
+    const names = fullName.trim().split(' ');
+    if (names.length === 1) {
+      return { firstName: names[0], lastName: '' };
+    }
+    return {
+      firstName: names[0],
+      lastName: names.slice(1).join(' ')
+    };
+  };
+
+  const initialName = teamMember?.name ? splitName(teamMember.name) : { firstName: '', lastName: '' };
+
   const [formData, setFormData] = useState({
-    name: teamMember?.name || '',
+    firstName: initialName.firstName,
+    lastName: initialName.lastName,
     email: teamMember?.email || '',
     role: (teamMember?.role || 'staff') as 'admin' | 'doctor' | 'staff',
+    department: teamMember?.department || '',
     specialization: teamMember?.specialization || '',
     phone: teamMember?.phone || '',
     experience: teamMember?.experience || '',
@@ -43,10 +60,13 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     
     if (teamMember) {
       // Edit mode - populate with existing data
+      const nameParts = splitName(teamMember.name || '');
       setFormData({
-        name: teamMember.name || '',
+        firstName: nameParts.firstName,
+        lastName: nameParts.lastName,
         email: teamMember.email || '',
         role: teamMember.role || 'staff',
+        department: teamMember.department || '',
         specialization: teamMember.specialization || '',
         phone: formatPhoneForDisplay(teamMember.phone || ''),
         experience: teamMember.experience || '',
@@ -55,9 +75,11 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     } else {
       // Add mode - reset form to defaults
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         role: 'staff',
+        department: '',
         specialization: '',
         phone: '',
         experience: '',
@@ -72,7 +94,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
       let value = e.target.value;
       
       // Apply input filtering based on field type
-      if (field === 'name') {
+      if (field === 'firstName' || field === 'lastName') {
         value = handleNameInput(value); // Remove numbers from name
       } else if (field === 'phone') {
         value = handlePhoneInput(value); // Only digits, max 10
@@ -82,7 +104,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
       
       // Validate field in real-time and set error
       let fieldError = '';
-      if (field === 'name') {
+      if (field === 'firstName' || field === 'lastName') {
         const validation = validateName(value);
         if (!validation.isValid) {
           fieldError = validation.error;
@@ -122,9 +144,22 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     // Validate form before submission
     const newErrors: Record<string, string> = {};
     
-    const nameValidation = validateName(formData.name);
-    if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.error;
+    const firstNameValidation = validateName(formData.firstName);
+    if (!firstNameValidation.isValid) {
+      newErrors.firstName = firstNameValidation.error;
+    }
+    
+    if (!formData.firstName || formData.firstName.trim() === '') {
+      newErrors.firstName = 'First name is required';
+    }
+    
+    const lastNameValidation = validateName(formData.lastName);
+    if (!lastNameValidation.isValid) {
+      newErrors.lastName = lastNameValidation.error;
+    }
+    
+    if (!formData.lastName || formData.lastName.trim() === '') {
+      newErrors.lastName = 'Last name is required';
     }
     
     const emailValidation = validateEmail(formData.email);
@@ -140,6 +175,11 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
       if (!phoneValidation.isValid) {
         newErrors.phone = phoneValidation.error;
       }
+    }
+    
+    // Department is now mandatory
+    if (!formData.department || formData.department.trim() === '') {
+      newErrors.department = 'Department is required';
     }
     
     // Specialization is now mandatory
@@ -163,10 +203,14 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     setLoading(true);
 
     try {
+      // Combine firstName and lastName into full name
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      
       const crmTeamRequest = userToCrmTeam({
-        name: formData.name,
+        name: fullName,
         email: formData.email,
         role: formData.role,
+        department: formData.department,
         specialization: formData.specialization,
         phone: formatPhoneForApi(formData.phone),
         experience: formData.experience,
@@ -193,14 +237,14 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
             // Fallback: create user object from form data
             createdOrUpdatedMember = {
               id: teamMember.id,
-              name: formData.name,
+              name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
               email: formData.email,
               role: formData.role,
+              department: formData.department,
               specialization: formData.specialization,
               phone: formData.phone,
               experience: formData.experience,
-                status: formData.status,
-              department: teamMember.department || '',
+              status: formData.status,
             } as User;
           }
         }
@@ -222,14 +266,14 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
             if ('id' in response) {
               createdOrUpdatedMember = {
                 id: String(response.id),
-                name: formData.name,
+                name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
                 email: formData.email,
                 role: formData.role,
+                department: formData.department,
                 specialization: formData.specialization,
                 phone: formData.phone,
                 experience: formData.experience,
                 status: formData.status,
-                department: '',
               } as User;
             }
           }
@@ -270,33 +314,65 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Full Name *
+                First Name *
               </label>
               <div className="relative">
                 <input
                   type="text"
                   required
-                  value={formData.name}
-                  onChange={handleFieldChange('name')}
+                  value={formData.firstName}
+                  onChange={handleFieldChange('firstName')}
                   className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
-                    errors.name ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                    errors.firstName ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
-                  placeholder="Enter full name (letters only)"
-                  title={errors.name || 'Name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
+                  placeholder="Enter first name (letters only)"
+                  title={errors.firstName || 'First name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
                 />
-                {errors.name && (
+                {errors.firstName && (
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
                     <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
                       <span className="text-white text-xs font-bold">!</span>
                     </div>
                     <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                      {errors.name}
+                      {errors.firstName}
                     </div>
                   </div>
                 )}
               </div>
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+              {errors.firstName && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.firstName}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Last Name *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={formData.lastName}
+                  onChange={handleFieldChange('lastName')}
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                    errors.lastName ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Enter last name (letters only)"
+                  title={errors.lastName || 'Last name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
+                />
+                {errors.lastName && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {errors.lastName}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {errors.lastName && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.lastName}</p>
               )}
             </div>
 
@@ -346,6 +422,25 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 <option value="doctor">Doctor</option>
                 <option value="admin">Admin</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Department *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.department}
+                onChange={handleFieldChange('department')}
+                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                  errors.department ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
+                placeholder="e.g., Cardiology"
+              />
+              {errors.department && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.department}</p>
+              )}
             </div>
 
             <div>
@@ -432,16 +527,16 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-xl text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
+                className="flex-1 bg-primary text-white py-2 px-3 rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 shadow-md hover:shadow-lg"
               >
-                {loading ? 'Saving...' : teamMember ? 'Update Team Member' : 'Add Team Member'}
+                {loading ? 'Saving...' : teamMember ? 'Update' : 'Add'}
               </button>
             </div>
           </form>

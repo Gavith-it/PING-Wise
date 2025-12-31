@@ -123,9 +123,9 @@ export default function EngagementChart() {
       drawLineWithArea(svg, data.visits, maxValue, xStep, padding, chartWidth, chartHeight, '#6366F1', 'visits', animate);
     }, animate ? 100 : 0);
 
-    // Interactions (green) - with delay for staggered animation
+    // Interactions (blue) - with delay for staggered animation
     setTimeout(() => {
-      drawLineWithArea(svg, data.interactions, maxValue, xStep, padding, chartWidth, chartHeight, '#10B981', 'interactions', animate);
+      drawLineWithArea(svg, data.interactions, maxValue, xStep, padding, chartWidth, chartHeight, '#1A3E9E', 'interactions', animate);
     }, animate ? 300 : 0);
 
   };
@@ -383,7 +383,7 @@ export default function EngagementChart() {
           <span>Visits</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#10B981]" />
+          <div className="w-4 h-4 rounded bg-[#1A3E9E]" />
           <span>Interactions</span>
         </div>
       </div>

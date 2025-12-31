@@ -7,7 +7,7 @@ interface FilterCardProps {
   value: number;
   label: string;
   active: boolean;
-  color?: 'blue' | 'green' | 'orange';
+  color?: 'blue' | 'green' | 'orange' | 'red';
 }
 
 function FilterCard({ icon: Icon, value, label, active, color = 'blue' }: FilterCardProps) {
@@ -15,18 +15,21 @@ function FilterCard({ icon: Icon, value, label, active, color = 'blue' }: Filter
     blue: 'border-primary',
     green: 'border-green-500',
     orange: 'border-orange-500',
+    red: 'border-red-500',
   };
   
   const textColorClasses = {
     blue: 'text-primary',
     green: 'text-green-600',
     orange: 'text-orange-600',
+    red: 'text-red-600',
   };
   
   const iconBgClasses = {
     blue: 'bg-primary/10',
     green: 'bg-green-100',
     orange: 'bg-orange-100',
+    red: 'bg-red-100',
   };
   
   return (

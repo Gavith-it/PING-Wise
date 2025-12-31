@@ -19,7 +19,7 @@ function CampaignsList({ campaigns }: CampaignsListProps) {
   }
 
   return (
-    <div className="space-y-2 md:space-y-3 max-h-96 overflow-y-auto pr-2">
+    <div className="space-y-1.5 md:space-y-2 max-h-96 overflow-y-auto pr-2">
       {campaigns.map((campaign) => (
         <CampaignCard
           key={campaign.id}

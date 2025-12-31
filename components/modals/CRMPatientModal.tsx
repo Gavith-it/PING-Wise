@@ -93,6 +93,11 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
         medicalNotes = parseMedicalHistory((patient as any).medical_history);
       }
       
+      // Convert patient status to API format (lowercase) to match dropdown option values
+      const patientStatus = patient.status || 'active';
+      const normalizedStatus = normalizeCustomerStatus(patientStatus);
+      const apiFormatStatus = customerStatusToApiFormat(normalizedStatus);
+      
       setFormData({
         name: patient.name || '',
         age: patient.age?.toString() || '',
@@ -102,7 +107,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
         email: patient.email || '',
         address: patient.address || '',
         assignedDoctor: typeof patient.assignedDoctor === 'string' ? patient.assignedDoctor : '',
-        status: patient.status || 'active',
+        status: apiFormatStatus,
         medicalNotes: medicalNotes,
       });
     } else {
