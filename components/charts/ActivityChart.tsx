@@ -48,7 +48,7 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
       name: 'Booked',
       value: data.booked?.count || 0,
       percentage: data.booked?.percentage || 0,
-      color: '#7B6CF6', // Soft Purple for Booked
+      color: '#F97316', // Orange for Booked
     },
   ], [data]);
 

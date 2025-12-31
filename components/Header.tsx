@@ -134,7 +134,7 @@ export default function Header() {
                   markAllAsRead();
                 }
               }}
-              className="relative p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300"
+              className="relative w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300 active:shadow-none"
             >
               <Bell className="w-4 h-4 md:w-5 md:h-5" />
               {mounted && unreadCount > 0 && (
@@ -147,7 +147,7 @@ export default function Header() {
 
           <button
             onClick={() => router.push(`/guide?page=${pathname}`)}
-            className="p-1.5 md:p-2 text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300"
+            className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300 active:shadow-none"
             title="Help & User Guide"
           >
             <HelpCircle className="w-4 h-4 md:w-5 md:h-5" />
@@ -156,7 +156,9 @@ export default function Header() {
       </div>
 
       {showNotifications && (
-        <div className="absolute top-full right-2 md:right-4 mt-2 w-[calc(100vw-1rem)] md:w-80 max-w-sm bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-lg z-50 max-h-[70vh] md:max-h-96 overflow-hidden flex flex-col">
+        <div 
+          className="absolute top-full right-2 md:right-4 mt-2 w-[calc(100vw-1rem)] md:w-80 max-w-sm bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl shadow-sm z-50 max-h-[70vh] md:max-h-96 overflow-hidden flex flex-col notification-dropdown"
+        >
           <div className="p-3 md:p-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between">
               <h3 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">Notifications</h3>
@@ -240,6 +242,22 @@ export default function Header() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .notification-dropdown {
+          animation: slideDown 0.15s ease-out;
+        }
+      `}</style>
     </header>
   );
 }
