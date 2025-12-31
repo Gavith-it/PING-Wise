@@ -157,7 +157,7 @@ export default function LoginPage() {
                     onChange={(e) => setUserName(e.target.value)}
                     required
                     autoComplete="username"
-                    className="input-field w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0 text-sm font-medium shadow-sm transition-all duration-400"
+                    className="input-field w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm transition-all duration-400"
                     style={{
                       '--tw-ring-color': '#1A3E9E'
                     } as React.CSSProperties}
