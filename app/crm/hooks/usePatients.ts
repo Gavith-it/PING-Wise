@@ -99,20 +99,15 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
         }
       }
       
-      // Wait for preload to complete if it's in progress (prevents duplicate calls)
+      // If preload is in progress, check cache once and proceed without blocking
+      // This prevents blocking the UI while preload completes
       if (preloadInProgress) {
-        // Wait up to 5 seconds for preload to complete
-        let waitCount = 0;
-        while (preloadInProgress && waitCount < 50) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          waitCount++;
-        }
+        // Check if shared cache is available (even if preload is still in progress)
+        const sharedCacheAge = Date.now() - formDataCache.timestamp;
+        const isSharedCacheAvailable = formDataCache.patients.length > 0 && sharedCacheAge < CACHE_DURATION;
         
-        // Check shared cache again after waiting
-        const sharedCacheAgeAfterWait = Date.now() - formDataCache.timestamp;
-        const isSharedCacheValidAfterWait = formDataCache.patients.length > 0 && sharedCacheAgeAfterWait < CACHE_DURATION;
-        
-        if (isSharedCacheValidAfterWait) {
+        if (isSharedCacheAvailable) {
+          // Use available cache immediately without waiting
           const sharedPatients = formDataCache.patients;
           setAllPatients(sharedPatients);
           patientsCache.allPatients = sharedPatients;
@@ -124,6 +119,8 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
           isLoadingRef.current = false;
           return;
         }
+        // If cache not available and preload in progress, proceed with loading anyway
+        // Don't block - let preload complete in background
       }
       
       if (!skipLoadingSpinner) {
