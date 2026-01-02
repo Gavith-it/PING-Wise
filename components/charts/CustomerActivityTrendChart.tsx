@@ -37,8 +37,8 @@ const annuallyActivityData: ActivityData = {
   churned: [2880, 2432, 3328, 2624],
 };
 
-// Colors: New Customers (Purple), Returning Customers (Pink/Red), Churned Customers (Blue)
-const colors = ['#9333EA', '#EC4899', '#3B82F6']; // New (Purple), Returning (Pink), Churned (Blue)
+// Colors: All blue shades
+const colors = ['#60A5FA', '#3B82F6', '#1A3E9E']; // New (light blue), Returning (medium blue), Churned (dark blue)
 
 interface TooltipPosition {
   x: number;
@@ -79,9 +79,12 @@ export default function CustomerActivityTrendChart() {
 
   useEffect(() => {
     setIsAnimating(true);
-    drawChart(true);
-    const timer = setTimeout(() => setIsAnimating(false), 1200);
-    return () => clearTimeout(timer);
+    const timer1 = setTimeout(() => {
+      drawChart(true);
+      const timer2 = setTimeout(() => setIsAnimating(false), 1500);
+      return () => clearTimeout(timer2);
+    }, 50);
+    return () => clearTimeout(timer1);
   }, [currentPeriod]);
 
   const drawChart = (animate: boolean = false) => {
@@ -102,8 +105,8 @@ export default function CustomerActivityTrendChart() {
     }
 
     const width = 400;
-    const height = 350;
-    const padding = { top: 40, right: 20, bottom: 60, left: 60 };
+    const height = 300;
+    const padding = { top: 20, right: 20, bottom: 40, left: 70 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -135,12 +138,13 @@ export default function CustomerActivityTrendChart() {
 
       // Y-axis labels
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', (padding.left - 10).toString());
+      label.setAttribute('x', (padding.left - 12).toString());
       label.setAttribute('y', (y + 4).toString());
       label.setAttribute('text-anchor', 'end');
-      label.setAttribute('font-size', '12');
-      label.setAttribute('fill', '#9CA3AF');
+      label.setAttribute('font-size', '13');
+      label.setAttribute('fill', isDarkMode ? '#D1D5DB' : '#374151');
       label.setAttribute('font-family', 'Inter, sans-serif');
+      label.setAttribute('font-weight', '500');
       label.textContent = Math.round(maxValue - (maxValue / 5) * i).toString();
       svg.appendChild(label);
     }
@@ -275,11 +279,12 @@ export default function CustomerActivityTrendChart() {
       // X-axis labels
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', (padding.left + i * groupWidth + groupWidth / 2).toString());
-      text.setAttribute('y', (height - padding.bottom + 25).toString());
+      text.setAttribute('y', (height - padding.bottom + 20).toString());
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('font-size', '12');
-      text.setAttribute('fill', '#9CA3AF');
+      text.setAttribute('fill', isDarkMode ? '#9CA3AF' : '#6B7280');
       text.setAttribute('font-family', 'Inter, sans-serif');
+      text.setAttribute('font-weight', '500');
       text.textContent = label;
       svg.appendChild(text);
     });
@@ -287,12 +292,12 @@ export default function CustomerActivityTrendChart() {
 
   return (
     <>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h2 className="text-lg font-semibold text-[#1F2937] dark:text-white m-0">Customer Activity Trend</h2>
-        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-1 gap-1 flex-wrap">
+      <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
+        <h2 className="text-base font-semibold text-[#1F2937] dark:text-white m-0">Customer Activity Trend</h2>
+        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-0.5 gap-0.5 flex-wrap">
           <button
             onClick={() => setCurrentPeriod('weekly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'weekly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -302,7 +307,7 @@ export default function CustomerActivityTrendChart() {
           </button>
           <button
             onClick={() => setCurrentPeriod('monthly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'monthly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -312,7 +317,7 @@ export default function CustomerActivityTrendChart() {
           </button>
           <button
             onClick={() => setCurrentPeriod('quarterly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'quarterly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -322,7 +327,7 @@ export default function CustomerActivityTrendChart() {
           </button>
           <button
             onClick={() => setCurrentPeriod('annually')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'annually'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -333,11 +338,11 @@ export default function CustomerActivityTrendChart() {
         </div>
       </div>
 
-      <div className="relative w-full min-h-[300px]">
+      <div className="relative w-full">
         <svg
           ref={svgRef}
-          className="w-full h-[350px] transition-opacity duration-500"
-          viewBox="0 0 400 350"
+          className="w-full h-[300px] transition-opacity duration-500"
+          viewBox="0 0 400 300"
           preserveAspectRatio="xMidYMid meet"
         />
         <div
@@ -355,18 +360,22 @@ export default function CustomerActivityTrendChart() {
         </div>
       </div>
 
-      <div className="flex justify-center gap-6 md:gap-8 mt-5 flex-wrap">
-        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#9333EA]" />
-          <span>New Customers</span>
+      <div className="flex flex-col items-center gap-1.5 mt-2">
+        <div className="flex justify-center gap-4 md:gap-6">
+          <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+            <div className="w-3 h-3 rounded bg-[#60A5FA]" />
+            <span>New Customers</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+            <div className="w-3 h-3 rounded bg-[#3B82F6]" />
+            <span>Returning Customers</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#EC4899]" />
-          <span>Returning Customers</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#3B82F6]" />
-          <span>Churned Customers</span>
+        <div className="flex justify-center">
+          <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+            <div className="w-3 h-3 rounded bg-[#1A3E9E]" />
+            <span>Churned Customers</span>
+          </div>
         </div>
       </div>
     </>

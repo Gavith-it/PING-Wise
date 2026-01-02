@@ -78,8 +78,8 @@ export default function EngagementChart() {
     svg.innerHTML = '';
 
     const width = 800;
-    const height = 350;
-    const padding = { top: 40, right: 40, bottom: 60, left: 60 };
+    const height = 300;
+    const padding = { top: 20, right: 40, bottom: 20, left: 70 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -104,12 +104,13 @@ export default function EngagementChart() {
 
       // Y-axis labels
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', (padding.left - 10).toString());
+      label.setAttribute('x', (padding.left - 12).toString());
       label.setAttribute('y', (y + 4).toString());
       label.setAttribute('text-anchor', 'end');
-      label.setAttribute('font-size', '12');
-      label.setAttribute('fill', '#9CA3AF');
+      label.setAttribute('font-size', '13');
+      label.setAttribute('fill', isDarkMode ? '#D1D5DB' : '#374151');
       label.setAttribute('font-family', 'Inter, sans-serif');
+      label.setAttribute('font-weight', '500');
       label.textContent = Math.round(maxValue - (maxValue / 5) * i).toString();
       svg.appendChild(label);
     }
@@ -118,12 +119,12 @@ export default function EngagementChart() {
     const pointsPerLine = data.labels.length;
     const xStep = chartWidth / (pointsPerLine - 1);
 
-    // Visits (blue) - with delay for staggered animation
+    // Visits (light blue) - with delay for staggered animation
     setTimeout(() => {
-      drawLineWithArea(svg, data.visits, maxValue, xStep, padding, chartWidth, chartHeight, '#6366F1', 'visits', animate);
+      drawLineWithArea(svg, data.visits, maxValue, xStep, padding, chartWidth, chartHeight, '#60A5FA', 'visits', animate);
     }, animate ? 100 : 0);
 
-    // Interactions (blue) - with delay for staggered animation
+    // Interactions (dark blue) - with delay for staggered animation
     setTimeout(() => {
       drawLineWithArea(svg, data.interactions, maxValue, xStep, padding, chartWidth, chartHeight, '#1A3E9E', 'interactions', animate);
     }, animate ? 300 : 0);
@@ -308,12 +309,12 @@ export default function EngagementChart() {
 
   return (
     <>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h2 className="text-lg font-semibold text-[#1F2937] dark:text-white m-0">Engagement</h2>
-        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-1 gap-1 flex-wrap">
+      <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
+        <h2 className="text-base font-semibold text-[#1F2937] dark:text-white m-0">Engagement</h2>
+        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-0.5 gap-0.5 flex-wrap">
           <button
             onClick={() => setCurrentPeriod('weekly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'weekly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -323,7 +324,7 @@ export default function EngagementChart() {
           </button>
           <button
             onClick={() => setCurrentPeriod('monthly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'monthly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -333,7 +334,7 @@ export default function EngagementChart() {
           </button>
           <button
             onClick={() => setCurrentPeriod('quarterly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'quarterly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -343,7 +344,7 @@ export default function EngagementChart() {
           </button>
           <button
             onClick={() => setCurrentPeriod('annually')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'annually'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -354,11 +355,11 @@ export default function EngagementChart() {
         </div>
       </div>
 
-      <div className="relative w-full min-h-[300px]">
+      <div className="relative w-full">
         <svg
           ref={svgRef}
-          className="w-full h-[350px]"
-          viewBox="0 0 800 350"
+          className="w-full h-[300px]"
+          viewBox="0 0 800 300"
           preserveAspectRatio="xMidYMid meet"
         />
         <div
@@ -377,13 +378,13 @@ export default function EngagementChart() {
         </div>
       </div>
 
-      <div className="flex justify-center gap-8 mt-5 flex-wrap">
-        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#6366F1]" />
+      <div className="flex justify-center gap-6 mt-2 flex-nowrap">
+        <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+          <div className="w-3 h-3 rounded bg-[#60A5FA]" />
           <span>Visits</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#1A3E9E]" />
+        <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+          <div className="w-3 h-3 rounded bg-[#1A3E9E]" />
           <span>Interactions</span>
         </div>
       </div>

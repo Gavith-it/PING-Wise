@@ -38,9 +38,34 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Sort data by booking count (descending)
+  // Helper function to get first name from full name
+  const getFirstName = (fullName: string): string => {
+    if (!fullName) return '';
+    // Remove "Dr." prefix if present
+    let nameWithoutPrefix = fullName.replace(/^Dr\.?\s*/i, '').trim();
+    
+    // Split by spaces and filter out empty parts
+    const nameParts = nameWithoutPrefix.split(/\s+/).filter(part => part.trim() !== '');
+    
+    if (nameParts.length === 0) return fullName;
+    
+    // If first part is a single letter or very short (like "r"), skip it and take the next part
+    if (nameParts.length > 1 && nameParts[0].length <= 1) {
+      return nameParts[1]; // Return second part as first name
+    }
+    
+    // Otherwise return the first part (actual first name)
+    return nameParts[0];
+  };
+
+  // Sort data by booking count (descending) and extract first names
   const sortedData = useMemo(() => {
-    return [...data].sort((a, b) => b.bookings - a.bookings);
+    return [...data]
+      .map(item => ({
+        ...item,
+        name: getFirstName(item.name)
+      }))
+      .sort((a, b) => b.bookings - a.bookings);
   }, [data]);
 
   const maxValue = Math.max(...sortedData.map((d) => d.bookings), 0);
@@ -68,12 +93,12 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
     const barHeight = isMobile ? 32 : 40;
     const barSpacing = isMobile ? 16 : 18;
 
-    // ✅ Move axis left
+    // ✅ Move axis left - compact layout
     const padding = {
       top: 20,
       right: isMobile ? 24 : 60,
       bottom: 50,
-      left: isMobile ? 100 : 160,
+      left: isMobile ? 70 : 100,
     };
 
     const height = padding.top +
@@ -95,7 +120,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
     const textColor = isDarkMode ? '#D1D5DB' : '#374151';
     const axisColor = isDarkMode ? '#6B7280' : '#9CA3AF';
     const labelColor = '#9CA3AF';
-    const barColor = '#ef4444';
+    const barColor = '#3B82F6';
 
     // Set SVG size
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -195,7 +220,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
           x: relativeX,
           y: relativeY,
           visible: true,
-          text: String(item.bookings),
+          text: `${item.bookings} ${item.bookings === 1 ? 'booking held' : 'bookings held'}`,
         });
       };
       
@@ -242,7 +267,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
         svg.appendChild(bar);
       }
 
-      // Doctor name
+      // Doctor name - positioned to the left of y-axis line
       const nameLabel = makeEl('text');
       nameLabel.setAttribute('x', String(padding.left - 12));
       nameLabel.setAttribute('y', String(y + barHeight / 2));
@@ -252,25 +277,9 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
       nameLabel.setAttribute('fill', textColor);
       nameLabel.setAttribute('font-family', 'Inter, sans-serif');
       nameLabel.setAttribute('font-weight', '600');
-      nameLabel.textContent = item.name;
+      // Ensure we use first name (item.name should already be first name from sortedData, but double-check)
+      nameLabel.textContent = getFirstName(item.name);
       svg.appendChild(nameLabel);
-
-      // Value label at end of bar
-      const valueText = makeEl('text');
-      const valueX = Math.min(
-        padding.left + barWidth + 12,
-        width - padding.right - 12
-      );
-      valueText.setAttribute('x', String(valueX));
-      valueText.setAttribute('y', String(y + barHeight / 2));
-      valueText.setAttribute('dominant-baseline', 'middle');
-      valueText.setAttribute('text-anchor', 'start');
-      valueText.setAttribute('font-size', isMobile ? '13' : '12');
-      valueText.setAttribute('fill', textColor);
-      valueText.setAttribute('font-family', 'Inter, sans-serif');
-      valueText.setAttribute('font-weight', '700');
-      valueText.textContent = String(item.bookings);
-      svg.appendChild(valueText);
     });
   };
 
@@ -285,7 +294,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
 
     hasAnimatedRef.current = true;
     lastPeriodRef.current = currentPeriod;
-  }, [loading, currentPeriod, isMobile, sortedData.length, roundedMax]);
+  }, [loading, currentPeriod, isMobile, sortedData, roundedMax]);
 
   // ensure redraw on layout changes (because we now measure inside drawChart)
   useLayoutEffect(() => {
@@ -317,15 +326,15 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
   return (
     <>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+      <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
         <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white m-0">Team Metrics</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">Team Metrics</h3>
         </div>
 
-        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-1 gap-1 flex-wrap">
+        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-0.5 gap-0.5 flex-wrap">
           <button
             onClick={() => setCurrentPeriod('daily')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'daily'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -336,7 +345,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
 
           <button
             onClick={() => setCurrentPeriod('weekly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'weekly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -347,7 +356,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
 
           <button
             onClick={() => setCurrentPeriod('monthly')}
-            className={`px-3 md:px-4 py-2 border-none rounded-md font-["Inter",sans-serif] text-xs md:text-sm font-medium transition-all duration-200 ${
+            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
               currentPeriod === 'monthly'
                 ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
                 : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
@@ -384,7 +393,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
       {/* Legend */}
       <div className="flex justify-center gap-6 md:gap-8 mt-2 flex-wrap">
         <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#ef4444]" />
+          <div className="w-4 h-4 rounded bg-[#3B82F6]" />
           <span>Bookings</span>
         </div>
       </div>
