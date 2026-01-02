@@ -15,10 +15,31 @@ const nextConfig = {
     ignoreBuildErrors: false, // Keep TypeScript checking enabled
   },
   
-  // Security headers
+  // Security headers and cache headers
   async headers() {
     return [
       {
+        // Cache static assets (JavaScript bundles, CSS, images) for 1 year
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Cache other static files
+        source: '/:path*\\.(js|css|woff|woff2|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|avif)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Security headers for all routes
         source: '/:path*',
         headers: [
           {

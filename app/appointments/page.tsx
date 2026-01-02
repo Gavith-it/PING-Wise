@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { Calendar, MessageSquare } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
-import AppointmentModal from '@/components/modals/AppointmentModal';
-import FollowUpConfirmationModal from './components/FollowUpConfirmationModal';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import ToggleSwitch from '@/components/ui/toggle-switch';
@@ -22,6 +21,17 @@ import { crmPatientService } from '@/lib/services/crmPatientService';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import toast from 'react-hot-toast';
 import { invalidatePatientsCache } from '@/app/crm/hooks/usePatients';
+
+// Lazy load modals for better performance
+const AppointmentModal = dynamic(() => import('@/components/modals/AppointmentModal').then(mod => ({ default: mod.default })), {
+  loading: () => null,
+  ssr: false
+});
+
+const FollowUpConfirmationModal = dynamic(() => import('./components/FollowUpConfirmationModal'), {
+  loading: () => null,
+  ssr: false
+});
 
 export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());

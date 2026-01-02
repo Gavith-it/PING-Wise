@@ -1,12 +1,12 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { Home, Users, Calendar, Megaphone, UserCheck, FileText } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
 
 export default function BottomNav() {
-  const router = useRouter();
   const pathname = usePathname();
   const { isVisible: footerContextVisible } = useFooterVisibility();
   const [isVisible, setIsVisible] = useState(true);
@@ -111,20 +111,21 @@ export default function BottomNav() {
           const active = isActive(item.path);
           
           return (
-            <button
+            <Link
               key={item.path}
-              onClick={() => router.push(item.path)}
+              href={item.path}
+              prefetch={true}
               className={`flex flex-col items-center justify-center py-1 rounded-lg transition-all duration-200 ease-in-out flex-1 focus:outline-none focus:ring-0 active:bg-transparent ${
                   active
                     ? 'text-primary'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
-              >
-                <Icon className={`w-4 h-4 md:w-5 md:h-5 transition-colors duration-200 ${active ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
-                <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 transition-colors duration-200 ${active ? 'font-semibold text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
-                  {item.label}
-                </span>
-              </button>
+            >
+              <Icon className={`w-4 h-4 md:w-5 md:h-5 transition-colors duration-200 ${active ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}`} />
+              <span className={`text-[10px] md:text-xs mt-0.5 md:mt-1 transition-colors duration-200 ${active ? 'font-semibold text-primary' : 'text-gray-500 dark:text-gray-400'}`}>
+                {item.label}
+              </span>
+            </Link>
           );
         })}
       </div>

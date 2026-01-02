@@ -1,17 +1,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import EngagementChart from '@/components/charts/EngagementChart';
-import CampaignChart from '@/components/charts/CampaignChart';
-import CustomerActivityTrendChart from '@/components/charts/CustomerActivityTrendChart';
-import TeamMetricsChart from '@/components/charts/TeamMetricsChart';
 import { appointmentApi } from '@/lib/services/appointmentApi';
 import { teamApi } from '@/lib/services/teamApi';
 import toast from 'react-hot-toast';
 import { CrmAppointment } from '@/lib/utils/appointmentAdapter';
 import { CrmTeam } from '@/types/crmApi';
+
+// Lazy load heavy chart components for better performance
+const EngagementChart = dynamic(() => import('@/components/charts/EngagementChart'), {
+  loading: () => <div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>,
+  ssr: false
+});
+
+const CampaignChart = dynamic(() => import('@/components/charts/CampaignChart'), {
+  loading: () => <div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>,
+  ssr: false
+});
+
+const CustomerActivityTrendChart = dynamic(() => import('@/components/charts/CustomerActivityTrendChart'), {
+  loading: () => <div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>,
+  ssr: false
+});
+
+const TeamMetricsChart = dynamic(() => import('@/components/charts/TeamMetricsChart'), {
+  loading: () => <div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>,
+  ssr: false
+});
 
 interface TeamMetric {
   name: string;

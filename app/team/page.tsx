@@ -1,20 +1,34 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Users, UserCheck, CalendarX, Building } from 'lucide-react';
 import { teamApi } from '@/lib/services/teamApi';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import { User } from '@/types';
-import TeamModal from '@/components/modals/TeamModal';
-import TeamMemberDetailsModal from '@/components/modals/TeamMemberDetailsModal';
-import TeamFilterModal from '@/components/modals/TeamFilterModal';
 import { useTeamMembers } from './hooks/useTeamMembers';
 import { useTeamFilters } from './hooks/useTeamFilters';
 import FilterCard from './components/FilterCard';
 import TeamSearchBar from './components/TeamSearchBar';
 import TeamList from './components/TeamList';
+
+// Lazy load modals for better performance
+const TeamModal = dynamic(() => import('@/components/modals/TeamModal'), {
+  loading: () => null,
+  ssr: false
+});
+
+const TeamMemberDetailsModal = dynamic(() => import('@/components/modals/TeamMemberDetailsModal'), {
+  loading: () => null,
+  ssr: false
+});
+
+const TeamFilterModal = dynamic(() => import('@/components/modals/TeamFilterModal'), {
+  loading: () => null,
+  ssr: false
+});
 
 export default function TeamPage() {
   const [searchQuery, setSearchQuery] = useState('');

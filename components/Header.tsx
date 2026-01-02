@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Bell, Settings, X, Home, Users, Calendar, Megaphone, UserCheck, FileText, CalendarCheck, UserPlus, MessageSquare, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -108,9 +109,10 @@ export default function Header() {
               const active = isActive(item.path);
               
               return (
-                <button
+                <Link
                   key={item.path}
-                  onClick={() => router.push(item.path)}
+                  href={item.path}
+                  prefetch={true}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                     active
                       ? 'bg-primary text-white'
@@ -119,7 +121,7 @@ export default function Header() {
                 >
                   <Icon className="w-4 h-4" />
                   <span className="text-sm font-medium">{item.label}</span>
-                </button>
+                </Link>
               );
             })}
           </nav>

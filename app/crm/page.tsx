@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import CRMPatientModal from '@/components/modals/CRMPatientModal';
-import PatientDetailsModal from '@/components/modals/PatientDetailsModal';
-import FilterModal, { FilterOptions } from '@/components/modals/FilterModal';
+import dynamic from 'next/dynamic';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import { Patient } from '@/types';
@@ -14,6 +12,23 @@ import PatientSearchBar from './components/PatientSearchBar';
 import PatientStatusFilters from './components/PatientStatusFilters';
 import PatientList from './components/PatientList';
 import EmptyState from './components/EmptyState';
+import type { FilterOptions } from '@/components/modals/FilterModal';
+
+// Lazy load modals for better performance
+const CRMPatientModal = dynamic(() => import('@/components/modals/CRMPatientModal'), {
+  loading: () => null,
+  ssr: false
+});
+
+const PatientDetailsModal = dynamic(() => import('@/components/modals/PatientDetailsModal'), {
+  loading: () => null,
+  ssr: false
+});
+
+const FilterModal = dynamic(() => import('@/components/modals/FilterModal').then(mod => ({ default: mod.default })), {
+  loading: () => null,
+  ssr: false
+});
 
 export default function CRMPage() {
   const [searchTerm, setSearchTerm] = useState('');

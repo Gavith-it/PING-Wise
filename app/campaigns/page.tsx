@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import TagSelectorModal from '@/components/modals/TagSelectorModal';
-import ScheduleModal from '@/components/modals/ScheduleModal';
 import { useCampaigns } from './hooks/useCampaigns';
 import { useTemplates } from './hooks/useTemplates';
 import { useCampaignForm } from './hooks/useCampaignForm';
@@ -12,6 +11,17 @@ import { useImageHandling } from './hooks/useImageHandling';
 import CampaignForm from './components/CampaignForm';
 import TemplatesList from './components/TemplatesList';
 import CampaignsList from './components/CampaignsList';
+
+// Lazy load modals for better performance
+const TagSelectorModal = dynamic(() => import('@/components/modals/TagSelectorModal'), {
+  loading: () => null,
+  ssr: false
+});
+
+const ScheduleModal = dynamic(() => import('@/components/modals/ScheduleModal'), {
+  loading: () => null,
+  ssr: false
+});
 
 export default function CampaignsPage() {
   const [showTagModal, setShowTagModal] = useState(false);
