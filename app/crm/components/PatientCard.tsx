@@ -109,10 +109,13 @@ function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
       {/* Divider line (inset like first image) */}
       <div className="w-full border-t border-gray-200/60 dark:border-gray-600/40 my-2"></div>
       
-      {/* Bottom row - only Last visit */}
-      <div className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">
+      {/* Bottom row - Last visit and Next Appointment */}
+      <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-500 dark:text-gray-400">
         <span>
           Last visit: {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}
+        </span>
+        <span>
+          Next Appointment: {patient.nextAppointment ? new Date(patient.nextAppointment).toLocaleDateString() : 'N/A'}
         </span>
       </div>
     </div>

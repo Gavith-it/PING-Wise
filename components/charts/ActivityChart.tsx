@@ -6,19 +6,19 @@ import CountUp from 'react-countup';
 
 interface ActivityData {
   total?: number;
-  active?: {
+  confirmed?: {
     count?: number;
     percentage?: number;
   };
-  booked?: {
+  completed?: {
     count?: number;
     percentage?: number;
   };
-  followUp?: {
+  pending?: {
     count?: number;
     percentage?: number;
   };
-  inactive?: {
+  cancelled?: {
     count?: number;
     percentage?: number;
   };
@@ -31,26 +31,35 @@ interface ActivityChartProps {
 const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const chartData = useMemo(() => [
-    {
-      name: 'Active',
-      value: data.active?.count || 0,
-      percentage: data.active?.percentage || 0,
-      color: '#10b981', // Green for Active (matches CRM)
-    },
-    {
-      name: 'Inactive',
-      value: data.inactive?.count || 0,
-      percentage: data.inactive?.percentage || 0,
-      color: '#6b7280', // Dark gray for Inactive (matches CRM)
-    },
-    {
-      name: 'Booked',
-      value: data.booked?.count || 0,
-      percentage: data.booked?.percentage || 0,
-      color: '#F97316', // Orange for Booked
-    },
-  ], [data]);
+  const chartData = useMemo(() => {
+    // Only use appointment status data
+    return [
+      {
+        name: 'Confirmed',
+        value: data.confirmed?.count || 0,
+        percentage: data.confirmed?.percentage || 0,
+        color: '#10b981', // Green for Confirmed (matches appointments page)
+      },
+      {
+        name: 'Completed',
+        value: data.completed?.count || 0,
+        percentage: data.completed?.percentage || 0,
+        color: '#3b82f6', // Blue for Completed (matches appointments page)
+      },
+      {
+        name: 'Pending',
+        value: data.pending?.count || 0,
+        percentage: data.pending?.percentage || 0,
+        color: '#eab308', // Yellow for Pending (matches appointments page)
+      },
+      {
+        name: 'Cancelled',
+        value: data.cancelled?.count || 0,
+        percentage: data.cancelled?.percentage || 0,
+        color: '#ef4444', // Red for Cancelled (matches appointments page)
+      },
+    ].filter(item => item.value > 0); // Only show statuses with data
+  }, [data]);
 
   const onPieEnter = (_: unknown, index: number) => {
     setActiveIndex(index);

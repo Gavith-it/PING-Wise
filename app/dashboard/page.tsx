@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ChevronRight, CalendarPlus, UserPlus, Plus } from 'lucide-react';
+import { CalendarPlus, UserPlus, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import toast from 'react-hot-toast';
@@ -16,6 +16,7 @@ import { useWalletBalance } from './hooks/useWalletBalance';
 import KPICards from './components/KPICards';
 import TodayAppointmentsList from './components/TodayAppointmentsList';
 import { loadPreloadFunction } from './utils/preloadUtils';
+import { crmAppointmentService } from '@/lib/services/appointmentService';
 
 // Lazy load heavy components
 const ActivityChart = dynamic(() => import('@/components/charts/ActivityChart'), {
@@ -69,11 +70,60 @@ export default function DashboardPage() {
   } = useTodayAppointments();
 
   const walletBalance = useWalletBalance();
+  const [appointmentActivity, setAppointmentActivity] = useState<any>(null);
+  const [appointmentActivityLoading, setAppointmentActivityLoading] = useState(false);
 
   // Handle client-side mounting to avoid hydration mismatch
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Calculate appointment status counts for activity chart
+  useEffect(() => {
+    const calculateAppointmentActivity = async () => {
+      if (!isMounted) return;
+      
+      try {
+        setAppointmentActivityLoading(true);
+        // Fetch all appointments (or recent appointments) to calculate status counts
+        const response = await crmAppointmentService.getAppointments({}).catch(() => ({ data: [] }));
+        const allAppointments = response.data || [];
+        
+        // Calculate status counts
+        const confirmed = allAppointments.filter((apt: any) => apt.status === 'confirmed').length;
+        const completed = allAppointments.filter((apt: any) => apt.status === 'completed').length;
+        const pending = allAppointments.filter((apt: any) => apt.status === 'pending').length;
+        const cancelled = allAppointments.filter((apt: any) => apt.status === 'cancelled').length;
+        const total = allAppointments.length;
+        
+        setAppointmentActivity({
+          total,
+          confirmed: {
+            count: confirmed,
+            percentage: total > 0 ? Math.round((confirmed / total) * 100) : 0,
+          },
+          completed: {
+            count: completed,
+            percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+          },
+          pending: {
+            count: pending,
+            percentage: total > 0 ? Math.round((pending / total) * 100) : 0,
+          },
+          cancelled: {
+            count: cancelled,
+            percentage: total > 0 ? Math.round((cancelled / total) * 100) : 0,
+          },
+        });
+      } catch (error) {
+        console.error('Failed to calculate appointment activity:', error);
+      } finally {
+        setAppointmentActivityLoading(false);
+      }
+    };
+
+    calculateAppointmentActivity();
+  }, [isMounted]);
 
   // Load data when authenticated
   useEffect(() => {
@@ -168,23 +218,25 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <button
-            onClick={() => router.push('/reports')}
-            className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 dark:border-gray-700 card-hover w-full text-left hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-2 md:mb-3">
+          <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 dark:border-gray-700 w-full">
+            <div className="mb-2 md:mb-3">
               <div>
                 <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Patient Activity</h3>
                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 md:mt-1">Distribution overview</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
             </div>
-            {activity ? <ActivityChart data={activity} /> : (
+            {appointmentActivityLoading ? (
+              <div className="h-40 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : appointmentActivity ? (
+              <ActivityChart data={appointmentActivity} />
+            ) : (
               <div className="h-40 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             )}
-          </button>
+          </div>
 
           <div className="mb-4 md:mb-6">
             <div className="flex items-center justify-between mb-3 md:mb-4">

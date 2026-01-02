@@ -37,7 +37,7 @@ function KPICards({ stats, dailyReport }: KPICardsProps) {
         <KPICard
           icon={Clock}
           value={followUps}
-          label="Follow-ups"
+          label="Total Follow-Up"
           change={undefined}
           trend={undefined}
         />

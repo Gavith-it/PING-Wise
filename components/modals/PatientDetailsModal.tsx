@@ -143,6 +143,14 @@ export default function PatientDetailsModal({ patient, onClose, onEdit, onDelete
                     : 'N/A'}
                 </p>
               </div>
+              <div>
+                <label className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Next Appointment</label>
+                <p className="text-xs md:text-sm text-gray-900 dark:text-white">
+                  {patient.nextAppointment 
+                    ? new Date(patient.nextAppointment).toLocaleDateString() 
+                    : 'N/A'}
+                </p>
+              </div>
               {patient.medicalNotes && (
                 <div>
                   <label className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400">Medical Notes</label>

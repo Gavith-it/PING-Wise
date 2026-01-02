@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, startTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Wallet, Sparkles } from 'lucide-react';
+import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Wallet, Sparkles, ChevronDown, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
@@ -26,6 +26,7 @@ export default function SettingsMenu() {
   const [shouldShow, setShouldShow] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  const [showProgramFeature, setShowProgramFeature] = useState(false);
   // Initialize from cache if available (from dashboard page)
   const [walletBalance, setWalletBalance] = useState<number>(() => {
     const cacheAge = Date.now() - walletBalanceCache.timestamp;
@@ -309,6 +310,38 @@ export default function SettingsMenu() {
                     label="Dark Theme"
                     size="md"
                   />
+                </div>
+
+                {/* Program & Feature Menu */}
+                <div>
+                  <button
+                    onClick={() => setShowProgramFeature(!showProgramFeature)}
+                    className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Sparkles className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
+                      <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Program & Feature</span>
+                    </div>
+                    <ChevronDown 
+                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showProgramFeature ? 'rotate-180' : ''}`} 
+                    />
+                  </button>
+                  
+                  {/* Submenu */}
+                  {showProgramFeature && (
+                    <div className="bg-gray-50 dark:bg-gray-800/50">
+                      <button
+                        onClick={() => handleNavigation('/reports')}
+                        className="w-full flex items-center justify-between px-4 md:px-5 py-2.5 md:py-3 pl-12 md:pl-14 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group focus:outline-none"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
+                          <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Reports and Insights</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <button
