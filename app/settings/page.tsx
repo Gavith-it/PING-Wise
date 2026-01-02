@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Bell, Shield, Globe, Trash2, Crown, Gift, ChevronRight, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, Bell, Shield, Globe, Trash2, Crown, Gift, ChevronRight, X, Sparkles, MessageCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
@@ -11,6 +11,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [followUpReminder, setFollowUpReminder] = useState(false);
+  const [appointmentReminder, setAppointmentReminder] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
 
   return (
@@ -61,6 +63,42 @@ export default function SettingsPage() {
                   enabled={emailNotifications}
                   onChange={setEmailNotifications}
                   label="Email Notifications"
+                  size="md"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* WhatsApp Reminder Settings */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center space-x-3 mb-6">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">WhatsApp Reminder</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex-1">
+                  <p className="text-base font-medium text-gray-900 dark:text-white">Follow-Up Reminder</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Receive WhatsApp reminders for follow-ups</p>
+                </div>
+                <ToggleSwitch
+                  enabled={followUpReminder}
+                  onChange={setFollowUpReminder}
+                  label="Follow-Up Reminder"
+                  size="md"
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-3">
+                <div className="flex-1">
+                  <p className="text-base font-medium text-gray-900 dark:text-white">Appointment Reminder</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Receive WhatsApp reminders for appointments</p>
+                </div>
+                <ToggleSwitch
+                  enabled={appointmentReminder}
+                  onChange={setAppointmentReminder}
+                  label="Appointment Reminder"
                   size="md"
                 />
               </div>

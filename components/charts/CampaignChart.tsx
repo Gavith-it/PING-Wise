@@ -7,15 +7,34 @@ interface CampaignData {
   opens: number[];
   clicks: number[];
   conversions: number[];
-  dates?: string[];
 }
 
-const allCampaignData: CampaignData = {
-  labels: ['Campaign A', 'Campaign B', 'Campaign C', 'Campaign D'],
+const weeklyCampaignData: CampaignData = {
+  labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
   opens: [850, 920, 780, 1050],
   clicks: [420, 580, 390, 650],
   conversions: [180, 290, 160, 340],
-  dates: ['2024-01-15', '2024-02-20', '2024-03-10', '2024-04-05'],
+};
+
+const monthlyCampaignData: CampaignData = {
+  labels: ['Jan', 'Feb', 'Mar', 'Apr'],
+  opens: [3200, 3800, 3500, 4200],
+  clicks: [1600, 2200, 1800, 2600],
+  conversions: [720, 1160, 640, 1360],
+};
+
+const quarterlyCampaignData: CampaignData = {
+  labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+  opens: [12800, 15200, 14000, 16800],
+  clicks: [6400, 8800, 7200, 10400],
+  conversions: [2880, 4640, 2560, 5440],
+};
+
+const annuallyCampaignData: CampaignData = {
+  labels: ['2021', '2022', '2023', '2024'],
+  opens: [51200, 60800, 56000, 67200],
+  clicks: [25600, 35200, 28800, 41600],
+  conversions: [11520, 18560, 10240, 21760],
 };
 
 const colors = ['#60A5FA', '#3B82F6', '#1A3E9E']; // Opens (light blue), Clicks (medium blue), Conversions (dark blue)
@@ -28,10 +47,11 @@ interface TooltipPosition {
   value: string;
 }
 
-type SortBy = 'date' | 'performance' | 'conversions';
+interface CampaignChartProps {
+  currentPeriod: 'weekly' | 'monthly' | 'quarterly' | 'annually';
+}
 
-export default function CampaignChart() {
-  const [sortBy, setSortBy] = useState<SortBy>('date');
+export default function CampaignChart({ currentPeriod }: CampaignChartProps) {
   const [isAnimating, setIsAnimating] = useState(true);
   const [tooltip, setTooltip] = useState<TooltipPosition>({
     x: 0,
@@ -42,41 +62,22 @@ export default function CampaignChart() {
   });
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const getSortedData = (): CampaignData => {
-    const data = { ...allCampaignData };
-    const indices = data.labels.map((_, i) => i);
-
-    if (sortBy === 'date') {
-      // Sort by date (already sorted)
-      return data;
-    } else if (sortBy === 'performance') {
-      // Sort by total performance (opens + clicks + conversions)
-      const sortedIndices = indices.sort((a, b) => {
-        const totalA = data.opens[a] + data.clicks[a] + data.conversions[a];
-        const totalB = data.opens[b] + data.clicks[b] + data.conversions[b];
-        return totalB - totalA;
-      });
-      return {
-        labels: sortedIndices.map((i) => data.labels[i]),
-        opens: sortedIndices.map((i) => data.opens[i]),
-        clicks: sortedIndices.map((i) => data.clicks[i]),
-        conversions: sortedIndices.map((i) => data.conversions[i]),
-        dates: sortedIndices.map((i) => data.dates?.[i] || ''),
-      };
-    } else {
-      // Sort by conversions
-      const sortedIndices = indices.sort((a, b) => data.conversions[b] - data.conversions[a]);
-      return {
-        labels: sortedIndices.map((i) => data.labels[i]),
-        opens: sortedIndices.map((i) => data.opens[i]),
-        clicks: sortedIndices.map((i) => data.clicks[i]),
-        conversions: sortedIndices.map((i) => data.conversions[i]),
-        dates: sortedIndices.map((i) => data.dates?.[i] || ''),
-      };
+  const getData = (): CampaignData => {
+    switch (currentPeriod) {
+      case 'weekly':
+        return weeklyCampaignData;
+      case 'monthly':
+        return monthlyCampaignData;
+      case 'quarterly':
+        return quarterlyCampaignData;
+      case 'annually':
+        return annuallyCampaignData;
+      default:
+        return weeklyCampaignData;
     }
   };
 
-  const campaignData = getSortedData();
+  const campaignData = getData();
 
   useEffect(() => {
     setIsAnimating(true);
@@ -86,7 +87,7 @@ export default function CampaignChart() {
       return () => clearTimeout(timer2);
     }, 50);
     return () => clearTimeout(timer1);
-  }, [sortBy]);
+  }, [currentPeriod]);
 
   const drawChart = (animate: boolean = false) => {
     if (!svgRef.current) return;
@@ -291,38 +292,6 @@ export default function CampaignChart() {
     <>
       <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
         <h2 className="text-base font-semibold text-[#1F2937] dark:text-white m-0">Campaign Performance</h2>
-        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-0.5 gap-0.5 flex-wrap">
-          <button
-            onClick={() => setSortBy('date')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              sortBy === 'date'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            By Date
-          </button>
-          <button
-            onClick={() => setSortBy('performance')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              sortBy === 'performance'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            By Performance
-          </button>
-          <button
-            onClick={() => setSortBy('conversions')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              sortBy === 'conversions'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            By Conversions
-          </button>
-        </div>
       </div>
 
       <div className="relative w-full">

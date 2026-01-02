@@ -48,8 +48,11 @@ interface TooltipPosition {
   value: string;
 }
 
-export default function CustomerActivityTrendChart() {
-  const [currentPeriod, setCurrentPeriod] = useState<'weekly' | 'monthly' | 'quarterly' | 'annually'>('weekly');
+interface CustomerActivityTrendChartProps {
+  currentPeriod: 'weekly' | 'monthly' | 'quarterly' | 'annually';
+}
+
+export default function CustomerActivityTrendChart({ currentPeriod }: CustomerActivityTrendChartProps) {
   const [isAnimating, setIsAnimating] = useState(true);
   const [tooltip, setTooltip] = useState<TooltipPosition>({
     x: 0,
@@ -294,48 +297,6 @@ export default function CustomerActivityTrendChart() {
     <>
       <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
         <h2 className="text-base font-semibold text-[#1F2937] dark:text-white m-0">Customer Activity Trend</h2>
-        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-0.5 gap-0.5 flex-wrap">
-          <button
-            onClick={() => setCurrentPeriod('weekly')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              currentPeriod === 'weekly'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            Weekly
-          </button>
-          <button
-            onClick={() => setCurrentPeriod('monthly')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              currentPeriod === 'monthly'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setCurrentPeriod('quarterly')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              currentPeriod === 'quarterly'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            Quarterly
-          </button>
-          <button
-            onClick={() => setCurrentPeriod('annually')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              currentPeriod === 'annually'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            Annually
-          </button>
-        </div>
       </div>
 
       <div className="relative w-full">

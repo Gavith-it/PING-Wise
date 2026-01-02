@@ -11,10 +11,10 @@ interface TeamMetric {
 interface TeamMetricsChartProps {
   data: TeamMetric[];
   loading?: boolean;
+  currentPeriod: 'weekly' | 'monthly' | 'quarterly' | 'annually';
 }
 
-export default function TeamMetricsChart({ data, loading = false }: TeamMetricsChartProps) {
-  const [currentPeriod, setCurrentPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+export default function TeamMetricsChart({ data, loading = false, currentPeriod }: TeamMetricsChartProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; visible: boolean; text: string }>({
     x: 0,
@@ -29,7 +29,7 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
 
   // animate only first time + when period changes
   const hasAnimatedRef = useRef(false);
-  const lastPeriodRef = useRef<'daily' | 'weekly' | 'monthly'>('weekly');
+  const lastPeriodRef = useRef<'weekly' | 'monthly' | 'quarterly' | 'annually'>('weekly');
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -329,41 +329,6 @@ export default function TeamMetricsChart({ data, loading = false }: TeamMetricsC
       <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
         <div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">Team Metrics</h3>
-        </div>
-
-        <div className="flex bg-[#F3F4F6] dark:bg-gray-700 rounded-lg p-0.5 gap-0.5 flex-wrap">
-          <button
-            onClick={() => setCurrentPeriod('daily')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              currentPeriod === 'daily'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            Daily
-          </button>
-
-          <button
-            onClick={() => setCurrentPeriod('weekly')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              currentPeriod === 'weekly'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            Weekly
-          </button>
-
-          <button
-            onClick={() => setCurrentPeriod('monthly')}
-            className={`px-2 py-1 border-none rounded-md font-["Inter",sans-serif] text-xs font-medium transition-all duration-200 ${
-              currentPeriod === 'monthly'
-                ? 'bg-white dark:bg-gray-600 text-[#6366F1] dark:text-indigo-400 shadow-sm'
-                : 'bg-transparent text-[#6B7280] dark:text-gray-400 hover:text-[#6366F1] dark:hover:text-indigo-400'
-            }`}
-          >
-            Monthly
-          </button>
         </div>
       </div>
 

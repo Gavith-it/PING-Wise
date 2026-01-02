@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { Calendar, MessageSquare } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import ToggleSwitch from '@/components/ui/toggle-switch';
 import { Appointment, CreateAppointmentRequest } from '@/types';
 import { useAppointments } from './hooks/useAppointments';
 import { usePatientEnrichment } from './hooks/usePatientEnrichment';
@@ -39,7 +38,6 @@ export default function AppointmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'pending' | 'cancelled'>('all');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [whatsappReminders, setWhatsappReminders] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [selectedFollowUpAppointment, setSelectedFollowUpAppointment] = useState<Appointment | null>(null);
@@ -285,20 +283,6 @@ export default function AppointmentsPage() {
               onMonthChange={setCurrentMonth}
               appointments={allMonthAppointments}
               selectedDateAppointments={appointments}
-            />
-          </div>
-
-          {/* WhatsApp Toggle */}
-          <div className="flex justify-end items-center space-x-1.5 md:space-x-2 mb-3 md:mb-4">
-            <div className="flex items-center space-x-1 md:space-x-1.5">
-              <MessageSquare className="w-3 h-3 md:w-3.5 md:h-3.5 text-gray-600 dark:text-gray-400" />
-              <span className="text-[10px] md:text-xs text-gray-700 dark:text-gray-300">WhatsApp Reminders</span>
-            </div>
-            <ToggleSwitch
-              enabled={whatsappReminders}
-              onChange={setWhatsappReminders}
-              label="WhatsApp Reminders"
-              size="sm"
             />
           </div>
 
