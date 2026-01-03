@@ -87,31 +87,40 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
 
     svg.innerHTML = '';
 
-    const width = Math.max(measuredWidth, 320);
+    // Set SVG size - match Customer Activity Trend (400x300)
+    const svgWidth = 400;
+    const svgHeight = 300;
+    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+    svg.style.width = '100%';
+    svg.style.height = '300px';
 
-    // sizing
-    const barHeight = isMobile ? 32 : 40;
-    const barSpacing = isMobile ? 16 : 18;
+    // sizing - match bar width from other charts (barWidth * 0.8 from grouped bar charts)
+    // In other charts: chartWidth = 310 (400 - 70 - 20), 4 labels, 3 datasets
+    // groupWidth = 310 / 4 = 77.5, barWidth = 77.5 / 4 = 19.375, actual = 19.375 * 0.8 = 15.5px
+    // Using 16px to match the visual thickness of bars in other charts
+    const barHeight = isMobile ? 16 : 16;
+    const barSpacing = isMobile ? 12 : 14;
 
-    // ✅ Move axis left - compact layout
+    // ✅ Move axis left - compact layout (match Customer Activity Trend padding)
     const padding = {
       top: 20,
-      right: isMobile ? 24 : 60,
-      bottom: 50,
-      left: isMobile ? 70 : 100,
+      right: isMobile ? 24 : 20,
+      bottom: 40,
+      left: isMobile ? 70 : 70,
     };
 
-    const height = padding.top +
-      padding.bottom +
-      sortedData.length * barHeight +
-      (sortedData.length - 1) * barSpacing;
-
-    let chartAreaWidth = width - padding.left - padding.right;
-
-    // If too small, shrink left padding a bit instead of returning blank
-    if (chartAreaWidth < 80) {
-      padding.left = Math.max(80, padding.left - 20);
-      chartAreaWidth = width - padding.left - padding.right;
+    const chartHeight = svgHeight - padding.top - padding.bottom;
+    const chartAreaWidth = svgWidth - padding.left - padding.right;
+    
+    // Calculate available space and adjust bar spacing if needed
+    const totalBarHeight = sortedData.length * barHeight;
+    const totalSpacing = (sortedData.length - 1) * barSpacing;
+    const totalNeeded = totalBarHeight + totalSpacing;
+    
+    // If data doesn't fit, reduce spacing proportionally
+    let adjustedBarSpacing = barSpacing;
+    if (totalNeeded > chartHeight && sortedData.length > 1) {
+      adjustedBarSpacing = Math.max(8, (chartHeight - totalBarHeight) / (sortedData.length - 1));
     }
 
     // Dark mode colors
@@ -121,11 +130,6 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
     const axisColor = isDarkMode ? '#6B7280' : '#9CA3AF';
     const labelColor = '#9CA3AF';
     const barColor = '#3B82F6';
-
-    // Set SVG size
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    svg.style.width = '100%';
-    svg.style.height = `${height}px`;
 
     const makeEl = <K extends keyof SVGElementTagNameMap>(tag: K) =>
       document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -138,23 +142,33 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
       (_, i) => i * step
     );
 
+    // Calculate the actual chart area where bars/names are (needed for grid lines and y-axis)
+    const firstBarY = svgHeight - padding.bottom - sortedData.length * barHeight - (sortedData.length - 1) * adjustedBarSpacing;
+    const lastBarY = svgHeight - padding.bottom - barHeight;
+    const chartTopY = firstBarY;
+    const chartBottomY = lastBarY + barHeight;
+
     // --- GRID + X labels ---
     ticks.forEach((value) => {
       const x = padding.left + (value / roundedMax) * chartAreaWidth;
 
-      const line = makeEl('line');
-      line.setAttribute('x1', String(x));
-      line.setAttribute('y1', String(padding.top));
-      line.setAttribute('x2', String(x));
-      line.setAttribute('y2', String(height - padding.bottom));
-      line.setAttribute('stroke', value === 0 ? axisColor : gridColor);
-      line.setAttribute('stroke-width', value === 0 ? '3' : '1.5');
-      if (value !== 0) line.setAttribute('stroke-dasharray', '4 4');
-      svg.appendChild(line);
+      // Draw vertical grid line (except for x=0 which is the axis)
+      // Grid lines should only extend within the chart area where bars are
+      if (value !== 0) {
+        const line = makeEl('line');
+        line.setAttribute('x1', String(x));
+        line.setAttribute('y1', String(chartTopY));
+        line.setAttribute('x2', String(x));
+        line.setAttribute('y2', String(chartBottomY));
+        line.setAttribute('stroke', gridColor);
+        line.setAttribute('stroke-width', '1');
+        line.setAttribute('stroke-dasharray', '4 4');
+        svg.appendChild(line);
+      }
 
       const label = makeEl('text');
       label.setAttribute('x', String(x));
-      label.setAttribute('y', String(height - padding.bottom + 22));
+      label.setAttribute('y', String(svgHeight - padding.bottom + 20));
       label.setAttribute('text-anchor', 'middle');
       label.setAttribute('font-size', isMobile ? '13' : '12');
       label.setAttribute('fill', labelColor);
@@ -164,21 +178,21 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
       svg.appendChild(label);
     });
 
-    // --- AXES ---
+    // --- AXES (drawn after grid lines so y-axis appears on top) ---
     const yAxisLine = makeEl('line');
     yAxisLine.setAttribute('x1', String(padding.left));
-    yAxisLine.setAttribute('y1', String(padding.top));
+    yAxisLine.setAttribute('y1', String(chartTopY));
     yAxisLine.setAttribute('x2', String(padding.left));
-    yAxisLine.setAttribute('y2', String(height - padding.bottom));
+    yAxisLine.setAttribute('y2', String(chartBottomY));
     yAxisLine.setAttribute('stroke', axisColor);
-    yAxisLine.setAttribute('stroke-width', '3');
+    yAxisLine.setAttribute('stroke-width', '4'); // Increased from 3 to 4 for better visibility
     svg.appendChild(yAxisLine);
 
     const xAxisLine = makeEl('line');
     xAxisLine.setAttribute('x1', String(padding.left));
-    xAxisLine.setAttribute('y1', String(height - padding.bottom));
-    xAxisLine.setAttribute('x2', String(width - padding.right));
-    xAxisLine.setAttribute('y2', String(height - padding.bottom));
+    xAxisLine.setAttribute('y1', String(svgHeight - padding.bottom));
+    xAxisLine.setAttribute('x2', String(svgWidth - padding.right));
+    xAxisLine.setAttribute('y2', String(svgHeight - padding.bottom));
     xAxisLine.setAttribute('stroke', axisColor);
     xAxisLine.setAttribute('stroke-width', '3');
     svg.appendChild(xAxisLine);
@@ -186,8 +200,8 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
 
     // --- BARS ---
     sortedData.forEach((item, index) => {
-      // Calculate y from bottom (reverse order)
-      const y = height - padding.bottom - (sortedData.length - index) * barHeight - (sortedData.length - index - 1) * barSpacing;
+      // Calculate y from bottom (reverse order) - use adjusted spacing
+      const y = svgHeight - padding.bottom - (sortedData.length - index) * barHeight - (sortedData.length - index - 1) * adjustedBarSpacing;
       const barWidth = (item.bookings / roundedMax) * chartAreaWidth;
 
       const bar = makeEl('rect');
@@ -285,7 +299,7 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
 
   // redraw whenever responsive stuff or data changes
   useEffect(() => {
-    if (loading || sortedData.length === 0) return;
+    if (sortedData.length === 0) return;
 
     const periodChanged = lastPeriodRef.current !== currentPeriod;
     const shouldAnimate = !hasAnimatedRef.current || periodChanged;
@@ -294,23 +308,15 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
 
     hasAnimatedRef.current = true;
     lastPeriodRef.current = currentPeriod;
-  }, [loading, currentPeriod, isMobile, sortedData, roundedMax]);
+  }, [currentPeriod, isMobile, sortedData, roundedMax]);
 
   // ensure redraw on layout changes (because we now measure inside drawChart)
   useLayoutEffect(() => {
-    if (loading || sortedData.length === 0) return;
+    if (sortedData.length === 0) return;
     const raf = requestAnimationFrame(() => drawChart(false));
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
-      </div>
-    );
-  }
 
   if (sortedData.length === 0) {
     return (
@@ -336,7 +342,8 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
       <div ref={wrapperRef} className="relative w-full">
         <svg
           ref={svgRef}
-          className="w-full min-h-[360px] md:min-h-[520px]"
+          className="w-full h-[300px] transition-opacity duration-500"
+          viewBox="0 0 400 300"
           preserveAspectRatio="xMidYMid meet"
         />
         {/* Tooltip */}
@@ -356,10 +363,10 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
       </div>
 
       {/* Legend */}
-      <div className="flex justify-center gap-6 md:gap-8 mt-2 flex-wrap">
-        <div className="flex items-center gap-2 text-sm text-[#6B7280] dark:text-gray-400">
-          <div className="w-4 h-4 rounded bg-[#3B82F6]" />
-          <span>Bookings</span>
+      <div className="flex justify-center gap-1.5 mt-2">
+        <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+          <div className="w-3 h-3 rounded bg-[#3B82F6]" />
+          <span>Appointment</span>
         </div>
       </div>
     </>

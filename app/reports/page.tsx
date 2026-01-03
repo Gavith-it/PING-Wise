@@ -27,7 +27,7 @@ const CustomerActivityTrendChart = dynamic(() => import('@/components/charts/Cus
 });
 
 const TeamMetricsChart = dynamic(() => import('@/components/charts/TeamMetricsChart'), {
-  loading: () => <div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>,
+  loading: () => null, // No loading spinner - show chart immediately
   ssr: false
 });
 
