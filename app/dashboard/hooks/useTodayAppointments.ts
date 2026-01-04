@@ -57,10 +57,12 @@ export function useTodayAppointments(): UseTodayAppointmentsReturn {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      // Filter appointments that are scheduled for today
+      // Filter appointments that are scheduled for today AND have confirmed status only
       let filteredAppointments = allAppointments.filter((apt: Appointment) => {
         const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
-        return aptDate >= today && aptDate < tomorrow;
+        const isToday = aptDate >= today && aptDate < tomorrow;
+        const isConfirmed = apt.status?.toLowerCase() === 'confirmed';
+        return isToday && isConfirmed;
       });
       
       // Enrich appointments with patient data

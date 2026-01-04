@@ -109,17 +109,13 @@ export const normalizeCustomerStatus = (status: string | undefined | null): Cust
 };
 
 /**
- * Convert standardized CustomerStatus to lowercase format (for API compatibility)
- * Use this when sending to APIs that expect lowercase values
+ * Convert standardized CustomerStatus to API format
+ * The CRM API expects the standardized format directly (Active, FollowUp, etc.)
+ * This function returns the standardized format as-is
  */
 export const customerStatusToApiFormat = (status: CustomerStatusType): string => {
-  const mapping: Record<CustomerStatusType, string> = {
-    [CustomerStatus.Active]: 'active',
-    [CustomerStatus.Inactive]: 'inactive',
-    [CustomerStatus.Booked]: 'booked',
-    [CustomerStatus.FollowUp]: 'follow-up',
-  };
-  return mapping[status] || 'active';
+  // Return the standardized format directly - the API expects this format
+  return status;
 };
 
 /**

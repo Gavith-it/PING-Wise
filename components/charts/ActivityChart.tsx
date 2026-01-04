@@ -32,7 +32,7 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const chartData = useMemo(() => {
-    // Only use appointment status data
+    // Only use appointment status data (exclude pending, include cancelled)
     return [
       {
         name: 'Confirmed',
@@ -45,12 +45,6 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
         value: data.completed?.count || 0,
         percentage: data.completed?.percentage || 0,
         color: '#3b82f6', // Blue for Completed (matches appointments page)
-      },
-      {
-        name: 'Pending',
-        value: data.pending?.count || 0,
-        percentage: data.pending?.percentage || 0,
-        color: '#eab308', // Yellow for Pending (matches appointments page)
       },
       {
         name: 'Cancelled',

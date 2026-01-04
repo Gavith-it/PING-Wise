@@ -14,6 +14,7 @@ interface AppointmentListProps {
   onDelete: (id: string) => void;
   onFollowUp: (appointment: Appointment) => void;
   onAddClick: () => void;
+  isPastDate?: boolean;
 }
 
 function AppointmentList({
@@ -25,6 +26,7 @@ function AppointmentList({
   onDelete,
   onFollowUp,
   onAddClick,
+  isPastDate = false,
 }: AppointmentListProps) {
   if (loading) {
     return (
@@ -43,7 +45,7 @@ function AppointmentList({
             ? 'No appointments found matching your criteria'
             : 'No appointments scheduled for this date'}
         </p>
-        {!searchTerm && statusFilter === 'all' && (
+        {!searchTerm && statusFilter === 'all' && !isPastDate && (
           <>
             <p className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 mb-2 md:mb-3">Schedule an appointment to get started</p>
             <button
@@ -53,6 +55,9 @@ function AppointmentList({
               Schedule Appointment
             </button>
           </>
+        )}
+        {!searchTerm && statusFilter === 'all' && isPastDate && (
+          <p className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500">Cannot create appointments for past dates</p>
         )}
       </div>
     );

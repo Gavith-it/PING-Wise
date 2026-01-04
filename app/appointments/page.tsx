@@ -53,6 +53,7 @@ export default function AppointmentsPage() {
     loading,
     handleAppointmentCreated,
     handleDeleteAppointment,
+    loadMonthAppointments,
   } = useAppointments({
     selectedDate,
     currentMonth,
@@ -65,6 +66,13 @@ export default function AppointmentsPage() {
     date.setHours(0, 0, 0, 0);
     return date;
   }, []);
+
+  // Check if selected date is in the past
+  const isPastDate = useMemo(() => {
+    const selected = new Date(selectedDate);
+    selected.setHours(0, 0, 0, 0);
+    return selected < today;
+  }, [selectedDate, today]);
 
   // Filter appointments to show appointments for the selected date (not just today)
   const selectedDateAppointments = useMemo(() => {
@@ -127,7 +135,7 @@ export default function AppointmentsPage() {
     setShowFollowUpModal(true);
   };
 
-  const handleFollowUpYes = async () => {
+  const handleFollowUpYes = async (followUpDate: Date) => {
     if (!selectedFollowUpAppointment) return;
 
     try {
@@ -147,9 +155,7 @@ export default function AppointmentsPage() {
       const { crmApi } = await import('@/lib/services/crmApi');
       await crmApi.patchCustomer(patient.id, { status: 'FollowUp' });
       
-      // Update appointment status to completed using PUT method
-      // API: PUT /appointments/{id} - requires full body, but only status will change
-      // Convert appointment to CreateAppointmentRequest format
+      // Update current appointment status to completed using PUT method
       const patientId = typeof selectedFollowUpAppointment.patient === 'object' 
         ? selectedFollowUpAppointment.patient.id 
         : selectedFollowUpAppointment.patient;
@@ -167,22 +173,44 @@ export default function AppointmentsPage() {
         doctor: doctorId || '',
         date: dateStr,
         time: selectedFollowUpAppointment.time,
-        status: 'completed', // Only change the status, all other fields remain the same
+        status: 'completed', // Mark current appointment as completed
         type: selectedFollowUpAppointment.type,
         notes: selectedFollowUpAppointment.notes,
         reason: selectedFollowUpAppointment.reason,
       };
       await crmAppointmentService.updateAppointment(selectedFollowUpAppointment.id, fullAppointmentData);
       
+      // Create a new pending appointment for the follow-up date
+      const followUpDateStr = format(followUpDate, 'yyyy-MM-dd');
+      const followUpAppointmentData: CreateAppointmentRequest = {
+        patient: patientId,
+        doctor: doctorId || '',
+        date: followUpDateStr,
+        time: selectedFollowUpAppointment.time || '10:00', // Use same time or default
+        status: 'pending', // New appointment is pending
+        type: 'Follow-up',
+        notes: `Follow-up appointment for ${patient.name}`,
+        reason: selectedFollowUpAppointment.reason || '',
+      };
+      const createdAppointment = await crmAppointmentService.createAppointment(followUpAppointmentData);
+      
       // Invalidate patients cache so CRM page shows updated status
       invalidatePatientsCache();
       
-      toast.success('Patient marked for follow-up and appointment completed');
+      // Invalidate appointments cache to force fresh data load
+      const { invalidateAppointmentsCache } = await import('@/app/appointments/hooks/useAppointments');
+      invalidateAppointmentsCache();
+      
+      // Explicitly refresh month appointments to update calendar dots and pending section
+      // This will fetch all appointments and store them in cache.allAppointments
+      await loadMonthAppointments(false); // Force refresh, not background
+      
+      // Also refresh selected date appointments
+      await handleAppointmentCreated();
+      
+      toast.success('Patient marked for follow-up, appointment completed, and follow-up appointment scheduled');
       setShowFollowUpModal(false);
       setSelectedFollowUpAppointment(null);
-      
-      // Refresh appointments to reflect any changes
-      await handleAppointmentCreated();
     } catch (error: any) {
       console.error('Error updating patient status:', error);
       toast.error(error.response?.data?.message || 'Failed to update patient status');
@@ -272,6 +300,7 @@ export default function AppointmentsPage() {
               onFilterMenuToggle={() => setShowFilterMenu(!showFilterMenu)}
               onAddClick={handleAddClick}
               filterMenuRef={filterMenuRef}
+              isPastDate={isPastDate}
             />
           </div>
 
@@ -307,6 +336,7 @@ export default function AppointmentsPage() {
               onDelete={handleDeleteAppointment}
               onFollowUp={handleFollowUpClick}
               onAddClick={handleAddClick}
+              isPastDate={isPastDate}
             />
           </div>
 
@@ -342,7 +372,7 @@ export default function AppointmentsPage() {
                   ? selectedFollowUpAppointment.patient?.name || 'Unknown'
                   : 'Unknown'
               }
-              onYes={handleFollowUpYes}
+              onYes={(followUpDate) => handleFollowUpYes(followUpDate)}
               onNo={handleFollowUpNo}
               onClose={() => {
                 setShowFollowUpModal(false);

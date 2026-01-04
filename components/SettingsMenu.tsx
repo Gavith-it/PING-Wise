@@ -327,10 +327,7 @@ export default function SettingsMenu() {
 
                 {/* Features - Non-clickable */}
                 <div className="w-full flex items-center px-4 md:px-5 py-3 md:py-3.5">
-                  <div className="flex items-center space-x-3">
-                    <Sparkles className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                    <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Features</span>
-                  </div>
+                  <span className="text-base md:text-lg font-bold text-gray-700 dark:text-gray-300">Features</span>
                 </div>
 
                 {/* Reports and Insights */}

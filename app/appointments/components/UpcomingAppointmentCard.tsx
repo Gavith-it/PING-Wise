@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { Edit, X } from 'lucide-react';
+import { Edit, X, Phone } from 'lucide-react';
 import { Appointment } from '@/types';
 import { formatTime, maskPhoneNumber } from '../utils/formatUtils';
 
@@ -95,6 +95,20 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
             >
               <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
             </button>
+            {patient?.phone && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Do you want to call ${patient.phone}?`)) {
+                    window.location.href = `tel:${patient.phone}`;
+                  }
+                }}
+                className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                title="Call"
+              >
+                <Phone className="w-3 h-3 md:w-3.5 md:h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>

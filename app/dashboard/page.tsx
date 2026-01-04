@@ -89,10 +89,9 @@ export default function DashboardPage() {
         const response = await crmAppointmentService.getAppointments({}).catch(() => ({ data: [] }));
         const allAppointments = response.data || [];
         
-        // Calculate status counts
+        // Calculate status counts (excluding pending, including cancelled)
         const confirmed = allAppointments.filter((apt: any) => apt.status === 'confirmed').length;
         const completed = allAppointments.filter((apt: any) => apt.status === 'completed').length;
-        const pending = allAppointments.filter((apt: any) => apt.status === 'pending').length;
         const cancelled = allAppointments.filter((apt: any) => apt.status === 'cancelled').length;
         const total = allAppointments.length;
         
@@ -105,10 +104,6 @@ export default function DashboardPage() {
           completed: {
             count: completed,
             percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
-          },
-          pending: {
-            count: pending,
-            percentage: total > 0 ? Math.round((pending / total) * 100) : 0,
           },
           cancelled: {
             count: cancelled,
@@ -221,7 +216,7 @@ export default function DashboardPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 dark:border-gray-700 w-full">
             <div className="mb-2 md:mb-3">
               <div>
-                <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Patient Activity</h3>
+                <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Appointment overview</h3>
                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 md:mt-1">Distribution overview</p>
               </div>
             </div>
@@ -240,7 +235,7 @@ export default function DashboardPage() {
 
           <div className="mb-4 md:mb-6">
             <div className="flex items-center justify-between mb-3 md:mb-4">
-              <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Today&apos;s Appointments</h3>
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Upcoming Appointment</h3>
               <button
                 onClick={() => router.push('/appointments')}
                 className="text-xs md:text-sm text-primary hover:text-primary-dark font-medium"

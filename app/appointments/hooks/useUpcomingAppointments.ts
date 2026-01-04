@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { Appointment } from '@/types';
 import { isSameDay } from 'date-fns';
+import { appointmentsCache } from './useAppointments';
 
 // Calculates appointments for pending section
-// Shows appointments with status "pending" (typically created externally via Postman, DB, etc.)
-// Appointments created from the application are always "confirmed", so they won't appear here
+// Shows appointments with status "pending" (including follow-up appointments from any month)
 export function useUpcomingAppointments(
   allMonthAppointments: Appointment[],
   appointments: Appointment[],
@@ -12,10 +12,18 @@ export function useUpcomingAppointments(
   today: Date
 ): Appointment[] {
   return useMemo(() => {
+    // Get all appointments from cache (includes appointments from all months, not just current month)
+    // This ensures pending appointments from future months (like follow-up dates) are shown
+    let allAppointmentsForPending = allMonthAppointments;
+    
+    // Use all appointments from cache if available (includes appointments from all months)
+    if (appointmentsCache && appointmentsCache.allAppointments && appointmentsCache.allAppointments.length > 0) {
+      allAppointmentsForPending = appointmentsCache.allAppointments;
+    }
+    
     // Filter for appointments with status "pending"
-    // These are typically external appointments (created via Postman, DB, etc.)
-    // Appointments created from the application are always "confirmed", so they won't be included
-    const pendingAppointments = allMonthAppointments.filter(apt => {
+    // This includes follow-up appointments created for future dates
+    const pendingAppointments = allAppointmentsForPending.filter(apt => {
       // Only include appointments with "pending" status
       if (apt.status !== 'pending') {
         return false;

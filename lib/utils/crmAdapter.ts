@@ -102,7 +102,15 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     email: email,
     address: customer.address || '',
     assignedDoctor: customer.assigned_to,
-    status: apiFormatToCustomerStatus(customer.status || 'active') as 'active' | 'booked' | 'follow-up' | 'inactive',
+    status: (() => {
+      const normalizedStatus = apiFormatToCustomerStatus(customer.status || 'active');
+      // Convert CustomerStatus.FollowUp to 'follow-up' for Patient type compatibility
+      if (normalizedStatus === CustomerStatus.FollowUp) {
+        return 'follow-up' as const;
+      }
+      // Convert other statuses to lowercase for Patient type
+      return normalizedStatus.toLowerCase() as 'active' | 'booked' | 'follow-up' | 'inactive';
+    })(),
     medicalNotes: parseMedicalHistory(customer.medical_history || (customer as any).medical_history || null),
     dateOfBirth: dateOfBirth,
     lastVisit: lastVisit,

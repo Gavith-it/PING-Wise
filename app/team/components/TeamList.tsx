@@ -9,12 +9,14 @@ interface TeamListProps {
   teamMembers: User[];
   loading: boolean;
   onCardClick: (member: User) => void;
+  onStatusToggle?: (memberId: string, newStatus: 'active' | 'OnLeave') => void;
 }
 
 function TeamList({
   teamMembers,
   loading,
   onCardClick,
+  onStatusToggle,
 }: TeamListProps) {
   if (loading) {
     return (
@@ -41,6 +43,7 @@ function TeamList({
           index={index}
           getStatusColor={getStatusColor}
           onClick={() => onCardClick(member)}
+          onStatusToggle={onStatusToggle}
         />
       ))}
     </div>

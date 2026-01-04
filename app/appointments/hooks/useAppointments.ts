@@ -8,11 +8,13 @@ import { Appointment } from '@/types';
 const appointmentsCache: {
   appointments: Record<string, Appointment[]>;
   monthAppointments: Record<string, Appointment[]>;
+  allAppointments?: Appointment[]; // Store all appointments from all months for pending section
   timestamp: number;
   monthTimestamp: number;
 } = {
   appointments: {},
   monthAppointments: {},
+  allAppointments: [],
   timestamp: 0,
   monthTimestamp: 0,
 };
@@ -27,10 +29,14 @@ export function invalidateAppointmentsCache(): void {
   // Clear all cached appointments
   appointmentsCache.appointments = {};
   appointmentsCache.monthAppointments = {};
+  appointmentsCache.allAppointments = [];
   // Reset timestamps to force fresh fetch
   appointmentsCache.timestamp = 0;
   appointmentsCache.monthTimestamp = 0;
 }
+
+// Export cache for use in other hooks
+export { appointmentsCache };
 
 interface UseAppointmentsParams {
   selectedDate: Date;
@@ -133,15 +139,15 @@ export function useAppointments({
       
       const monthStr = format(currentMonth, 'yyyy-MM');
       
-      // Optimized: Fetch all appointments for the month without date filter
-      // This makes a single API call instead of 31+ calls (one per day)
+      // Optimized: Fetch ALL appointments (not just current month) to include pending appointments from other months
+      // This ensures pending appointments section shows appointments from all months, not just current month
       const response = await crmAppointmentService.getAppointments({}).catch(() => ({ data: [] }));
       let allAppts = response.data || [];
       
       // Enrich appointments with patient data
       allAppts = await enrichAppointmentsWithPatients(allAppts);
       
-      // Filter appointments to only include those in the current month
+      // Filter appointments to only include those in the current month (for calendar dots)
       const monthStart = startOfMonth(currentMonth);
       const monthEnd = endOfMonth(currentMonth);
       
@@ -159,9 +165,13 @@ export function useAppointments({
         index === self.findIndex((a) => a.id === apt.id)
       );
       
-      // Update cache
+      // Update cache for current month
       appointmentsCache.monthAppointments[monthStr] = uniqueAppts;
       appointmentsCache.monthTimestamp = Date.now();
+      
+      // IMPORTANT: Store ALL appointments (from all months) in a separate cache key for pending appointments
+      // This allows pending appointments section to show appointments from any month
+      appointmentsCache.allAppointments = allAppts;
       
       // Always update to ensure latest data is shown
       // This is important when appointments are created from other pages

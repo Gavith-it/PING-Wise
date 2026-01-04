@@ -11,6 +11,7 @@ interface AppointmentSearchBarProps {
   onFilterMenuToggle: () => void;
   onAddClick: () => void;
   filterMenuRef: React.RefObject<HTMLDivElement>;
+  isPastDate?: boolean;
 }
 
 export default function AppointmentSearchBar({
@@ -22,6 +23,7 @@ export default function AppointmentSearchBar({
   onFilterMenuToggle,
   onAddClick,
   filterMenuRef,
+  isPastDate = false,
 }: AppointmentSearchBarProps) {
   return (
     <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-6">
@@ -94,7 +96,13 @@ export default function AppointmentSearchBar({
       </div>
       <button
         onClick={onAddClick}
-        className="bg-primary text-white px-3 md:px-6 py-1.5 md:py-2.5 rounded-lg md:rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center justify-center shadow-md hover:shadow-lg text-xs md:text-sm flex-shrink-0 h-[36px] md:h-auto whitespace-nowrap"
+        disabled={isPastDate}
+        className={`px-3 md:px-6 py-1.5 md:py-2.5 rounded-lg md:rounded-xl font-medium transition-colors flex items-center justify-center shadow-md text-xs md:text-sm flex-shrink-0 h-[36px] md:h-auto whitespace-nowrap ${
+          isPastDate
+            ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+            : 'bg-primary text-white hover:bg-primary-dark hover:shadow-lg'
+        }`}
+        title={isPastDate ? 'Cannot create appointments for past dates' : 'Add new appointment'}
       >
         <span>Add</span>
       </button>

@@ -100,7 +100,8 @@ export function validateAge(age: string): ValidationResult {
 }
 
 /**
- * Validates email - alphanumeric characters allowed
+ * Validates email - requires proper domain format (e.g., gmail.com, yahoo.com)
+ * Rejects invalid formats like "name.com" or "name.in" without @ symbol
  */
 export function validateEmail(email: string): ValidationResult {
   if (!email || !email.trim()) {
@@ -113,9 +114,54 @@ export function validateEmail(email: string): ValidationResult {
     return { isValid: false, error: 'Email must be less than 255 characters' };
   }
 
+  // Check for @ symbol - must be present
+  if (!trimmedEmail.includes('@')) {
+    return { isValid: false, error: 'Email must contain @ symbol (e.g., name@gmail.com)' };
+  }
+
+  // Check that @ is not at the start or end
+  if (trimmedEmail.startsWith('@') || trimmedEmail.endsWith('@')) {
+    return { isValid: false, error: 'Email format is invalid. Use format: name@domain.com' };
+  }
+
+  // Split by @ to check domain part
+  const parts = trimmedEmail.split('@');
+  if (parts.length !== 2) {
+    return { isValid: false, error: 'Email must have exactly one @ symbol' };
+  }
+
+  const [localPart, domainPart] = parts;
+
+  // Validate local part (before @)
+  if (!localPart || localPart.trim() === '') {
+    return { isValid: false, error: 'Email must have a name before @ (e.g., name@gmail.com)' };
+  }
+
+  // Validate domain part (after @)
+  if (!domainPart || domainPart.trim() === '') {
+    return { isValid: false, error: 'Email must have a domain after @ (e.g., name@gmail.com)' };
+  }
+
+  // Check that domain has a dot (.) for TLD
+  if (!domainPart.includes('.')) {
+    return { isValid: false, error: 'Email domain must include a domain extension (e.g., .com, .in, .org)' };
+  }
+
+  // Check that domain doesn't start or end with dot
+  if (domainPart.startsWith('.') || domainPart.endsWith('.')) {
+    return { isValid: false, error: 'Email domain format is invalid (e.g., name@gmail.com)' };
+  }
+
+  // Check that there's text before and after the dot in domain
+  const domainParts = domainPart.split('.');
+  if (domainParts.length < 2 || domainParts.some(part => part.trim() === '')) {
+    return { isValid: false, error: 'Email domain must have a valid extension (e.g., .com, .in, .org)' };
+  }
+
+  // Final regex validation for proper email format
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(trimmedEmail)) {
-    return { isValid: false, error: 'Please enter a valid email address' };
+    return { isValid: false, error: 'Please enter a valid email address (e.g., name@gmail.com)' };
   }
 
   return { isValid: true, error: '' };

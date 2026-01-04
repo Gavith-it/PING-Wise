@@ -82,6 +82,36 @@ export default function TeamPage() {
     }
   };
 
+  const handleStatusToggle = async (memberId: string, newStatus: 'active' | 'OnLeave') => {
+    try {
+      // Find the member in the current list
+      const member = teamMembers.find(m => m.id === memberId);
+      if (!member) {
+        toast.error('Team member not found');
+        return;
+      }
+
+      // Import adapter to convert User to CrmTeamRequest
+      const { userToCrmTeam } = await import('@/lib/utils/teamAdapter');
+      
+      // Create updated member with new status
+      const updatedMember = { ...member, status: newStatus };
+      
+      // Convert to API format
+      const apiData = userToCrmTeam(updatedMember);
+      
+      // Update via API
+      await teamApi.updateTeam(memberId, apiData);
+      
+      // Update cache optimistically
+      updateTeamMemberInCache(updatedMember);
+      
+      toast.success(`Team member status updated to ${newStatus === 'OnLeave' ? 'On Leave' : 'Active'}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || 'Failed to update team member status');
+    }
+  };
+
   const departments = Array.from(new Set(teamMembers.map(m => m.department).filter(Boolean))) as string[];
 
   return (
@@ -142,6 +172,7 @@ export default function TeamPage() {
               teamMembers={filteredMembers}
               loading={loading}
               onCardClick={handleView}
+              onStatusToggle={handleStatusToggle}
             />
           </div>
         </div>

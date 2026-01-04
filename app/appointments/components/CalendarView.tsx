@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Appointment } from '@/types';
+import { appointmentsCache } from '../hooks/useAppointments';
 
 interface CalendarViewProps {
   selectedDate: Date;
@@ -23,7 +24,17 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
 
   const getAppointmentsForDate = (date: Date) => {
     // Use isSameDay from date-fns which properly compares dates ignoring time components
-    return appointments.filter(apt => {
+    // Check both the appointments prop (current month) and all appointments from cache
+    // This ensures calendar dots show pending appointments from other months too
+    let allApptsToCheck = appointments;
+    
+    // Use all appointments from cache if available (includes appointments from all months)
+    // This ensures pending appointments from future months (like follow-up dates) show dots
+    if (appointmentsCache && appointmentsCache.allAppointments && appointmentsCache.allAppointments.length > 0) {
+      allApptsToCheck = appointmentsCache.allAppointments;
+    }
+    
+    return allApptsToCheck.filter(apt => {
       const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
       return isSameDay(aptDate, date);
     });

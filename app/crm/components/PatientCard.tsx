@@ -101,7 +101,14 @@ function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
         <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0 ml-1">
           {/* Status Badge - Top Right */}
           <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(patient.status)}`}>
-            {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+            {(() => {
+              // Display status properly - handle 'follow-up' to show as 'Follow-up'
+              const status = patient.status;
+              if (status === 'follow-up') {
+                return 'Follow-up';
+              }
+              return status.charAt(0).toUpperCase() + status.slice(1);
+            })()}
           </span>
         </div>
       </div>

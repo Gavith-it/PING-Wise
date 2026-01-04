@@ -3,12 +3,14 @@
 import { memo } from 'react';
 import { User } from '@/types';
 import { generateInitials, generateAvatarColor } from '../utils/teamUtils';
+import ToggleSwitch from '@/components/ui/toggle-switch';
 
 interface TeamMemberCardProps {
   member: User;
   index: number;
   getStatusColor: (status: string) => string;
   onClick: () => void;
+  onStatusToggle?: (memberId: string, newStatus: 'active' | 'OnLeave') => void;
 }
 
 function TeamMemberCard({ 
@@ -16,7 +18,16 @@ function TeamMemberCard({
   index,
   getStatusColor, 
   onClick,
+  onStatusToggle,
 }: TeamMemberCardProps) {
+  const isOnLeave = member.status === 'OnLeave';
+
+  const handleToggle = (enabled: boolean) => {
+    if (onStatusToggle) {
+      const newStatus = enabled ? 'OnLeave' : 'active';
+      onStatusToggle(member.id, newStatus);
+    }
+  };
 
   return (
     <div 
@@ -49,6 +60,20 @@ function TeamMemberCard({
           <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(member.status)}`}>
             {member.status === 'active' ? 'Active' : member.status === 'OnLeave' ? 'On Leave' : 'Inactive'}
           </span>
+          {/* OnLeave Toggle - Below Status */}
+          {onStatusToggle && (
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <span className="text-[9px] md:text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                On Leave
+              </span>
+              <ToggleSwitch
+                enabled={isOnLeave}
+                onChange={handleToggle}
+                size="sm"
+                className="flex-shrink-0"
+              />
+            </div>
+          )}
         </div>
       </div>
       
