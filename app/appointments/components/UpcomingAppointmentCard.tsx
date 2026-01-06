@@ -17,14 +17,17 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
   const doctor = typeof appointment.doctor === 'object' ? appointment.doctor : null;
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
+    // Normalize status to handle both lowercase and capitalized
+    const normalized = status?.charAt(0).toUpperCase() + status?.slice(1).toLowerCase() || '';
+    
+    switch (normalized) {
+      case 'Confirmed':
         return 'bg-green-100 text-green-700 border-green-200';
-      case 'pending':
+      case 'Pending':
         return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'completed':
+      case 'Completed':
         return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'cancelled':
+      case 'Cancelled':
         return 'bg-red-100 text-red-700 border-red-200';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -32,14 +35,17 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
   };
 
   const getStatusBorderColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
+    // Normalize status to handle both lowercase and capitalized
+    const normalized = status?.charAt(0).toUpperCase() + status?.slice(1).toLowerCase() || '';
+    
+    switch (normalized) {
+      case 'Confirmed':
         return 'border-l-green-500';
-      case 'pending':
+      case 'Pending':
         return 'border-l-yellow-500';
-      case 'completed':
+      case 'Completed':
         return 'border-l-blue-500';
-      case 'cancelled':
+      case 'Cancelled':
         return 'border-l-red-500';
       default:
         return 'border-l-gray-500';

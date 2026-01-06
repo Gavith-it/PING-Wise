@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Users, UserCheck, CalendarX, Building } from 'lucide-react';
 import { teamApi } from '@/lib/services/teamApi';
@@ -38,6 +38,7 @@ export default function TeamPage() {
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [dashboardData, setDashboardData] = useState<any>(null);
 
   // Use team members hook
   const {
@@ -48,6 +49,26 @@ export default function TeamPage() {
     updateTeamMemberInCache,
     removeTeamMemberFromCache,
   } = useTeamMembers({ filter, filters });
+
+  // Fetch dashboard data from /teams/dashboard API
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const data = await teamApi.getTeamDashboard();
+        setDashboardData(data);
+      } catch (error) {
+        console.error('Error loading team dashboard:', error);
+        // Set default values on error
+        setDashboardData({
+          totalMembers: 0,
+          activeMembers: 0,
+          onLeaveMembers: 0,
+          departments: 0,
+        });
+      }
+    };
+    loadDashboard();
+  }, []);
 
   // Use filter hook
   const filteredMembers = useTeamFilters(teamMembers, searchQuery, filters);
@@ -77,6 +98,9 @@ export default function TeamPage() {
       toast.success('Team member deleted successfully');
       // Optimistically remove from cache instead of refetching
       removeTeamMemberFromCache(id);
+      // Refresh dashboard data to update KPI cards
+      const data = await teamApi.getTeamDashboard().catch(() => ({}));
+      setDashboardData(data);
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.message || 'Failed to delete team member');
     }
@@ -106,6 +130,10 @@ export default function TeamPage() {
       // Update cache optimistically
       updateTeamMemberInCache(updatedMember);
       
+      // Refresh dashboard data to update KPI cards
+      const data = await teamApi.getTeamDashboard().catch(() => ({}));
+      setDashboardData(data);
+      
       toast.success(`Team member status updated to ${newStatus === 'OnLeave' ? 'On Leave' : 'Active'}`);
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.message || 'Failed to update team member status');
@@ -126,31 +154,31 @@ export default function TeamPage() {
               </div>
             </div>
 
-            {/* Summary Cards */}
+            {/* Summary Cards - Use API data from /teams/dashboard */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
               <FilterCard
                 icon={Users}
-                value={teamMembers.length}
+                value={dashboardData?.totalMembers || dashboardData?.total_members || 0}
                 label="Total Team Members"
                 active={false}
               />
               <FilterCard
                 icon={UserCheck}
-                value={teamMembers.filter(m => m.status === 'active').length}
+                value={dashboardData?.activeMembers || dashboardData?.active_members || 0}
                 label="Active Today"
                 active={false}
                 color="green"
               />
               <FilterCard
                 icon={CalendarX}
-                value={teamMembers.filter(m => m.status === 'OnLeave').length}
+                value={dashboardData?.onLeaveMembers || dashboardData?.on_leave_members || 0}
                 label="On Leave"
                 active={false}
                 color="red"
               />
               <FilterCard
                 icon={Building}
-                value={departments.length}
+                value={dashboardData?.departments || 0}
                 label="Departments"
                 active={false}
               />
@@ -225,7 +253,7 @@ export default function TeamPage() {
                 setSelectedMember(null);
               }
             }}
-            onSuccess={(createdOrUpdatedMember) => {
+            onSuccess={async (createdOrUpdatedMember) => {
               // If we were editing (selectedMember exists), update and go back to details modal
               if (selectedMember && createdOrUpdatedMember) {
                 setSelectedMember(createdOrUpdatedMember);
@@ -233,16 +261,25 @@ export default function TeamPage() {
                 setShowDetailsModal(true);
                 // Update cache with the updated member
                 updateTeamMemberInCache(createdOrUpdatedMember);
+                // Refresh dashboard data to update KPI cards
+                const data = await teamApi.getTeamDashboard().catch(() => ({}));
+                setDashboardData(data);
               } else if (createdOrUpdatedMember) {
                 // If adding new, add to cache and close
                 addTeamMemberToCache(createdOrUpdatedMember);
                 setShowEditModal(false);
                 setSelectedMember(null);
+                // Refresh dashboard data to update KPI cards
+                const data = await teamApi.getTeamDashboard().catch(() => ({}));
+                setDashboardData(data);
               } else {
                 // Fallback: if we don't have the member data, refresh (shouldn't happen)
                 loadTeamMembers(true, true);
                 setShowEditModal(false);
                 setSelectedMember(null);
+                // Refresh dashboard data to update KPI cards
+                const data = await teamApi.getTeamDashboard().catch(() => ({}));
+                setDashboardData(data);
               }
             }}
           />

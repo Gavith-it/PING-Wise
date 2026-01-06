@@ -9,7 +9,7 @@ interface AppointmentListProps {
   appointments: Appointment[];
   loading: boolean;
   searchTerm: string;
-  statusFilter: 'all' | 'confirmed' | 'pending' | 'cancelled';
+  statusFilter: 'all' | 'Confirmed' | 'Pending' | 'Cancelled';
   onEdit: (appointment: Appointment) => void;
   onDelete: (id: string) => void;
   onFollowUp: (appointment: Appointment) => void;

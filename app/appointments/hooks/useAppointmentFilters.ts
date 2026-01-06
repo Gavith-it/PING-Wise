@@ -5,7 +5,7 @@ import { Appointment } from '@/types';
 export function useAppointmentFilters(
   appointments: Appointment[],
   searchTerm: string,
-  statusFilter: 'all' | 'confirmed' | 'pending' | 'cancelled'
+  statusFilter: 'all' | 'Confirmed' | 'Pending' | 'Cancelled'
 ): Appointment[] {
   return useMemo(() => {
     let filtered = [...appointments];
@@ -19,9 +19,13 @@ export function useAppointmentFilters(
       });
     }
 
-    // Apply status filter
+    // Apply status filter (normalize both for comparison)
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(apt => apt.status === statusFilter);
+      filtered = filtered.filter(apt => {
+        const aptStatus = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+        const filterStatus = statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1).toLowerCase();
+        return aptStatus === filterStatus;
+      });
     }
 
     // Sort appointments by status priority:
@@ -31,14 +35,17 @@ export function useAppointmentFilters(
     // 4. Completed (lowest priority - show last)
     filtered.sort((a, b) => {
       const getStatusPriority = (status: string): number => {
-        switch (status) {
-          case 'confirmed':
+        // Normalize status to handle both lowercase and capitalized
+        const normalized = status?.charAt(0).toUpperCase() + status?.slice(1).toLowerCase() || '';
+        
+        switch (normalized) {
+          case 'Confirmed':
             return 1;
-          case 'pending':
+          case 'Pending':
             return 2;
-          case 'cancelled':
+          case 'Cancelled':
             return 3;
-          case 'completed':
+          case 'Completed':
             return 4;
           default:
             return 5;

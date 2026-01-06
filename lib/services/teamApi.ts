@@ -219,6 +219,36 @@ class TeamApiService {
     const response = await this.api.delete<any>(`/teams/${id}`) as unknown as any;
     return response.data || response; // Handle wrapped or direct response
   }
+
+  /**
+   * Get team dashboard metrics
+   * GET /teams/dashboard
+   * Returns team daily dashboard metrics
+   */
+  async getTeamDashboard(): Promise<any> {
+    try {
+      const response = await this.api.get<any>('/teams/dashboard') as unknown as any;
+      
+      // Handle null/undefined response
+      if (response === null || response === undefined) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Team Dashboard API returned null/undefined - returning empty object');
+        }
+        return {};
+      }
+      
+      // Check if response has a data property (wrapped response)
+      let data = response;
+      if (typeof response === 'object' && response !== null && 'data' in response) {
+        data = response.data;
+      }
+      
+      return data || {};
+    } catch (error) {
+      console.error('Error in getTeamDashboard:', error);
+      throw error;
+    }
+  }
 }
 
 export const teamApi = new TeamApiService();

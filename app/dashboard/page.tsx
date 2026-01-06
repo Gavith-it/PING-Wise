@@ -16,7 +16,6 @@ import { useWalletBalance } from './hooks/useWalletBalance';
 import KPICards from './components/KPICards';
 import TodayAppointmentsList from './components/TodayAppointmentsList';
 import { loadPreloadFunction } from './utils/preloadUtils';
-import { crmAppointmentService } from '@/lib/services/appointmentService';
 
 // Lazy load heavy components
 const ActivityChart = dynamic(() => import('@/components/charts/ActivityChart'), {
@@ -78,22 +77,22 @@ export default function DashboardPage() {
     setIsMounted(true);
   }, []);
 
-  // Calculate appointment status counts for activity chart
+  // Calculate appointment status counts from daily report API
   useEffect(() => {
     const calculateAppointmentActivity = async () => {
       if (!isMounted) return;
       
       try {
         setAppointmentActivityLoading(true);
-        // Fetch all appointments (or recent appointments) to calculate status counts
-        const response = await crmAppointmentService.getAppointments({}).catch(() => ({ data: [] }));
-        const allAppointments = response.data || [];
+        // Use daily report API instead of fetching all appointments
+        const { reportsApi } = await import('@/lib/services/reportsApi');
+        const dailyReport = await reportsApi.getDailyReport().catch(() => ({} as any));
         
-        // Calculate status counts (excluding pending, including cancelled)
-        const confirmed = allAppointments.filter((apt: any) => apt.status === 'confirmed').length;
-        const completed = allAppointments.filter((apt: any) => apt.status === 'completed').length;
-        const cancelled = allAppointments.filter((apt: any) => apt.status === 'cancelled').length;
-        const total = allAppointments.length;
+        // Get appointment counts from API response
+        const confirmed = (dailyReport as any)?.confirmedAppointments || (dailyReport as any)?.confirmed_appointments || 0;
+        const completed = (dailyReport as any)?.completedAppointments || (dailyReport as any)?.completed_appointments || 0;
+        const cancelled = (dailyReport as any)?.cancelledAppointments || (dailyReport as any)?.cancelled_appointments || 0;
+        const total = (dailyReport as any)?.totalAppointments || (dailyReport as any)?.total_appointments || 0;
         
         setAppointmentActivity({
           total,
@@ -112,13 +111,20 @@ export default function DashboardPage() {
         });
       } catch (error) {
         console.error('Failed to calculate appointment activity:', error);
+        // Set default values on error
+        setAppointmentActivity({
+          total: 0,
+          confirmed: { count: 0, percentage: 0 },
+          completed: { count: 0, percentage: 0 },
+          cancelled: { count: 0, percentage: 0 },
+        });
       } finally {
         setAppointmentActivityLoading(false);
       }
     };
 
     calculateAppointmentActivity();
-  }, [isMounted]);
+  }, [isMounted, dailyReport]); // Recalculate when dailyReport changes
 
   // Load data when authenticated
   useEffect(() => {

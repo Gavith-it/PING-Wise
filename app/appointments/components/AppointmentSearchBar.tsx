@@ -5,8 +5,8 @@ import { Search, Plus, Filter } from 'lucide-react';
 interface AppointmentSearchBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  statusFilter: 'all' | 'confirmed' | 'pending' | 'cancelled';
-  onStatusFilterChange: (status: 'all' | 'confirmed' | 'pending' | 'cancelled') => void;
+  statusFilter: 'all' | 'Confirmed' | 'Pending' | 'Cancelled';
+  onStatusFilterChange: (status: 'all' | 'Confirmed' | 'Pending' | 'Cancelled') => void;
   showFilterMenu: boolean;
   onFilterMenuToggle: () => void;
   onAddClick: () => void;
@@ -60,33 +60,33 @@ export default function AppointmentSearchBar({
             </button>
             <button
               onClick={() => {
-                onStatusFilterChange('confirmed');
+                onStatusFilterChange('Confirmed');
                 onFilterMenuToggle();
               }}
               className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                statusFilter === 'confirmed' ? 'bg-primary/10 dark:bg-primary/20 text-primary font-medium' : 'text-gray-700 dark:text-gray-300'
+                statusFilter === 'Confirmed' ? 'bg-primary/10 dark:bg-primary/20 text-primary font-medium' : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Confirmed
             </button>
             <button
               onClick={() => {
-                onStatusFilterChange('pending');
+                onStatusFilterChange('Pending');
                 onFilterMenuToggle();
               }}
               className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                statusFilter === 'pending' ? 'bg-primary/10 dark:bg-primary/20 text-primary font-medium' : 'text-gray-700 dark:text-gray-300'
+                statusFilter === 'Pending' ? 'bg-primary/10 dark:bg-primary/20 text-primary font-medium' : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Pending
             </button>
             <button
               onClick={() => {
-                onStatusFilterChange('cancelled');
+                onStatusFilterChange('Cancelled');
                 onFilterMenuToggle();
               }}
               className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                statusFilter === 'cancelled' ? 'bg-primary/10 dark:bg-primary/20 text-primary font-medium' : 'text-gray-700 dark:text-gray-300'
+                statusFilter === 'Cancelled' ? 'bg-primary/10 dark:bg-primary/20 text-primary font-medium' : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Cancelled

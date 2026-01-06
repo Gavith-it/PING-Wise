@@ -115,7 +115,7 @@ export const mockAppointments: Appointment[] = [
     doctor: '1',
     date: new Date('2024-01-15'),
     time: '10:00',
-    status: 'confirmed',
+    status: 'Confirmed',
     type: 'Consultation'
   },
   {
@@ -124,7 +124,7 @@ export const mockAppointments: Appointment[] = [
     doctor: '2',
     date: new Date('2024-01-15'),
     time: '14:30',
-    status: 'pending',
+    status: 'Pending',
     type: 'Follow-up'
   },
 ];

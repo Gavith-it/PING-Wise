@@ -21,11 +21,11 @@ export function useUpcomingAppointments(
       allAppointmentsForPending = appointmentsCache.allAppointments;
     }
     
-    // Filter for appointments with status "pending"
+    // Filter for appointments with status "Pending"
     // This includes follow-up appointments created for future dates
     const pendingAppointments = allAppointmentsForPending.filter(apt => {
-      // Only include appointments with "pending" status
-      if (apt.status !== 'pending') {
+      // Only include appointments with "Pending" status
+      if (apt.status !== 'Pending') {
         return false;
       }
       

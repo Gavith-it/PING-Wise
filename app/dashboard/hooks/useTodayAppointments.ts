@@ -61,7 +61,7 @@ export function useTodayAppointments(): UseTodayAppointmentsReturn {
       let filteredAppointments = allAppointments.filter((apt: Appointment) => {
         const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
         const isToday = aptDate >= today && aptDate < tomorrow;
-        const isConfirmed = apt.status?.toLowerCase() === 'confirmed';
+        const isConfirmed = apt.status === 'Confirmed';
         return isToday && isConfirmed;
       });
       

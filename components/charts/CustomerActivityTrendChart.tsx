@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { reportsApi } from '@/lib/services/reportsApi';
 
 interface ActivityData {
   labels: string[];
@@ -8,34 +9,6 @@ interface ActivityData {
   returning: number[];
   churned: number[];
 }
-
-const weeklyActivityData: ActivityData = {
-  labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-  new: [120, 150, 140, 180],
-  returning: [320, 380, 350, 420],
-  churned: [45, 38, 52, 41],
-};
-
-const monthlyActivityData: ActivityData = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-  new: [480, 600, 560, 720],
-  returning: [1280, 1520, 1400, 1680],
-  churned: [180, 152, 208, 164],
-};
-
-const quarterlyActivityData: ActivityData = {
-  labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-  new: [1920, 2400, 2240, 2880],
-  returning: [5120, 6080, 5600, 6720],
-  churned: [720, 608, 832, 656],
-};
-
-const annuallyActivityData: ActivityData = {
-  labels: ['2021', '2022', '2023', '2024'],
-  new: [7680, 9600, 8960, 11520],
-  returning: [20480, 24320, 22400, 26880],
-  churned: [2880, 2432, 3328, 2624],
-};
 
 // Colors: All blue shades
 const colors = ['#60A5FA', '#3B82F6', '#1A3E9E']; // New (light blue), Returning (medium blue), Churned (dark blue)
@@ -54,6 +27,13 @@ interface CustomerActivityTrendChartProps {
 
 export default function CustomerActivityTrendChart({ currentPeriod }: CustomerActivityTrendChartProps) {
   const [isAnimating, setIsAnimating] = useState(true);
+  const [activityData, setActivityData] = useState<ActivityData>({
+    labels: [],
+    new: [],
+    returning: [],
+    churned: [],
+  });
+  const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState<TooltipPosition>({
     x: 0,
     y: 0,
@@ -63,35 +43,92 @@ export default function CustomerActivityTrendChart({ currentPeriod }: CustomerAc
   });
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const getData = (): ActivityData => {
-    switch (currentPeriod) {
-      case 'weekly':
-        return weeklyActivityData;
-      case 'monthly':
-        return monthlyActivityData;
-      case 'quarterly':
-        return quarterlyActivityData;
-      case 'annually':
-        return annuallyActivityData;
-      default:
-        return weeklyActivityData;
-    }
-  };
-
-  const activityData = getData();
-
+  // Fetch data from API when period changes
   useEffect(() => {
-    setIsAnimating(true);
-    const timer1 = setTimeout(() => {
-      drawChart(true);
-      const timer2 = setTimeout(() => setIsAnimating(false), 1500);
-      return () => clearTimeout(timer2);
-    }, 50);
-    return () => clearTimeout(timer1);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        // Map currentPeriod to API mode format
+        const modeMap: Record<string, string> = {
+          'weekly': 'weekly',
+          'monthly': 'monthly',
+          'quarterly': 'quarterly',
+          'annually': 'annually'
+        };
+        
+        const mode = modeMap[currentPeriod] || 'weekly';
+        
+        // Fetch churn report from API
+        const reportData = await reportsApi.getChurnReport({ mode });
+        
+        // Transform API response to chart data format
+        // Handle different possible response structures
+        let labels: string[] = [];
+        let newData: number[] = [];
+        let returningData: number[] = [];
+        let churnedData: number[] = [];
+        
+        if (Array.isArray(reportData)) {
+          // If API returns array directly
+          labels = reportData.map((item: any) => item.label || item.period || item.date || '');
+          newData = reportData.map((item: any) => item.new || item.newCustomers || item.new_count || 0);
+          returningData = reportData.map((item: any) => item.returning || item.returningCustomers || item.returning_count || 0);
+          churnedData = reportData.map((item: any) => item.churned || item.churnedCustomers || item.churned_count || 0);
+        } else if (reportData && typeof reportData === 'object') {
+          // If API returns object with data array
+          const dataArray = reportData.data || reportData.metrics || reportData.churnData || [];
+          if (Array.isArray(dataArray)) {
+            labels = dataArray.map((item: any) => item.label || item.period || item.date || '');
+            newData = dataArray.map((item: any) => item.new || item.newCustomers || item.new_count || 0);
+            returningData = dataArray.map((item: any) => item.returning || item.returningCustomers || item.returning_count || 0);
+            churnedData = dataArray.map((item: any) => item.churned || item.churnedCustomers || item.churned_count || 0);
+          } else {
+            // If API returns object with separate arrays
+            labels = reportData.labels || reportData.periods || [];
+            newData = reportData.new || reportData.newCustomers || [];
+            returningData = reportData.returning || reportData.returningCustomers || [];
+            churnedData = reportData.churned || reportData.churnedCustomers || [];
+          }
+        }
+        
+        setActivityData({
+          labels: labels.length > 0 ? labels : ['No Data'],
+          new: newData.length > 0 ? newData : [0],
+          returning: returningData.length > 0 ? returningData : [0],
+          churned: churnedData.length > 0 ? churnedData : [0],
+        });
+      } catch (error) {
+        console.error('Error loading churn report:', error);
+        // Fallback to empty data
+        setActivityData({
+          labels: ['No Data'],
+          new: [0],
+          returning: [0],
+          churned: [0],
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
   }, [currentPeriod]);
 
+  useEffect(() => {
+    if (!loading && activityData.labels.length > 0) {
+      setIsAnimating(true);
+      const timer1 = setTimeout(() => {
+        drawChart(true);
+        const timer2 = setTimeout(() => setIsAnimating(false), 1500);
+        return () => clearTimeout(timer2);
+      }, 50);
+      return () => clearTimeout(timer1);
+    }
+  }, [currentPeriod, loading, activityData]);
+
   const drawChart = (animate: boolean = false) => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || activityData.labels.length === 0) return;
 
     const svg = svgRef.current;
     svg.innerHTML = '';

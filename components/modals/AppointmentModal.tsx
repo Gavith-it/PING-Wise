@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Appointment, Patient, User } from '@/types';
 import Autocomplete from '@/components/ui/autocomplete';
-import { SimpleDatePicker } from '@/components/ui/simple-date-picker';
 
 interface AppointmentModalProps {
   appointment?: Appointment | null;
@@ -504,7 +503,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       }
 
       // Check if we're editing a pending appointment and assigning a doctor
-      const wasPending = appointment && appointment.status === 'pending';
+      const wasPending = appointment && appointment.status === 'Pending';
       const hadNoDoctor = appointment && (!appointment.doctor || 
         (typeof appointment.doctor === 'string' && !appointment.doctor) ||
         (typeof appointment.doctor === 'object' && !appointment.doctor?.id));
@@ -532,10 +531,10 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       // 2. Editing a pending appointment and assigning a doctor
       if (isNewAppointment) {
         // All new appointments should be confirmed regardless of date
-        appointmentData.status = 'confirmed';
+        appointmentData.status = 'Confirmed';
       } else if (shouldConfirmEdit) {
         // Only change status when editing pending and assigning doctor
-        appointmentData.status = 'confirmed';
+        appointmentData.status = 'Confirmed';
       }
 
       let responseData: Appointment | undefined;
@@ -684,15 +683,14 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Date *
                 </label>
-                <SimpleDatePicker
-                  date={formData.date ? new Date(formData.date) : undefined}
-                  onDateChange={(date) => {
-                    const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
-                    setFormData(prev => ({ ...prev, date: dateStr }));
-                  }}
-                  placeholder="Select date"
-                  minDate={new Date()}
-                  className="w-full"
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
+                  style={{ cursor: 'pointer' }}
                 />
               </div>
               <div>

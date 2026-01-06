@@ -41,14 +41,17 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
+    // Normalize status to handle both lowercase and capitalized
+    const normalized = status?.charAt(0).toUpperCase() + status?.slice(1).toLowerCase() || '';
+    
+    switch (normalized) {
+      case 'Confirmed':
         return 'bg-green-500';
-      case 'pending':
+      case 'Pending':
         return 'bg-orange-500';
-      case 'completed':
+      case 'Completed':
         return 'bg-blue-500';
-      case 'cancelled':
+      case 'Cancelled':
         return 'bg-red-500';
       default:
         return 'bg-gray-500';
@@ -57,8 +60,12 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
 
   const getStatusDots = (dayAppointments: Appointment[]) => {
     // Only show pending appointments - return single dot if any pending appointments exist
-    const hasPending = dayAppointments.some(apt => apt.status === 'pending');
-    return hasPending ? ['pending'] : [];
+    // Normalize status for comparison
+    const hasPending = dayAppointments.some(apt => {
+      const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+      return normalized === 'Pending';
+    });
+    return hasPending ? ['Pending'] : [];
   };
 
   const nextMonth = () => {
@@ -127,8 +134,11 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
               {statusDots.length > 0 && isCurrentMonth && (
                 <div className="flex justify-center items-center mt-0.5 md:mt-1">
                   <div
-                    className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor('pending')}`}
-                    title={`Pending appointment${dayAppointments.filter(apt => apt.status === 'pending').length > 1 ? 's' : ''} on ${format(day, 'MMM d')}`}
+                    className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor('Pending')}`}
+                    title={`Pending appointment${dayAppointments.filter(apt => {
+                      const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+                      return normalized === 'Pending';
+                    }).length > 1 ? 's' : ''} on ${format(day, 'MMM d')}`}
                   />
                 </div>
               )}

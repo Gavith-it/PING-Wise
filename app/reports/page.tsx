@@ -4,11 +4,8 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import { appointmentApi } from '@/lib/services/appointmentApi';
-import { teamApi } from '@/lib/services/teamApi';
+import { reportsApi } from '@/lib/services/reportsApi';
 import toast from 'react-hot-toast';
-import { CrmAppointment } from '@/lib/utils/appointmentAdapter';
-import { CrmTeam } from '@/types/crmApi';
 
 // Lazy load heavy chart components for better performance
 const EngagementChart = dynamic(() => import('@/components/charts/EngagementChart'), {
@@ -44,57 +41,55 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadTeamMetrics();
-  }, []);
+  }, [currentPeriod]);
 
   const loadTeamMetrics = async () => {
     try {
       setLoading(true);
       
-      // Fetch all appointments and team members in parallel
-      const [appointments, teams] = await Promise.all([
-        appointmentApi.getAppointments(),
-        teamApi.getTeams(),
-      ]);
-
-      // Filter for doctors only - check if name starts with "Dr." or role contains doctor-related terms
-      const doctors = teams.filter(member => {
-        const name = (member.name || '').toLowerCase();
-        const role = (member.role || '').toLowerCase();
-        return name.startsWith('dr.') || 
-               role.includes('doctor') || 
-               role.includes('physician') || 
-               role.includes('cardiologist') ||
-               role.includes('practitioner') ||
-               role === 'dr';
-      });
-
-      // Count bookings per doctor
-      const doctorBookingCounts: Record<string, number> = {};
+      // Map currentPeriod to API mode format
+      const modeMap: Record<string, string> = {
+        'weekly': 'weekly',
+        'monthly': 'monthly',
+        'quarterly': 'quarterly',
+        'annually': 'annually'
+      };
       
-      appointments.forEach((appointment: CrmAppointment) => {
-        // Handle different appointment doctor formats
-        let doctorId: string | null = null;
-        if (typeof appointment.assigned_to === 'string') {
-          doctorId = appointment.assigned_to;
+      const mode = modeMap[currentPeriod] || 'weekly';
+      
+      // Fetch team report from API
+      const reportData = await reportsApi.getTeamReport({ mode });
+      
+      // Transform API response to chart data format
+      // API response structure may vary, so we'll handle different formats
+      let metricsData: TeamMetric[] = [];
+      
+      if (Array.isArray(reportData)) {
+        // If API returns array directly
+        metricsData = reportData.map((item: any) => ({
+          name: item.name || item.doctor_name || item.doctorName || 'Unknown Doctor',
+          bookings: item.bookings || item.appointments || item.count || 0,
+          doctorId: item.doctorId || item.doctor_id || item.id || '',
+        }));
+      } else if (reportData && typeof reportData === 'object') {
+        // If API returns object with data array
+        const dataArray = reportData.data || reportData.teamMetrics || reportData.metrics || [];
+        if (Array.isArray(dataArray)) {
+          metricsData = dataArray.map((item: any) => ({
+            name: item.name || item.doctor_name || item.doctorName || 'Unknown Doctor',
+            bookings: item.bookings || item.appointments || item.count || 0,
+            doctorId: item.doctorId || item.doctor_id || item.id || '',
+          }));
+        } else if (reportData.teamMembers || reportData.doctors) {
+          // If API returns object with teamMembers or doctors array
+          const members = reportData.teamMembers || reportData.doctors || [];
+          metricsData = members.map((item: any) => ({
+            name: item.name || 'Unknown Doctor',
+            bookings: item.bookings || item.appointments || item.count || 0,
+            doctorId: item.id || item.doctorId || '',
+          }));
         }
-
-        if (doctorId) {
-          doctorBookingCounts[doctorId] = (doctorBookingCounts[doctorId] || 0) + 1;
-        }
-      });
-
-      // Create chart data with doctor names and booking counts
-      const metricsData: TeamMetric[] = doctors.map(doctor => {
-        const doctorId = doctor.id;
-        const doctorName = doctor.name || 'Unknown Doctor';
-        const bookingCount = doctorBookingCounts[doctorId] || 0;
-
-        return {
-          name: doctorName,
-          bookings: bookingCount,
-          doctorId: doctorId,
-        };
-      });
+      }
 
       // Sort by booking count (descending)
       metricsData.sort((a, b) => b.bookings - a.bookings);

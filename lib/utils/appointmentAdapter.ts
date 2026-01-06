@@ -174,47 +174,54 @@ export function appointmentToCrmAppointment(
 }
 
 /**
- * Map CRM status to Appointment status
+ * Map CRM status to Appointment status (capitalized format)
+ * Only supports: Confirmed, Pending, Completed, Cancelled
  */
-function mapCrmStatusToAppointmentStatus(crmStatus: string): 'scheduled' | 'completed' | 'cancelled' | 'no-show' | 'confirmed' | 'pending' {
+function mapCrmStatusToAppointmentStatus(crmStatus: string): 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled' {
   const normalized = crmStatus.toLowerCase();
   
+  // Return capitalized format to match frontend standard
   if (normalized.includes('confirmed') || normalized === 'confirmed') {
-    return 'confirmed';
+    return 'Confirmed';
   }
   if (normalized.includes('pending') || normalized === 'pending') {
-    return 'pending';
+    return 'Pending';
   }
   if (normalized.includes('completed') || normalized === 'completed') {
-    return 'completed';
+    return 'Completed';
   }
   if (normalized.includes('cancelled') || normalized === 'cancelled' || normalized === 'canceled') {
-    return 'cancelled';
-  }
-  if (normalized.includes('no-show') || normalized === 'no-show' || normalized === 'noshow') {
-    return 'no-show';
-  }
-  if (normalized.includes('scheduled') || normalized === 'scheduled') {
-    return 'scheduled';
+    return 'Cancelled';
   }
   
-  // Default to pending
-  return 'pending';
+  // Default to Pending (capitalized)
+  return 'Pending';
 }
 
 /**
- * Map Appointment status to CRM status
+ * Map Appointment status to CRM status (capitalized format)
+ * Only supports: Confirmed, Pending, Completed, Cancelled
  */
 function mapAppointmentStatusToCrmStatus(appointmentStatus?: string): string {
-  if (!appointmentStatus) return 'pending';
+  if (!appointmentStatus) return 'Pending';
   
   const normalized = appointmentStatus.toLowerCase();
   
-  // Return as-is or normalize common statuses
-  if (['confirmed', 'pending', 'completed', 'cancelled', 'no-show', 'scheduled'].includes(normalized)) {
-    return normalized;
+  // Return capitalized format to match backend
+  if (normalized === 'confirmed') {
+    return 'Confirmed';
+  }
+  if (normalized === 'pending') {
+    return 'Pending';
+  }
+  if (normalized === 'completed') {
+    return 'Completed';
+  }
+  if (normalized === 'cancelled' || normalized === 'canceled') {
+    return 'Cancelled';
   }
   
+  // If already capitalized, return as-is
   return appointmentStatus;
 }
 

@@ -50,7 +50,7 @@ export interface Appointment {
   doctor: string | User;
   date: Date;
   time: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no-show' | 'confirmed' | 'pending';
+  status: 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled';
   notes?: string;
   type?: string;
   reason?: string;

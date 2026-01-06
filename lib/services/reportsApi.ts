@@ -23,12 +23,16 @@ export interface DailyReport {
   followupCustomers?: number;
   totalAppointments?: number;
   totalCustomers?: number;
+  confirmedAppointments?: number;
+  completedAppointments?: number;
+  cancelledAppointments?: number;
   // Alternative field names (snake_case)
   active_customers?: number;
   booked_customers?: number;
   followup_customers?: number;
   total_appointments?: number;
   total_customers?: number;
+  confirmed_appointments?: number;
   completed_appointments?: number;
   pending_appointments?: number;
   cancelled_appointments?: number;
@@ -172,6 +176,66 @@ class ReportsApiService {
       return data || {};
     } catch (error) {
       console.error('Error in getDailyReport:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get team report
+   * GET /team_report
+   * Query params: mode (optional, defaults to 'weekly') - determines time period (weekly, monthly, quarterly, annually)
+   */
+  async getTeamReport(params: { mode?: string } = {}): Promise<any> {
+    try {
+      const response = await this.api.get<any>('/team_report', { params }) as unknown as any;
+      
+      // Handle null/undefined response
+      if (response === null || response === undefined) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Team Report API returned null/undefined - returning empty object');
+        }
+        return {};
+      }
+      
+      // Check if response has a data property (wrapped response)
+      let data = response;
+      if (typeof response === 'object' && response !== null && 'data' in response) {
+        data = response.data;
+      }
+      
+      return data || {};
+    } catch (error) {
+      console.error('Error in getTeamReport:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get churn report (Customer Activity)
+   * GET /churn_report
+   * Query params: mode (optional, defaults to 'weekly') - determines time period (weekly, monthly, quarterly, annually)
+   */
+  async getChurnReport(params: { mode?: string } = {}): Promise<any> {
+    try {
+      const response = await this.api.get<any>('/churn_report', { params }) as unknown as any;
+      
+      // Handle null/undefined response
+      if (response === null || response === undefined) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Churn Report API returned null/undefined - returning empty object');
+        }
+        return {};
+      }
+      
+      // Check if response has a data property (wrapped response)
+      let data = response;
+      if (typeof response === 'object' && response !== null && 'data' in response) {
+        data = response.data;
+      }
+      
+      return data || {};
+    } catch (error) {
+      console.error('Error in getChurnReport:', error);
       throw error;
     }
   }

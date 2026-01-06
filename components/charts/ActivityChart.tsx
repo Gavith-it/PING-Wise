@@ -32,7 +32,7 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const chartData = useMemo(() => {
-    // Only use appointment status data (exclude pending, include cancelled)
+    // Always show all statuses, even if values are 0
     return [
       {
         name: 'Confirmed',
@@ -52,7 +52,8 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
         percentage: data.cancelled?.percentage || 0,
         color: '#ef4444', // Red for Cancelled (matches appointments page)
       },
-    ].filter(item => item.value > 0); // Only show statuses with data
+    ];
+    // Removed filter - always show all statuses even with 0 values
   }, [data]);
 
   const onPieEnter = (_: unknown, index: number) => {

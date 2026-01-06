@@ -106,6 +106,10 @@ export default function CRMPage() {
     if (normalized === 'follow-up' || normalized === 'followup') {
       return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
     }
+    // Also check for capitalized 'FollowUp' (in case it comes from API directly)
+    if (status === 'FollowUp' || status === 'Follow-up') {
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
+    }
     // Fallback for includes checks (only if exact match didn't work)
     if (normalized.includes('inactive')) {
       return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';

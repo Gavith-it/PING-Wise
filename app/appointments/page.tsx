@@ -36,7 +36,7 @@ export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'pending' | 'cancelled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Confirmed' | 'Pending' | 'Cancelled'>('all');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
@@ -135,7 +135,7 @@ export default function AppointmentsPage() {
     setShowFollowUpModal(true);
   };
 
-  const handleFollowUpYes = async (followUpDate: Date) => {
+  const handleFollowUpYes = async () => {
     if (!selectedFollowUpAppointment) return;
 
     try {
@@ -150,12 +150,7 @@ export default function AppointmentsPage() {
         return;
       }
 
-      // Update customer status to FollowUp using PATCH method
-      // API: PATCH /customers/{id} with body: { status: "FollowUp" }
-      const { crmApi } = await import('@/lib/services/crmApi');
-      await crmApi.patchCustomer(patient.id, { status: 'FollowUp' });
-      
-      // Update current appointment status to completed using PUT method
+      // Update current appointment status to Completed using PUT method (first)
       const patientId = typeof selectedFollowUpAppointment.patient === 'object' 
         ? selectedFollowUpAppointment.patient.id 
         : selectedFollowUpAppointment.patient;
@@ -173,42 +168,25 @@ export default function AppointmentsPage() {
         doctor: doctorId || '',
         date: dateStr,
         time: selectedFollowUpAppointment.time,
-        status: 'completed', // Mark current appointment as completed
+        status: 'Completed', // Mark current appointment as completed
         type: selectedFollowUpAppointment.type,
         notes: selectedFollowUpAppointment.notes,
         reason: selectedFollowUpAppointment.reason,
       };
       await crmAppointmentService.updateAppointment(selectedFollowUpAppointment.id, fullAppointmentData);
       
-      // Create a new pending appointment for the follow-up date
-      const followUpDateStr = format(followUpDate, 'yyyy-MM-dd');
-      const followUpAppointmentData: CreateAppointmentRequest = {
-        patient: patientId,
-        doctor: doctorId || '',
-        date: followUpDateStr,
-        time: selectedFollowUpAppointment.time || '10:00', // Use same time or default
-        status: 'pending', // New appointment is pending
-        type: 'Follow-up',
-        notes: `Follow-up appointment for ${patient.name}`,
-        reason: selectedFollowUpAppointment.reason || '',
-      };
-      const createdAppointment = await crmAppointmentService.createAppointment(followUpAppointmentData);
+      // Update customer status to FollowUp using PATCH method (second)
+      // API: PATCH /customers/{id} with body: { status: "FollowUp" }
+      const { crmApi } = await import('@/lib/services/crmApi');
+      await crmApi.patchCustomer(patient.id, { status: 'FollowUp' });
       
       // Invalidate patients cache so CRM page shows updated status
       invalidatePatientsCache();
       
-      // Invalidate appointments cache to force fresh data load
-      const { invalidateAppointmentsCache } = await import('@/app/appointments/hooks/useAppointments');
-      invalidateAppointmentsCache();
-      
-      // Explicitly refresh month appointments to update calendar dots and pending section
-      // This will fetch all appointments and store them in cache.allAppointments
-      await loadMonthAppointments(false); // Force refresh, not background
-      
-      // Also refresh selected date appointments
+      // Refresh appointments to show updated status
       await handleAppointmentCreated();
       
-      toast.success('Patient marked for follow-up, appointment completed, and follow-up appointment scheduled');
+      toast.success('Patient marked for follow-up and appointment completed');
       setShowFollowUpModal(false);
       setSelectedFollowUpAppointment(null);
     } catch (error: any) {
@@ -257,7 +235,7 @@ export default function AppointmentsPage() {
         doctor: doctorId || '',
         date: dateStr,
         time: selectedFollowUpAppointment.time,
-        status: 'completed', // Only change the status, all other fields remain the same
+        status: 'Completed', // Only change the status, all other fields remain the same
         type: selectedFollowUpAppointment.type,
         notes: selectedFollowUpAppointment.notes,
         reason: selectedFollowUpAppointment.reason,
@@ -372,7 +350,7 @@ export default function AppointmentsPage() {
                   ? selectedFollowUpAppointment.patient?.name || 'Unknown'
                   : 'Unknown'
               }
-              onYes={(followUpDate) => handleFollowUpYes(followUpDate)}
+              onYes={() => handleFollowUpYes()}
               onNo={handleFollowUpNo}
               onClose={() => {
                 setShowFollowUpModal(false);

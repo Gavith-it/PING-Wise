@@ -102,11 +102,13 @@ function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
           {/* Status Badge - Top Right */}
           <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(patient.status)}`}>
             {(() => {
-              // Display status properly - handle 'follow-up' to show as 'Follow-up'
+              // Display status properly - handle 'follow-up' or 'followup' to show as 'FollowUp'
               const status = patient.status;
-              if (status === 'follow-up') {
-                return 'Follow-up';
+              const normalized = status?.toLowerCase() || '';
+              if (normalized === 'follow-up' || normalized === 'followup') {
+                return 'FollowUp';
               }
+              // For other statuses, capitalize first letter
               return status.charAt(0).toUpperCase() + status.slice(1);
             })()}
           </span>
