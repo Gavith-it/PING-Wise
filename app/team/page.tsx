@@ -106,38 +106,45 @@ export default function TeamPage() {
     }
   };
 
-  const handleStatusToggle = async (memberId: string, newStatus: 'active' | 'OnLeave') => {
-    try {
-      // Find the member in the current list
-      const member = teamMembers.find(m => m.id === memberId);
-      if (!member) {
-        toast.error('Team member not found');
-        return;
-      }
-
-      // Import adapter to convert User to CrmTeamRequest
-      const { userToCrmTeam } = await import('@/lib/utils/teamAdapter');
-      
-      // Create updated member with new status
-      const updatedMember = { ...member, status: newStatus };
-      
-      // Convert to API format
-      const apiData = userToCrmTeam(updatedMember);
-      
-      // Update via API
-      await teamApi.updateTeam(memberId, apiData);
-      
-      // Update cache optimistically
-      updateTeamMemberInCache(updatedMember);
-      
-      // Refresh dashboard data to update KPI cards
-      const data = await teamApi.getTeamDashboard().catch(() => ({}));
-      setDashboardData(data);
-      
-      toast.success(`Team member status updated to ${newStatus === 'OnLeave' ? 'On Leave' : 'Active'}`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || error.message || 'Failed to update team member status');
+  const handleStatusToggle = async (memberId: string, newStatus: 'Active' | 'OnLeave') => {
+    // Find the member in the current list
+    const member = teamMembers.find(m => m.id === memberId);
+    if (!member) {
+      toast.error('Team member not found');
+      return;
     }
+
+    // Create updated member with new status
+    const updatedMember = { ...member, status: newStatus };
+    
+    // OPTIMISTIC UPDATE: Update UI immediately (before API call)
+    updateTeamMemberInCache(updatedMember);
+    
+    // Show success toast immediately for instant feedback
+    toast.success(`Team member status updated to ${newStatus === 'OnLeave' ? 'On Leave' : newStatus}`, { duration: 2000 });
+    
+    // Make API call in background (non-blocking)
+    (async () => {
+      try {
+        // Import adapter to convert User to CrmTeamRequest
+        const { userToCrmTeam } = await import('@/lib/utils/teamAdapter');
+        
+        // Convert to API format
+        const apiData = userToCrmTeam(updatedMember);
+        
+        // Update via API
+        await teamApi.updateTeam(memberId, apiData);
+        
+        // Refresh dashboard data in background (non-blocking)
+        teamApi.getTeamDashboard()
+          .then((data) => setDashboardData(data))
+          .catch(() => {}); // Silently fail - dashboard will refresh on next page load
+      } catch (error: any) {
+        // Revert optimistic update on error
+        updateTeamMemberInCache(member); // Revert to original status
+        toast.error(error.response?.data?.message || error.message || 'Failed to update team member status');
+      }
+    })();
   };
 
   const departments = Array.from(new Set(teamMembers.map(m => m.department).filter(Boolean))) as string[];

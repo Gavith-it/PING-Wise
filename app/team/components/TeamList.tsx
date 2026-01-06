@@ -9,7 +9,7 @@ interface TeamListProps {
   teamMembers: User[];
   loading: boolean;
   onCardClick: (member: User) => void;
-  onStatusToggle?: (memberId: string, newStatus: 'active' | 'OnLeave') => void;
+  onStatusToggle?: (memberId: string, newStatus: 'Active' | 'OnLeave') => void;
 }
 
 function TeamList({

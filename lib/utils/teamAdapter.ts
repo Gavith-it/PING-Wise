@@ -41,16 +41,17 @@ export function crmTeamToUser(crmTeam: CrmTeam): User {
     }
   }
 
-  // Map status from API to UI status
-  let uiStatus: 'active' | 'OnLeave' | 'inactive' = 'inactive';
+  // Map status from API to UI status - keep capitalized format (Active, Inactive, OnLeave)
+  let uiStatus: 'Active' | 'Inactive' | 'OnLeave' = 'Inactive';
   if (crmTeam.status) {
-    const statusLower = crmTeam.status.toLowerCase();
-    if (statusLower === 'active') {
-      uiStatus = 'active';
-    } else if (statusLower === 'leave' || statusLower === 'on leave' || statusLower === 'onleave') {
+    // API returns capitalized format, keep it as is
+    const status = crmTeam.status.trim();
+    if (status === 'Active' || status.toLowerCase() === 'active') {
+      uiStatus = 'Active';
+    } else if (status === 'OnLeave' || status === 'On Leave' || status.toLowerCase() === 'onleave' || status.toLowerCase() === 'on leave') {
       uiStatus = 'OnLeave';
     } else {
-      uiStatus = 'inactive';
+      uiStatus = 'Inactive';
     }
   }
 
@@ -100,12 +101,9 @@ export function userToCrmTeam(user: Partial<User> & { name: string }): CrmTeamRe
   // Map UI role to API role
   let apiRole = user.role || 'staff';
   
-  // Map UI status to API status
-  // Convert 'OnLeave' to 'onleave' for API compatibility
-  let apiStatus: string = user.status || 'inactive';
-  if (apiStatus === 'OnLeave') {
-    apiStatus = 'onleave';
-  }
+  // Map UI status to API status - send capitalized format (Active, Inactive, OnLeave)
+  // UI now uses capitalized format, so send as-is
+  let apiStatus: string = user.status || 'Inactive';
 
   return {
     name: user.name,

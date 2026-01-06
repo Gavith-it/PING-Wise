@@ -58,7 +58,7 @@ export function useDashboardStats(): UseDashboardStatsReturn {
       const report = dailyReportData as DailyReport;
       const newStats = {
         totalBookings: {
-          value: report?.totalAppointments || report?.total_appointments || 0,
+          value: report?.bookedCustomers || report?.booked_customers || 0,
           change: 0,
           trend: 'up' as const
         },

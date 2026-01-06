@@ -393,7 +393,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 Phone Number *
               </label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
                   +91
                 </div>
                 <input

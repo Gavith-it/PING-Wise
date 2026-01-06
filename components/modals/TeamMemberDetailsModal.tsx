@@ -43,9 +43,18 @@ export default function TeamMemberDetailsModal({
     if (!teamMember) return;
     
     if (teamMember.phone && teamMember.phone !== 'N/A' && teamMember.phone.trim() !== '') {
+      // Format phone number with +91 prefix for display and tel: link
+      let phoneNumber = teamMember.phone.trim();
+      if (!phoneNumber.startsWith('+')) {
+        // Remove any existing 91 prefix and add +91
+        if (phoneNumber.startsWith('91')) {
+          phoneNumber = phoneNumber.substring(2);
+        }
+        phoneNumber = `+91${phoneNumber}`;
+      }
       // Show confirmation before opening phone dialer
-      if (confirm(`Do you want to call ${teamMember.phone}?`)) {
-        window.location.href = `tel:${teamMember.phone}`;
+      if (confirm(`Do you want to call ${phoneNumber}?`)) {
+        window.location.href = `tel:${phoneNumber}`;
       }
     } else if (teamMember.email) {
       // Open email client directly without confirmation

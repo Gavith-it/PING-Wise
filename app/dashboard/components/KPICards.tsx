@@ -14,8 +14,8 @@ interface KPICardsProps {
 function KPICards({ stats, dailyReport }: KPICardsProps) {
   const kpiCards = useMemo(() => {
     // Map daily report data to KPI values (use real backend data)
-    const totalBookings = dailyReport?.totalAppointments || dailyReport?.total_appointments || stats?.totalBookings?.value || 0;
-    const totalPatients = dailyReport?.totalCustomers || dailyReport?.total_patients || stats?.totalPatients?.value || 0;
+    const totalBookings = dailyReport?.bookedCustomers || dailyReport?.booked_customers || stats?.totalBookings?.value || 0;
+    const totalPatients = dailyReport?.totalCustomers || dailyReport?.total_customers || stats?.totalPatients?.value || 0;
     const followUps = dailyReport?.followupCustomers || dailyReport?.followup_customers || stats?.followUps?.value || 0;
     
     return (

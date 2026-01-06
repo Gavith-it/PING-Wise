@@ -77,53 +77,46 @@ export default function DashboardPage() {
     setIsMounted(true);
   }, []);
 
-  // Calculate appointment status counts from daily report API
+  // Calculate appointment status counts from daily report data (use data from useDashboardStats hook to avoid duplicate API calls)
   useEffect(() => {
-    const calculateAppointmentActivity = async () => {
-      if (!isMounted) return;
+    if (!isMounted || !dailyReport) return;
+    
+    try {
+      setAppointmentActivityLoading(true);
       
-      try {
-        setAppointmentActivityLoading(true);
-        // Use daily report API instead of fetching all appointments
-        const { reportsApi } = await import('@/lib/services/reportsApi');
-        const dailyReport = await reportsApi.getDailyReport().catch(() => ({} as any));
-        
-        // Get appointment counts from API response
-        const confirmed = (dailyReport as any)?.confirmedAppointments || (dailyReport as any)?.confirmed_appointments || 0;
-        const completed = (dailyReport as any)?.completedAppointments || (dailyReport as any)?.completed_appointments || 0;
-        const cancelled = (dailyReport as any)?.cancelledAppointments || (dailyReport as any)?.cancelled_appointments || 0;
-        const total = (dailyReport as any)?.totalAppointments || (dailyReport as any)?.total_appointments || 0;
-        
-        setAppointmentActivity({
-          total,
-          confirmed: {
-            count: confirmed,
-            percentage: total > 0 ? Math.round((confirmed / total) * 100) : 0,
-          },
-          completed: {
-            count: completed,
-            percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
-          },
-          cancelled: {
-            count: cancelled,
-            percentage: total > 0 ? Math.round((cancelled / total) * 100) : 0,
-          },
-        });
-      } catch (error) {
-        console.error('Failed to calculate appointment activity:', error);
-        // Set default values on error
-        setAppointmentActivity({
-          total: 0,
-          confirmed: { count: 0, percentage: 0 },
-          completed: { count: 0, percentage: 0 },
-          cancelled: { count: 0, percentage: 0 },
-        });
-      } finally {
-        setAppointmentActivityLoading(false);
-      }
-    };
-
-    calculateAppointmentActivity();
+      // Use daily report data from useDashboardStats hook (already fetched, no duplicate API call)
+      const confirmed = (dailyReport as any)?.confirmedAppointments || (dailyReport as any)?.confirmed_appointments || 0;
+      const completed = (dailyReport as any)?.completedAppointments || (dailyReport as any)?.completed_appointments || 0;
+      const cancelled = (dailyReport as any)?.cancelledAppointments || (dailyReport as any)?.cancelled_appointments || 0;
+      const total = (dailyReport as any)?.totalAppointments || (dailyReport as any)?.total_appointments || 0;
+      
+      setAppointmentActivity({
+        total,
+        confirmed: {
+          count: confirmed,
+          percentage: total > 0 ? Math.round((confirmed / total) * 100) : 0,
+        },
+        completed: {
+          count: completed,
+          percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+        },
+        cancelled: {
+          count: cancelled,
+          percentage: total > 0 ? Math.round((cancelled / total) * 100) : 0,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to calculate appointment activity:', error);
+      // Set default values on error
+      setAppointmentActivity({
+        total: 0,
+        confirmed: { count: 0, percentage: 0 },
+        completed: { count: 0, percentage: 0 },
+        cancelled: { count: 0, percentage: 0 },
+      });
+    } finally {
+      setAppointmentActivityLoading(false);
+    }
   }, [isMounted, dailyReport]); // Recalculate when dailyReport changes
 
   // Load data when authenticated
@@ -221,10 +214,7 @@ export default function DashboardPage() {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 dark:border-gray-700 w-full">
             <div className="mb-2 md:mb-3">
-              <div>
-                <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Appointment overview</h3>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 md:mt-1">Distribution overview</p>
-              </div>
+              <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Appointment overview</h3>
             </div>
             {appointmentActivityLoading ? (
               <div className="h-40 flex items-center justify-center">

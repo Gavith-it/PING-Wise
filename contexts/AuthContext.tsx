@@ -155,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: firstName.charAt(0).toUpperCase() + firstName.slice(1), // Capitalize first letter
           email: userName.includes('@') ? userName : `${userName}@pingwise.in`,
           role: (data.role as 'admin' | 'doctor' | 'staff') || 'staff',
-          status: 'active',
+          status: 'Active',
           initials: firstName.charAt(0).toUpperCase(),
         };
         

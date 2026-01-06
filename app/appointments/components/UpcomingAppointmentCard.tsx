@@ -105,8 +105,17 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (confirm(`Do you want to call ${patient.phone}?`)) {
-                    window.location.href = `tel:${patient.phone}`;
+                  // Format phone number with +91 prefix for display and tel: link
+                  let phoneNumber = patient.phone.trim();
+                  if (!phoneNumber.startsWith('+')) {
+                    // Remove any existing 91 prefix and add +91
+                    if (phoneNumber.startsWith('91')) {
+                      phoneNumber = phoneNumber.substring(2);
+                    }
+                    phoneNumber = `+91${phoneNumber}`;
+                  }
+                  if (confirm(`Do you want to call ${phoneNumber}?`)) {
+                    window.location.href = `tel:${phoneNumber}`;
                   }
                 }}
                 className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"

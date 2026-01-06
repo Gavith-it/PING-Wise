@@ -47,7 +47,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
     specialization: teamMember?.specialization || '',
     phone: teamMember?.phone || '',
     experience: teamMember?.experience || '',
-    status: (teamMember?.status || 'active') as 'active' | 'inactive' | 'OnLeave',
+    status: (teamMember?.status || 'Active') as 'Active' | 'Inactive' | 'OnLeave',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -70,7 +70,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         specialization: teamMember.specialization || '',
         phone: formatPhoneForDisplay(teamMember.phone || ''),
         experience: teamMember.experience || '',
-        status: (teamMember.status || 'active') as 'active' | 'inactive' | 'OnLeave',
+        status: (teamMember.status || 'Active') as 'Active' | 'Inactive' | 'OnLeave',
       });
     } else {
       // Add mode - reset form to defaults
@@ -83,7 +83,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
         specialization: '',
         phone: '',
         experience: '',
-        status: 'active',
+        status: 'Active',
       });
     }
   }, [teamMember]);
@@ -462,7 +462,7 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 Phone Number *
               </label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
                   +91
                 </div>
                 <input
@@ -517,9 +517,8 @@ export default function TeamModal({ teamMember, onClose, onSuccess }: TeamModalP
                 onChange={handleFieldChange('status')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="OnLeave">OnLeave</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
               </select>
             </div>
 

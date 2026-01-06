@@ -10,7 +10,7 @@ interface TeamMemberCardProps {
   index: number;
   getStatusColor: (status: string) => string;
   onClick: () => void;
-  onStatusToggle?: (memberId: string, newStatus: 'active' | 'OnLeave') => void;
+  onStatusToggle?: (memberId: string, newStatus: 'Active' | 'OnLeave') => void;
 }
 
 function TeamMemberCard({ 
@@ -24,7 +24,7 @@ function TeamMemberCard({
 
   const handleToggle = (enabled: boolean) => {
     if (onStatusToggle) {
-      const newStatus = enabled ? 'OnLeave' : 'active';
+      const newStatus = enabled ? 'OnLeave' : 'Active';
       onStatusToggle(member.id, newStatus);
     }
   };
@@ -58,7 +58,7 @@ function TeamMemberCard({
         <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0 ml-1">
           {/* Status Badge - Top Right */}
           <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(member.status)}`}>
-            {member.status === 'active' ? 'Active' : member.status === 'OnLeave' ? 'On Leave' : 'Inactive'}
+            {member.status === 'Active' ? 'Active' : member.status === 'OnLeave' ? 'On Leave' : 'Inactive'}
           </span>
           {/* OnLeave Toggle - Below Status */}
           {onStatusToggle && (

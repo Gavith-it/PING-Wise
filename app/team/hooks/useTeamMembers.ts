@@ -119,8 +119,8 @@ export function useTeamMembers({
       avatarColor: memberAvatarColor
     };
     
-    // Add to cache
-    teamCache.allTeamMembers = [...teamCache.allTeamMembers, processedMember];
+    // Add to cache at the top (newest first, matching backend sort order)
+    teamCache.allTeamMembers = [processedMember, ...teamCache.allTeamMembers];
     teamCache.timestamp = Date.now(); // Update timestamp to keep cache valid
     
     // Update previousFilters to prevent useEffect from triggering
