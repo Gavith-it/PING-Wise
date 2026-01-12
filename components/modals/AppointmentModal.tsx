@@ -63,9 +63,12 @@ export async function preloadFormData() {
       // Convert CrmTeam to User and filter for doctors
       const allUsers = crmTeamsToUsers(teamsData);
       // Filter for doctors (role can be 'doctor', 'Doctor', 'physician', etc.)
+      // Exclude doctors who are on leave
       const doctors = allUsers.filter(user => {
         const role = (user.role || '').toLowerCase();
-        return role === 'doctor' || role === 'physician' || role === 'dr';
+        const isDoctor = role === 'doctor' || role === 'physician' || role === 'dr';
+        const isNotOnLeave = user.status !== 'OnLeave';
+        return isDoctor && isNotOnLeave;
       });
       
       formDataCache.doctors = doctors;
@@ -172,9 +175,12 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       // Convert CrmTeam to User and filter for doctors
       const allUsers = crmTeamsToUsers(teamsData);
       // Filter for doctors (role can be 'doctor', 'Doctor', 'physician', etc.)
+      // Exclude doctors who are on leave
       const newDoctors = allUsers.filter(user => {
         const role = (user.role || '').toLowerCase();
-        return role === 'doctor' || role === 'physician' || role === 'dr';
+        const isDoctor = role === 'doctor' || role === 'physician' || role === 'dr';
+        const isNotOnLeave = user.status !== 'OnLeave';
+        return isDoctor && isNotOnLeave;
       });
       
       // Update cache
@@ -688,6 +694,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                   required
                   value={formData.date}
                   onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  onClick={(e) => e.currentTarget.showPicker?.()}
                   min={format(new Date(), 'yyyy-MM-dd')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
                   style={{ cursor: 'pointer' }}
@@ -703,6 +710,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                     required
                     value={formData.time}
                     onChange={handleFieldChange('time')}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
                     style={{ cursor: 'pointer' }}
                   />
