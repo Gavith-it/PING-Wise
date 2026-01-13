@@ -13,6 +13,7 @@ import { useTeamFilters } from './hooks/useTeamFilters';
 import FilterCard from './components/FilterCard';
 import TeamSearchBar from './components/TeamSearchBar';
 import TeamList from './components/TeamList';
+import { invalidateDoctorsCache } from '@/components/modals/AppointmentModal';
 
 // Lazy load modals for better performance
 const TeamModal = dynamic(() => import('@/components/modals/TeamModal'), {
@@ -121,7 +122,11 @@ export default function TeamPage() {
     updateTeamMemberInCache(updatedMember);
     
     // Show success toast immediately for instant feedback
-    toast.success(`Team member status updated to ${newStatus === 'OnLeave' ? 'On Leave' : newStatus}`, { duration: 2000 });
+    // Use consistent ID so toast stays in same position when toggled multiple times for any member
+    toast.success(`Team member status updated to ${newStatus === 'OnLeave' ? 'On Leave' : newStatus}`, { 
+      duration: 2000,
+      id: 'team-status-toggle' // Use single ID so all toggles replace previous toast and stay in same position
+    });
     
     // Make API call in background (non-blocking)
     (async () => {
@@ -134,6 +139,9 @@ export default function TeamPage() {
         
         // Update via API
         await teamApi.updateTeam(memberId, apiData);
+        
+        // Invalidate doctors cache so appointment form reflects updated status immediately
+        invalidateDoctorsCache();
         
         // Refresh dashboard data in background (non-blocking)
         teamApi.getTeamDashboard()

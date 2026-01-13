@@ -37,6 +37,12 @@ const STALE_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes - use stale cache in 
 // Export this so other modules can check if preload is in progress
 export let preloadInProgress = false;
 
+// Export function to invalidate doctors cache (used when team member status changes)
+export function invalidateDoctorsCache(): void {
+  formDataCache.doctors = [];
+  formDataCache.timestamp = 0;
+}
+
 // Export function to preload and cache form data
 export async function preloadFormData() {
   // Prevent duplicate preload calls

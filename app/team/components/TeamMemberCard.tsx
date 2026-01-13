@@ -21,12 +21,15 @@ function TeamMemberCard({
   onStatusToggle,
 }: TeamMemberCardProps) {
   const isOnLeave = member.status === 'OnLeave';
+  const isInactive = member.status === 'Inactive';
 
   const handleToggle = (enabled: boolean) => {
-    if (onStatusToggle) {
-      const newStatus = enabled ? 'OnLeave' : 'Active';
-      onStatusToggle(member.id, newStatus);
+    // Don't allow toggle if member is inactive
+    if (isInactive || !onStatusToggle) {
+      return;
     }
+    const newStatus = enabled ? 'OnLeave' : 'Active';
+    onStatusToggle(member.id, newStatus);
   };
 
   return (
@@ -63,7 +66,7 @@ function TeamMemberCard({
           {/* OnLeave Toggle - Below Status */}
           {onStatusToggle && (
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-              <span className="text-[9px] md:text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              <span className={`text-[9px] md:text-[10px] whitespace-nowrap ${isInactive ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400'}`}>
                 On Leave
               </span>
               <ToggleSwitch
@@ -71,6 +74,7 @@ function TeamMemberCard({
                 onChange={handleToggle}
                 size="sm"
                 className="flex-shrink-0"
+                disabled={isInactive}
               />
             </div>
           )}
