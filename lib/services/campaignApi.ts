@@ -133,15 +133,20 @@ class CampaignApiService {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    // Check token keys - priority: token > access_token
-    const token = sessionStorage.getItem('token') || 
+    // Check both localStorage (for "remember me") and sessionStorage
+    // Priority: localStorage token > sessionStorage token > localStorage access_token > sessionStorage access_token
+    const token = localStorage.getItem('token') ||
+                  sessionStorage.getItem('token') ||
+                  localStorage.getItem('access_token') ||
                   sessionStorage.getItem('access_token');
     
     // Log in development if no token found
     if (!token && process.env.NODE_ENV === 'development') {
-      console.warn('[Campaign API] No token found in sessionStorage. Keys available:', {
-        hasToken: !!sessionStorage.getItem('token'),
-        hasAccessToken: !!sessionStorage.getItem('access_token'),
+      console.warn('[Campaign API] No token found. Keys available:', {
+        localStorageToken: !!localStorage.getItem('token'),
+        sessionStorageToken: !!sessionStorage.getItem('token'),
+        localStorageAccessToken: !!localStorage.getItem('access_token'),
+        sessionStorageAccessToken: !!sessionStorage.getItem('access_token'),
       });
     }
     

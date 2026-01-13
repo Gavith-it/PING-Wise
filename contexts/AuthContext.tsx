@@ -67,7 +67,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         sessionStorage.setItem('access_token', storedToken);
       }
 
+      // Restore user from storage first (optimistic restore)
+      // This prevents crashes and redirect loops if checkAuth fails due to network issues
+      const storedUser = storageType === 'localStorage' 
+        ? localStorage.getItem('user') 
+        : sessionStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+        } catch (parseError) {
+          // If parsing fails, log but don't crash - will validate with backend
+          logger.error('Failed to parse stored user', parseError);
+        }
+      }
+
       // Validate token using backend /checkAuth endpoint
+      // Only clear tokens on explicit 401 (unauthorized) - not on network errors
       try {
         const backendUrl = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
         const checkAuthResponse = await fetch(`${backendUrl}/checkAuth`, {
@@ -78,34 +94,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
         });
         
-        if (!checkAuthResponse.ok) {
-          throw new Error('Token validation failed');
+        // Only clear tokens if we get a 401 (unauthorized)
+        // Other errors (500, network timeout, etc.) should not clear tokens
+        if (checkAuthResponse.status === 401) {
+          // Token is invalid - clear all tokens
+          localStorage.removeItem('token');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('user');
+          setToken(null);
+          setUser(null);
         }
-        
-        // Token is valid, restore user from storage (check same storage type as token)
-        const storedUser = storageType === 'localStorage' 
-          ? localStorage.getItem('user') 
-          : sessionStorage.getItem('user');
-        if (storedUser) {
-          try {
-            setUser(JSON.parse(storedUser));
-          } catch {
-            // If parsing fails, token is valid but no user info - that's ok
-            // User will be created on next login
-          }
-        }
-      } catch (error) {
-        // Token validation failed (401, network error, etc.)
-        logger.error('Token validation error', error);
-        // Clear all tokens on validation failure
-        localStorage.removeItem('token');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('access_token');
-        sessionStorage.removeItem('user');
-        setToken(null);
-        setUser(null);
+        // If checkAuth succeeds or returns non-401 error, keep tokens and user
+        // This prevents clearing valid tokens due to network issues or server errors
+      } catch (error: any) {
+        // Network error, timeout, or other fetch error
+        // Don't clear tokens on network errors - token might still be valid
+        // User is already set from storage above, so isAuthenticated will remain true
+        // Only log the error for debugging
+        logger.warn('Token validation network error but keeping tokens and user', error);
       } finally {
         setLoading(false);
       }

@@ -112,8 +112,11 @@ class TeamApiService {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    // Check token keys - priority: token > access_token
-    return sessionStorage.getItem('token') || 
+    // Check both localStorage (for "remember me") and sessionStorage
+    // Priority: localStorage token > sessionStorage token > localStorage access_token > sessionStorage access_token
+    return localStorage.getItem('token') ||
+           sessionStorage.getItem('token') ||
+           localStorage.getItem('access_token') ||
            sessionStorage.getItem('access_token');
   }
 

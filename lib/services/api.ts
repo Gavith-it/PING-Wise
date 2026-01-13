@@ -33,17 +33,12 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      // Migrate from localStorage to sessionStorage (one-time migration)
-      if (localStorage.getItem('token')) {
-        const oldToken = localStorage.getItem('token');
-        if (oldToken) {
-          sessionStorage.setItem('token', oldToken);
-        }
-        localStorage.removeItem('token');
-      }
-      
-      // Get token from sessionStorage - ensure we get it fresh each time
-      const token = sessionStorage.getItem('token');
+      // Check both localStorage (for "remember me") and sessionStorage
+      // Priority: localStorage token > sessionStorage token > localStorage access_token > sessionStorage access_token
+      const token = localStorage.getItem('token') ||
+                    sessionStorage.getItem('token') ||
+                    localStorage.getItem('access_token') ||
+                    sessionStorage.getItem('access_token');
       
       if (token && token.trim()) {
         // Ensure headers object exists - important for POST/PUT requests
