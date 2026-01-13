@@ -82,7 +82,7 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
 
     const width = 800;
     const height = 300;
-    const padding = { top: 20, right: 40, bottom: 20, left: 70 };
+    const padding = { top: 20, right: 40, bottom: 40, left: 70 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -131,6 +131,21 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
     setTimeout(() => {
       drawLineWithArea(svg, data.interactions, maxValue, xStep, padding, chartWidth, chartHeight, '#1A3E9E', 'interactions', animate);
     }, animate ? 300 : 0);
+
+    // X-axis labels
+    data.labels.forEach((label, i) => {
+      const x = padding.left + i * xStep;
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', x.toString());
+      text.setAttribute('y', (height - padding.bottom + 20).toString());
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', '12');
+      text.setAttribute('fill', isDarkMode ? '#9CA3AF' : '#6B7280');
+      text.setAttribute('font-family', 'Inter, sans-serif');
+      text.setAttribute('font-weight', '500');
+      text.textContent = label;
+      svg.appendChild(text);
+    });
 
   };
 
