@@ -34,6 +34,7 @@ export interface CrmCustomer {
   medical_history?: Record<string, any>;
   date_of_birth?: string;
   last_visit?: string;
+  next_visit?: string;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +52,7 @@ export interface CrmCustomerRequest {
   medical_history?: Record<string, any>;
   date_of_birth?: string;
   last_visit?: string;
+  next_visit?: string;
 }
 
 // ==================== TEAM ====================

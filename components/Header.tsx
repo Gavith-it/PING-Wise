@@ -104,7 +104,7 @@ export default function Header() {
           <h1 className="text-lg md:text-xl font-bold text-primary dark:text-primary">PingWise</h1>
           
           <nav className="hidden md:flex items-center space-x-1">
-            {menuItems.map((item) => {
+            {menuItems.filter(item => item.path !== '/reports').map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
               

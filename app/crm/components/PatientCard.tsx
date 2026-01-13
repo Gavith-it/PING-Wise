@@ -86,14 +86,14 @@ function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
           >
             <span className="select-none">{displayInitials}</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white mb-0.5 md:mb-1">
+          <div className="flex-1 min-w-0 pr-1">
+            <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white mb-0.5 md:mb-1 truncate">
               {patient.name}
             </p>
-            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-0.5">
+            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-0.5 truncate">
               {patient.age} years • {patient.phone ? (patient.phone.startsWith('+') ? patient.phone : `+${patient.phone}`) : 'N/A'}
             </p>
-            <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-1.5 md:mb-2">
+            <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-1.5 md:mb-2 break-all">
               {patient.email || 'N/A'}
             </p>
           </div>

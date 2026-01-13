@@ -68,9 +68,9 @@ function FloatingButton({ className, children, triggerContent, draggable = true,
     const isMobile = window.innerWidth < 768;
     
     // On mobile, account for bottom navigation (usually ~60-80px)
-    // Use bottom-14 (56px) on mobile, bottom-6 (24px) on desktop
-    const bottomOffset = isMobile ? 80 : 24; // Extra space for bottom nav on mobile
-    const rightOffset = isMobile ? 16 : 24;
+    // Use bottom-14 (56px) on mobile, closer to corner on desktop
+    const bottomOffset = isMobile ? 80 : 16; // Extra space for bottom nav on mobile, closer to corner on desktop
+    const rightOffset = isMobile ? 16 : 16; // Closer to corner on desktop
     
     const defaultX = window.innerWidth - buttonWidth - rightOffset;
     const defaultY = window.innerHeight - buttonHeight - bottomOffset;

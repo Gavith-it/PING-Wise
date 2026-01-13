@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (userName: string, password: string) => Promise<boolean>;
+  login: (userName: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => void;
   register: (userData: RegisterRequest) => Promise<boolean>;
   isAuthenticated: boolean;
@@ -39,13 +39,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Migrate from localStorage to sessionStorage (one-time migration)
-      // Clear any old localStorage tokens to ensure session-based auth
-      if (localStorage.getItem('token')) {
-        localStorage.removeItem('token');
+      // Check localStorage first (for "remember me" tokens), then sessionStorage
+      let storedToken = localStorage.getItem('token');
+      let storageType: 'localStorage' | 'sessionStorage' = 'localStorage';
+      
+      if (!storedToken) {
+        storedToken = sessionStorage.getItem('token');
+        storageType = 'sessionStorage';
       }
       
-      const storedToken = sessionStorage.getItem('token');
       if (!storedToken) {
         // No token, clear everything and set loading to false
         setToken(null);
@@ -58,8 +60,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Then validate in background using CRM API /checkAuth
       setToken(storedToken);
       
-      // Also set access_token for compatibility
-      sessionStorage.setItem('access_token', storedToken);
+      // Also set access_token for compatibility (use same storage as token)
+      if (storageType === 'localStorage') {
+        localStorage.setItem('access_token', storedToken);
+      } else {
+        sessionStorage.setItem('access_token', storedToken);
+      }
 
       // Validate token using backend /checkAuth endpoint
       try {
@@ -76,8 +82,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           throw new Error('Token validation failed');
         }
         
-        // Token is valid, restore user from sessionStorage if available
-        const storedUser = sessionStorage.getItem('user');
+        // Token is valid, restore user from storage (check same storage type as token)
+        const storedUser = storageType === 'localStorage' 
+          ? localStorage.getItem('user') 
+          : sessionStorage.getItem('user');
         if (storedUser) {
           try {
             setUser(JSON.parse(storedUser));
@@ -90,6 +98,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Token validation failed (401, network error, etc.)
         logger.error('Token validation error', error);
         // Clear all tokens on validation failure
+        localStorage.removeItem('token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('access_token');
         sessionStorage.removeItem('user');
@@ -117,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const login = useCallback(async (userName: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (userName: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
     try {
       // Get backend URL from environment variable (same as CRM API)
       const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
@@ -159,11 +170,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           initials: firstName.charAt(0).toUpperCase(),
         };
         
-        // Store token - this token works for both app auth and CRM data
-        sessionStorage.setItem('token', token);
-        sessionStorage.setItem('access_token', token);
-        sessionStorage.setItem('user', JSON.stringify(user));
-        localStorage.removeItem('token');
+        // Store token based on rememberMe preference
+        // If rememberMe is true, use localStorage (persists across sessions)
+        // If rememberMe is false, use sessionStorage (cleared when browser closes)
+        if (rememberMe) {
+          localStorage.setItem('token', token);
+          localStorage.setItem('access_token', token);
+          localStorage.setItem('user', JSON.stringify(user));
+          // Clear sessionStorage tokens to avoid conflicts
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('user');
+        } else {
+          sessionStorage.setItem('token', token);
+          sessionStorage.setItem('access_token', token);
+          sessionStorage.setItem('user', JSON.stringify(user));
+          // Clear localStorage tokens to avoid conflicts
+          localStorage.removeItem('token');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user');
+        }
         
         // Update state
         setToken(token);
@@ -186,13 +212,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
-    // Clear all tokens from sessionStorage
+    // Clear all tokens from both sessionStorage and localStorage
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('access_token');
     sessionStorage.removeItem('user');
-    // Also clear localStorage token if it exists (cleanup)
     localStorage.removeItem('token');
-    // Token clearing is done above in sessionStorage.removeItem calls
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
     toast.success('Logged out successfully');
     router.push('/login');
   }, [router]);

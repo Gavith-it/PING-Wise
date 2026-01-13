@@ -382,6 +382,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                 type="date"
                 value={formData.dateOfBirth}
                 onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                onClick={(e) => e.currentTarget.showPicker?.()}
                 min="1900-01-01"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
                 style={{ cursor: 'pointer' }}

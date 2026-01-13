@@ -28,7 +28,7 @@ export default function CampaignsPage() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const { campaigns, loadCampaigns } = useCampaigns();
-  const { displayTemplates } = useTemplates();
+  const { displayTemplates, loading: templatesLoading } = useTemplates();
   const {
     images,
     imagePreviews,
@@ -143,6 +143,7 @@ export default function CampaignsPage() {
             templates={displayTemplates}
             selectedTemplate={selectedTemplate}
             onTemplateClick={handleTemplateClickWrapper}
+            loading={templatesLoading}
           />
 
           {/* Recent Campaigns Section */}

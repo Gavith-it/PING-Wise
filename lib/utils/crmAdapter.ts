@@ -70,6 +70,27 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     }
   }
 
+  // Parse next_visit if available
+  let nextAppointment: Date | undefined;
+  const nextVisitValue = (customer as any).next_visit;
+  if (nextVisitValue && typeof nextVisitValue === 'string' && nextVisitValue.trim() !== '') {
+    try {
+      nextAppointment = new Date(nextVisitValue);
+      // Check if date is valid
+      if (isNaN(nextAppointment.getTime())) {
+        nextAppointment = undefined;
+      }
+    } catch {
+      nextAppointment = undefined;
+    }
+  } else if (nextVisitValue && typeof nextVisitValue === 'object' && 'getTime' in nextVisitValue && typeof (nextVisitValue as any).getTime === 'function') {
+    // If it's already a Date object (check by duck typing)
+    const dateValue = nextVisitValue as Date;
+    if (!isNaN(dateValue.getTime())) {
+      nextAppointment = dateValue;
+    }
+  }
+
   // Convert gender from capitalized full words (Male, Female, Other) to lowercase full words (male, female, other)
   let gender: 'male' | 'female' | 'other' | '' = '';
   if (customer.gender) {
@@ -114,7 +135,7 @@ export function crmCustomerToPatient(customer: CrmCustomer | null | undefined): 
     medicalNotes: parseMedicalHistory(customer.medical_history || (customer as any).medical_history || null),
     dateOfBirth: dateOfBirth,
     lastVisit: lastVisit,
-    nextAppointment: undefined, // Not available in CRM API
+    nextAppointment: nextAppointment, // Mapped from next_visit in CRM API
     initials: `${customer.first_name?.[0] || ''}${customer.last_name?.[0] || ''}`.toUpperCase() || 'P',
     avatarColor: undefined, // Will be generated in UI
     createdBy: '', // Not available in CRM API

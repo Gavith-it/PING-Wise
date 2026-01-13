@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const success = await login(userName, password);
+    const success = await login(userName, password, rememberMe);
     
     if (success) {
       router.replace('/dashboard');
@@ -215,7 +216,9 @@ export default function LoginPage() {
                   <label className="flex items-center cursor-pointer">
                     <input 
                       type="checkbox" 
-                      className="w-3.5 h-3.5 rounded border-2 border-gray-300 focus:ring-2 focus:ring-offset-0"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-2 border-gray-300 focus:ring-2 focus:ring-offset-0 cursor-pointer"
                       style={{
                         '--tw-ring-color': '#1A3E9E'
                       } as React.CSSProperties}

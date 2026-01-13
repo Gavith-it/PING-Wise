@@ -135,7 +135,7 @@ export default function AppointmentsPage() {
     setShowFollowUpModal(true);
   };
 
-  const handleFollowUpYes = async () => {
+  const handleFollowUpYes = async (nextVisitDate: string) => {
     if (!selectedFollowUpAppointment) return;
 
     try {
@@ -175,10 +175,29 @@ export default function AppointmentsPage() {
       };
       await crmAppointmentService.updateAppointment(selectedFollowUpAppointment.id, fullAppointmentData);
       
-      // Update customer status to FollowUp using PATCH method (second)
-      // API: PATCH /customers/{id} with body: { status: "FollowUp" }
+      // PATCH customer with next_visit and status using PATCH method
+      // Convert nextVisitDate (YYYY-MM-DD) to ISO string format (YYYY-MM-DDTHH:mm:ssZ)
+      // Use the appointment's time or default to 16:49:51
+      const appointmentTime = selectedFollowUpAppointment.time || '16:49:51';
+      const [hours, minutes, seconds] = appointmentTime.split(':').map(Number);
+      const nextVisitDateTime = new Date(nextVisitDate);
+      nextVisitDateTime.setHours(hours || 16, minutes || 49, seconds || 51, 0);
+      const nextVisitISO = nextVisitDateTime.toISOString();
+      
+      // Update customer with next_visit, last_visit, and status using PATCH method
+      // Convert current appointment date to ISO string for last_visit
+      const lastVisitDateTime = new Date(appointmentDate);
+      const [apptHours, apptMinutes, apptSeconds] = (selectedFollowUpAppointment.time || '16:49:51').split(':').map(Number);
+      lastVisitDateTime.setHours(apptHours || 16, apptMinutes || 49, apptSeconds || 51, 0);
+      const lastVisitISO = lastVisitDateTime.toISOString();
+      
+      // API: PATCH /customers/{id} with body: { next_visit: "2026-01-06T16:49:51Z", last_visit: "2026-01-07T16:49:51Z", status: "FollowUp" }
       const { crmApi } = await import('@/lib/services/crmApi');
-      await crmApi.patchCustomer(patient.id, { status: 'FollowUp' });
+      await crmApi.patchCustomer(patient.id, {
+        next_visit: nextVisitISO,
+        last_visit: lastVisitISO,
+        status: 'FollowUp',
+      } as any);
       
       // Invalidate patients cache so CRM page shows updated status
       invalidatePatientsCache();
@@ -350,7 +369,7 @@ export default function AppointmentsPage() {
                   ? selectedFollowUpAppointment.patient?.name || 'Unknown'
                   : 'Unknown'
               }
-              onYes={() => handleFollowUpYes()}
+              onYes={(nextVisitDate) => handleFollowUpYes(nextVisitDate)}
               onNo={handleFollowUpNo}
               onClose={() => {
                 setShowFollowUpModal(false);

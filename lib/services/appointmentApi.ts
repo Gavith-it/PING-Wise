@@ -273,6 +273,15 @@ class AppointmentApiService {
   }
 
   /**
+   * Patch appointment (partial update)
+   * PATCH /appointments/{id}
+   */
+  async patchAppointment(id: number | string, data: Partial<CrmAppointmentRequest>): Promise<CrmApiSingleResponse<CrmAppointment>> {
+    const response = await this.api.patch<any>(`/appointments/${id}`, data) as unknown as any;
+    return response.data || response; // Handle wrapped or direct response
+  }
+
+  /**
    * Delete an appointment by ID
    * DELETE /appointments/{id}
    * Returns a string according to Swagger
