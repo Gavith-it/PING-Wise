@@ -97,15 +97,21 @@ export default function SettingsMenu() {
   }, [isOpen, user]);
 
   useEffect(() => {
+    if (!isOpen) return; // Only listen when menu is open
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      // Use a small delay to ensure button click handlers have executed first
+      setTimeout(() => {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+        }
+      }, 0);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    // Use click instead of mousedown to avoid conflicts with button clicks
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [isOpen]);
 
   // Handle menu mount/unmount for smooth transitions
   useEffect(() => {
@@ -192,7 +198,10 @@ export default function SettingsMenu() {
   return (
     <div className="relative inline-block" ref={menuRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent event from bubbling to document
+          setIsOpen(!isOpen);
+        }}
         className={`p-1.5 md:p-2 rounded-lg transition-all focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300 ${
           isOpen
             ? 'bg-primary/10 text-primary dark:bg-primary/20'
@@ -212,7 +221,10 @@ export default function SettingsMenu() {
               opacity: shouldShow ? 0.5 : 0,
               pointerEvents: shouldShow ? 'auto' : 'none',
             }}
-            onClick={() => setIsOpen(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+            }}
           />
           
           {/* Menu Panel - Sidebar for both mobile and desktop */}
@@ -228,7 +240,10 @@ export default function SettingsMenu() {
               <div className="flex items-center justify-between p-4 md:p-5 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menu</h2>
                 <button
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                  }}
                   className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -255,7 +270,10 @@ export default function SettingsMenu() {
               {/* Menu Items */}
               <div className="flex-1 overflow-y-auto py-2">
                 <button
-                  onClick={() => handleNavigation('/profile')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigation('/profile');
+                  }}
                   className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
@@ -266,7 +284,10 @@ export default function SettingsMenu() {
                 </button>
 
                 <button
-                  onClick={() => handleNavigation('/settings')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigation('/settings');
+                  }}
                   className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
@@ -277,7 +298,10 @@ export default function SettingsMenu() {
                 </button>
 
                 <button
-                  onClick={() => handleNavigation('/wallet')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigation('/wallet');
+                  }}
                   className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
@@ -314,7 +338,10 @@ export default function SettingsMenu() {
                 </div>
 
                 <button
-                  onClick={() => handleNavigation('/faqs')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigation('/faqs');
+                  }}
                   className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
@@ -334,7 +361,10 @@ export default function SettingsMenu() {
 
                 {/* Reports and Insights */}
                 <button
-                  onClick={() => handleNavigation('/reports')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigation('/reports');
+                  }}
                   className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group focus:outline-none"
                 >
                   <div className="flex items-center space-x-3">
@@ -348,7 +378,10 @@ export default function SettingsMenu() {
               {/* Log Out Button */}
               <div className="p-4 md:p-5 border-t border-gray-200 dark:border-gray-700">
                 <button
-                  onClick={handleLogout}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLogout();
+                  }}
                   className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors focus:outline-none"
                 >
                   <LogOut className="w-5 h-5" />

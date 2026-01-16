@@ -88,6 +88,7 @@ export default function DashboardPage() {
       const confirmed = (dailyReport as any)?.confirmedAppointments || (dailyReport as any)?.confirmed_appointments || 0;
       const completed = (dailyReport as any)?.completedAppointments || (dailyReport as any)?.completed_appointments || 0;
       const cancelled = (dailyReport as any)?.cancelledAppointments || (dailyReport as any)?.cancelled_appointments || 0;
+      const pending = (dailyReport as any)?.pendingAppointments || (dailyReport as any)?.pending_appointments || 0;
       const total = (dailyReport as any)?.totalAppointments || (dailyReport as any)?.total_appointments || 0;
       
       setAppointmentActivity({
@@ -104,6 +105,10 @@ export default function DashboardPage() {
           count: cancelled,
           percentage: total > 0 ? Math.round((cancelled / total) * 100) : 0,
         },
+        pending: {
+          count: pending,
+          percentage: total > 0 ? Math.round((pending / total) * 100) : 0,
+        },
       });
     } catch (error) {
       console.error('Failed to calculate appointment activity:', error);
@@ -113,6 +118,7 @@ export default function DashboardPage() {
         confirmed: { count: 0, percentage: 0 },
         completed: { count: 0, percentage: 0 },
         cancelled: { count: 0, percentage: 0 },
+        pending: { count: 0, percentage: 0 },
       });
     } finally {
       setAppointmentActivityLoading(false);

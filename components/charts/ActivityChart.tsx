@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, memo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useMemo, memo } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import CountUp from 'react-countup';
 
 interface ActivityData {
@@ -29,11 +29,9 @@ interface ActivityChartProps {
 }
 
 const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
   const chartData = useMemo(() => {
-    // Always show all statuses, even if values are 0
-    return [
+    // Base statuses that are always shown
+    const baseData = [
       {
         name: 'Confirmed',
         value: data.confirmed?.count || 0,
@@ -53,21 +51,25 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
         color: '#ef4444', // Red for Cancelled (matches appointments page)
       },
     ];
-    // Removed filter - always show all statuses even with 0 values
+    
+    // Only add Pending if there are pending appointments (count > 0)
+    const pendingCount = data.pending?.count || 0;
+    if (pendingCount > 0) {
+      baseData.push({
+        name: 'Pending',
+        value: pendingCount,
+        percentage: data.pending?.percentage || 0,
+        color: '#f59e0b', // Orange/Amber for Pending (matches appointments page)
+      });
+    }
+    
+    return baseData;
   }, [data]);
 
-  const onPieEnter = (_: unknown, index: number) => {
-    setActiveIndex(index);
-  };
-
-  const onPieLeave = () => {
-    setActiveIndex(null);
-  };
-
-  const onPieClick = () => {
-    // Disable click interaction - no tooltip box
-    // Chart is for display only
-  };
+  // Removed all hover/click handlers to prevent any tooltip from appearing
+  const onPieEnter = () => {};
+  const onPieLeave = () => {};
+  const onPieClick = () => {};
 
   return (
     <div className="flex flex-row items-center gap-4 md:gap-6">
@@ -75,7 +77,6 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
       <div className="relative w-36 h-36 md:w-40 md:h-40 flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Tooltip active={false} />
             <Pie
               data={chartData}
               cx="50%"
@@ -84,15 +85,12 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
               outerRadius={60}
               paddingAngle={2}
               dataKey="value"
-              onMouseEnter={onPieEnter}
-              onMouseLeave={onPieLeave}
-              onClick={onPieClick}
+              isAnimationActive={true}
             >
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={entry.color}
-                  opacity={activeIndex === index ? 1 : activeIndex === null ? 1 : 0.5}
                 />
               ))}
             </Pie>
@@ -117,27 +115,10 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
       {/* Legend */}
       <div className="flex-1 space-y-2 md:space-y-2.5">
         {chartData.map((entry, index) => (
-          <div
-            key={entry.name}
-            className="flex items-center gap-2 touch-manipulation"
-            onMouseEnter={() => setActiveIndex(index)}
-            onMouseLeave={() => setActiveIndex(null)}
-            onTouchStart={() => setActiveIndex(index)}
-            onTouchEnd={() => {
-              setTimeout(() => {
-                setActiveIndex(null);
-              }, 500);
-            }}
-            onClick={() => {
-              setActiveIndex(index);
-              setTimeout(() => {
-                setActiveIndex(null);
-              }, 500);
-            }}
-            style={{
-              opacity: activeIndex === index ? 1 : activeIndex === null ? 1 : 0.5,
-            }}
-          >
+            <div
+              key={entry.name}
+              className="flex items-center gap-2"
+            >
             <div
               className="w-3 h-3 rounded-full flex-shrink-0"
               style={{ backgroundColor: entry.color }}

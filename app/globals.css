@@ -263,3 +263,15 @@ textarea:focus {
 .dark .font-size-slider::-moz-range-thumb {
   border-color: #1f2937;
 }
+
+/* Hide Recharts tooltip and cursor completely */
+.recharts-tooltip-wrapper,
+.recharts-default-tooltip,
+.recharts-tooltip-cursor,
+.recharts-active-shape,
+.recharts-tooltip-cursor-rectangle {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

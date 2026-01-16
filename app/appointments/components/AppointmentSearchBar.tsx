@@ -39,7 +39,10 @@ export default function AppointmentSearchBar({
       </div>
       <div className="relative flex-shrink-0" ref={filterMenuRef}>
         <button
-          onClick={onFilterMenuToggle}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent event from bubbling to document
+            onFilterMenuToggle();
+          }}
           className="w-[36px] h-[36px] md:w-[44px] md:h-[44px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg md:rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
           title="Filter"
         >
@@ -48,7 +51,8 @@ export default function AppointmentSearchBar({
         {showFilterMenu && (
           <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onStatusFilterChange('all');
                 onFilterMenuToggle();
               }}
@@ -59,7 +63,8 @@ export default function AppointmentSearchBar({
               All
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onStatusFilterChange('Confirmed');
                 onFilterMenuToggle();
               }}
@@ -70,7 +75,8 @@ export default function AppointmentSearchBar({
               Confirmed
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onStatusFilterChange('Pending');
                 onFilterMenuToggle();
               }}
@@ -81,7 +87,8 @@ export default function AppointmentSearchBar({
               Pending
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onStatusFilterChange('Cancelled');
                 onFilterMenuToggle();
               }}

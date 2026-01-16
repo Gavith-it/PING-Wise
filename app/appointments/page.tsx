@@ -100,15 +100,21 @@ export default function AppointmentsPage() {
 
   // Close filter menu when clicking outside
   useEffect(() => {
+    if (!showFilterMenu) return; // Only listen when filter menu is open
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
-        setShowFilterMenu(false);
-      }
+      // Use a small delay to ensure button click handlers have executed first
+      setTimeout(() => {
+        if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
+          setShowFilterMenu(false);
+        }
+      }, 0);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    // Use click instead of mousedown to avoid conflicts with button clicks
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [showFilterMenu]);
 
   const handleAddClick = () => {
     setSelectedAppointment(null);

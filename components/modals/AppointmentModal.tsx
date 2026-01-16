@@ -69,12 +69,13 @@ export async function preloadFormData() {
       // Convert CrmTeam to User and filter for doctors
       const allUsers = crmTeamsToUsers(teamsData);
       // Filter for doctors (role can be 'doctor', 'Doctor', 'physician', etc.)
-      // Exclude doctors who are on leave
+      // Exclude doctors who are on leave or inactive
       const doctors = allUsers.filter(user => {
         const role = (user.role || '').toLowerCase();
         const isDoctor = role === 'doctor' || role === 'physician' || role === 'dr';
         const isNotOnLeave = user.status !== 'OnLeave';
-        return isDoctor && isNotOnLeave;
+        const isNotInactive = user.status !== 'Inactive';
+        return isDoctor && isNotOnLeave && isNotInactive;
       });
       
       formDataCache.doctors = doctors;
@@ -183,12 +184,13 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       // Convert CrmTeam to User and filter for doctors
       const allUsers = crmTeamsToUsers(teamsData);
       // Filter for doctors (role can be 'doctor', 'Doctor', 'physician', etc.)
-      // Exclude doctors who are on leave
+      // Exclude doctors who are on leave or inactive
       const newDoctors = allUsers.filter(user => {
         const role = (user.role || '').toLowerCase();
         const isDoctor = role === 'doctor' || role === 'physician' || role === 'dr';
         const isNotOnLeave = user.status !== 'OnLeave';
-        return isDoctor && isNotOnLeave;
+        const isNotInactive = user.status !== 'Inactive';
+        return isDoctor && isNotOnLeave && isNotInactive;
       });
       
       // Update cache
@@ -582,7 +584,13 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       }
     } catch (error: any) {
       // Handle different types of errors
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to save appointment';
+      // Check multiple possible error message locations
+      const errorMessage = 
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        (typeof error.response?.data === 'string' ? error.response?.data : null) ||
+        error.message || 
+        'Failed to save appointment';
       const status = error.response?.status;
       const token = sessionStorage.getItem('token');
       
@@ -598,15 +606,24 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       
       // Check if it's a duplicate appointment error
       const errorMsgLower = errorMessage.toLowerCase();
+      // Check for various patterns that indicate duplicate appointment
+      // Error message: "Appointment validation failed: Found 1 existing appointments for customer..."
       const isDuplicateError = 
         status === 409 || // Conflict status
-        status === 400 && (
+        (status === 400 && (
           errorMsgLower.includes('duplicate') ||
           errorMsgLower.includes('already exists') ||
           errorMsgLower.includes('already has') ||
           errorMsgLower.includes('already scheduled') ||
-          errorMsgLower.includes('appointment already')
-        );
+          errorMsgLower.includes('appointment already') ||
+          errorMsgLower.includes('existing appointment') || // "Found 1 existing appointments"
+          errorMsgLower.includes('existing appointments') || // "Found 1 existing appointments"  
+          (errorMsgLower.includes('found') && errorMsgLower.includes('existing')) || // "Found 1 existing appointments"
+          (errorMsgLower.includes('validation failed') && errorMsgLower.includes('existing')) || // "Appointment validation failed: Found 1 existing..."
+          (errorMsgLower.includes('validation failed') && errorMsgLower.includes('found')) || // "Appointment validation failed: Found..."
+          errorMsgLower.includes('found 1 existing') || // Direct match for "Found 1 existing"
+          errorMsgLower.includes('found') && errorMsgLower.includes('appointments') // "Found X appointments"
+        ));
       
       if (isDuplicateError && !appointment) {
         // Show duplicate appointment popup with patient name

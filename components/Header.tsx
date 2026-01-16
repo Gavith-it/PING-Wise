@@ -26,18 +26,24 @@ export default function Header() {
 
   // Close dropdowns when clicking outside
   useEffect(() => {
+    if (!showNotifications && !showMenu) return; // Only listen when dropdowns are open
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
-      }
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
+      // Use a small delay to ensure button click handlers have executed first
+      setTimeout(() => {
+        if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+          setShowNotifications(false);
+        }
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+          setShowMenu(false);
+        }
+      }, 0);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    // Use click instead of mousedown to avoid conflicts with button clicks
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [showNotifications, showMenu]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -130,7 +136,8 @@ export default function Header() {
         <div className="flex items-center space-x-2 md:space-x-3">
           <div className="relative" ref={notificationRef}>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent event from bubbling to document
                 setShowNotifications(!showNotifications);
                 if (!showNotifications && unreadCount > 0) {
                   markAllAsRead();
@@ -167,14 +174,20 @@ export default function Header() {
               <div className="flex items-center space-x-2">
                 {notifications.length > 0 && unreadCount > 0 && (
                   <button
-                    onClick={markAllAsRead}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markAllAsRead();
+                    }}
                     className="text-xs text-primary hover:text-primary-dark font-medium"
                   >
                     Mark all read
                   </button>
                 )}
                 <button
-                  onClick={() => setShowNotifications(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotifications(false);
+                  }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-4 h-4" />
