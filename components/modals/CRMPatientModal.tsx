@@ -126,6 +126,66 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
     }
   }, [patient]);
 
+  // Calculate age from date of birth
+  const calculateAgeFromDOB = useCallback((dob: string): string => {
+    if (!dob || dob.trim() === '') {
+      return '';
+    }
+    
+    try {
+      const birthDate = new Date(dob);
+      const today = new Date();
+      
+      // Check if date is valid
+      if (isNaN(birthDate.getTime())) {
+        return '';
+      }
+      
+      // Check if birth date is in the future
+      if (birthDate > today) {
+        return '';
+      }
+      
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      // Adjust age if birthday hasn't occurred this year
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      // Return age as string, or empty if invalid
+      return age > 0 && age < 150 ? age.toString() : '';
+    } catch (error) {
+      console.error('Error calculating age from DOB:', error);
+      return '';
+    }
+  }, []);
+
+  // Auto-calculate age when DOB changes
+  useEffect(() => {
+    if (formData.dateOfBirth && formData.dateOfBirth.trim() !== '') {
+      const calculatedAge = calculateAgeFromDOB(formData.dateOfBirth);
+      if (calculatedAge !== formData.age) {
+        setFormData(prev => ({ ...prev, age: calculatedAge }));
+        // Clear age error if age is now valid
+        if (calculatedAge) {
+          setErrors(prev => {
+            if (prev.age) {
+              const newErrors = { ...prev };
+              delete newErrors.age;
+              return newErrors;
+            }
+            return prev;
+          });
+        }
+      }
+    } else if (formData.dateOfBirth === '') {
+      // Clear age when DOB is cleared
+      setFormData(prev => ({ ...prev, age: '' }));
+    }
+  }, [formData.dateOfBirth, formData.age, calculateAgeFromDOB]);
+
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -174,7 +234,12 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
       } else if (field === 'phone') {
         value = handlePhoneInput(value); // Only digits, max 10
       } else if (field === 'age') {
-        value = handleAgeInput(value); // Only digits, max 2
+        // Age field is read-only, calculated from DOB - don't allow manual input
+        return; // Prevent manual age input
+      } else if (field === 'dateOfBirth') {
+        // When DOB changes, age will be auto-calculated in useEffect
+        setFormData(prev => ({ ...prev, [field]: value }));
+        return;
       }
       
       setFormData(prev => ({ ...prev, [field]: value }));
@@ -188,11 +253,6 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
         }
       } else if (field === 'phone') {
         const validation = validatePhone(value);
-        if (!validation.isValid && value.trim() !== '') {
-          fieldError = validation.error;
-        }
-      } else if (field === 'age') {
-        const validation = validateAge(value);
         if (!validation.isValid && value.trim() !== '') {
           fieldError = validation.error;
         }
@@ -333,13 +393,13 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
                     required
                     inputMode="numeric"
                     value={formData.age}
-                    onChange={handleFieldChange('age')}
-                    className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                    readOnly
+                    disabled
+                    className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed ${
                       errors.age ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
                     }`}
-                    placeholder="Age (1-99)"
-                    maxLength={2}
-                    title={errors.age || 'Age must be 1-99 (maximum 2 digits). Letters are not allowed.'}
+                    placeholder="Auto-calculated from DOB"
+                    title="Age is automatically calculated from Date of Birth"
                   />
                   {errors.age && (
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
@@ -381,9 +441,14 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               <input
                 type="date"
                 value={formData.dateOfBirth}
-                onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                onChange={(e) => {
+                  const dobValue = e.target.value;
+                  setFormData(prev => ({ ...prev, dateOfBirth: dobValue }));
+                  // Age will be auto-calculated in useEffect
+                }}
                 onClick={(e) => e.currentTarget.showPicker?.()}
                 min="1900-01-01"
+                max={format(new Date(), 'yyyy-MM-dd')} // Prevent future dates
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
                 style={{ cursor: 'pointer' }}
               />
@@ -489,21 +554,8 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={handleFieldChange('status')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value={customerStatusToApiFormat(CustomerStatus.Active)}>{CustomerStatus.Active}</option>
-                <option value={customerStatusToApiFormat(CustomerStatus.Booked)}>{CustomerStatus.Booked}</option>
-                <option value={customerStatusToApiFormat(CustomerStatus.FollowUp)}>{CustomerStatus.FollowUp}</option>
-                <option value={customerStatusToApiFormat(CustomerStatus.Inactive)}>{CustomerStatus.Inactive}</option>
-              </select>
-            </div>
+            {/* Status field removed from UI - backend handles status automatically */}
+            {/* Status is still included in formData and API calls, just not visible to users */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

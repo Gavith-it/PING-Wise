@@ -22,8 +22,6 @@ export default function WalletPage() {
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddFunds, setShowAddFunds] = useState(false);
-  const [amount, setAmount] = useState('');
   const [loadingBalance, setLoadingBalance] = useState(true);
 
   useEffect(() => {
@@ -52,103 +50,14 @@ export default function WalletPage() {
       // const transactionsResponse = await walletService.getTransactions();
       // setTransactions(transactionsResponse.data || []);
       
-      // Mock data for now
-      const mockTransactions: Transaction[] = [
-        {
-          id: '1',
-          type: 'debit',
-          description: 'Premium Subscription',
-          amount: 19.99,
-          date: '2024-12-15',
-        },
-        {
-          id: '2',
-          type: 'credit',
-          description: 'Referral Bonus',
-          amount: 10.00,
-          date: '2024-12-10',
-        },
-        {
-          id: '3',
-          type: 'credit',
-          description: 'Wallet Top-up',
-          amount: 50.00,
-          date: '2024-12-01',
-        },
-      ];
-      setTransactions(mockTransactions);
+      // For now, set empty array - transactions will be loaded when API is provided
+      setTransactions([]);
     } catch (error) {
       toast.error('Failed to load wallet data');
     } finally {
       setLoading(false);
     }
   };
-
-  const handleAddFunds = async () => {
-    const amountNum = parseFloat(amount);
-    if (!amount || isNaN(amountNum) || amountNum <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
-    }
-
-    try {
-      // NOTE: Add funds API endpoint pending implementation
-      // When available, uncomment the following:
-      // await walletService.addFunds({ amount: amountNum });
-      toast.success(`${amountNum} credits added successfully`);
-      setShowAddFunds(false);
-      setAmount('');
-      loadWalletData(); // Reload balance
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to add funds');
-    }
-  };
-
-  if (showAddFunds) {
-    return (
-      <PrivateRoute>
-        <Layout>
-          <div className="max-w-2xl mx-auto">
-            <div className="mb-6">
-              <button
-                onClick={() => setShowAddFunds(false)}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span>Back to Wallet</span>
-              </button>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Funds</h2>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount (Credits)
-                </label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter credits amount"
-                  min="1"
-                  step="1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              
-              <button
-                onClick={handleAddFunds}
-                className="w-full bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-dark transition-colors shadow-md hover:shadow-lg"
-              >
-                Add Funds
-              </button>
-            </div>
-          </div>
-        </Layout>
-      </PrivateRoute>
-    );
-  }
 
   return (
     <PrivateRoute>
@@ -157,7 +66,7 @@ export default function WalletPage() {
           {/* Header */}
           <div className="flex items-center space-x-3 md:space-x-4">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/dashboard')}
               className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
@@ -183,12 +92,6 @@ export default function WalletPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
-              <button
-                onClick={() => setShowAddFunds(true)}
-                className="bg-primary text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-95"
-              >
-                Add Funds
-              </button>
             </div>
 
             {loading ? (

@@ -193,18 +193,23 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
       );
     }
 
-    // Age range filter
-    if (advancedFilters.ageRange.min) {
-      const minAge = parseInt(advancedFilters.ageRange.min);
-      if (!isNaN(minAge)) {
-        filtered = filtered.filter(p => p.age >= minAge);
-      }
+    // Next appointment date range filter
+    if (advancedFilters.nextAppointmentDateRange.start) {
+      const startDate = new Date(advancedFilters.nextAppointmentDateRange.start);
+      filtered = filtered.filter(p => {
+        if (!p.nextAppointment) return false;
+        const appointmentDate = new Date(p.nextAppointment);
+        return appointmentDate >= startDate;
+      });
     }
-    if (advancedFilters.ageRange.max) {
-      const maxAge = parseInt(advancedFilters.ageRange.max);
-      if (!isNaN(maxAge)) {
-        filtered = filtered.filter(p => p.age <= maxAge);
-      }
+    if (advancedFilters.nextAppointmentDateRange.end) {
+      const endDate = new Date(advancedFilters.nextAppointmentDateRange.end);
+      endDate.setHours(23, 59, 59, 999); // Include the entire end date
+      filtered = filtered.filter(p => {
+        if (!p.nextAppointment) return false;
+        const appointmentDate = new Date(p.nextAppointment);
+        return appointmentDate <= endDate;
+      });
     }
 
     // Assigned doctor filter

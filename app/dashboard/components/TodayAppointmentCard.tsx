@@ -115,17 +115,24 @@ const TodayAppointmentCard = memo(function TodayAppointmentCard({ appointment }:
           <p className="font-semibold text-sm md:text-base text-gray-900 dark:text-white truncate mb-1">
             {patient?.name || 'Unknown'}
           </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
-              {displayTime}
-            </p>
-            {doctor?.name && (
-              <>
-                <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
-                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
-                  Dr. {doctor.name}
-                </p>
-              </>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+                {displayTime}
+              </p>
+              {doctor?.name && (
+                <>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
+                  <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+                    Dr. {doctor.name}
+                  </p>
+                </>
+              )}
+            </div>
+            {appointment.type && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {appointment.type}
+              </p>
             )}
           </div>
         </div>

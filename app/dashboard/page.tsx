@@ -195,6 +195,9 @@ export default function DashboardPage() {
               <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2">
                 Welcome back, {user?.name || 'Doctor'}! 👋
               </h2>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">
+                Here&apos;s what&apos;s happening today
+              </p>
             </div>
           </div>
 
@@ -264,7 +267,7 @@ export default function DashboardPage() {
               onClick={() => setShowPatientModal(true)}
               className={cn(
                 'h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg transition-shadow',
-                'bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+                'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
               )}
               title="Add Patient">
               <UserPlus className="w-3.5 h-3.5 md:w-4 md:h-4" />

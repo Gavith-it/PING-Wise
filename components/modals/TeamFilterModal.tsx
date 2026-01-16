@@ -29,17 +29,12 @@ export default function TeamFilterModal({
     { value: 'inactive', label: 'Inactive' },
   ];
 
-  const departmentOptions = [
-    { value: 'all', label: 'All Departments' },
-    ...departments.map(dept => ({ value: dept, label: dept })),
-  ];
+  // Department filter removed from UI - backend handles department automatically
+  // Department remains in filters state but always stays as 'all'
 
   const handleStatusChange = (status: string) => {
-    onFilterChange({ ...filters, status });
-  };
-
-  const handleDepartmentChange = (department: string) => {
-    onFilterChange({ ...filters, department });
+    // Keep department as 'all' when status changes
+    onFilterChange({ ...filters, status, department: 'all' });
   };
 
   const handleReset = () => {
@@ -85,27 +80,7 @@ export default function TeamFilterModal({
               </div>
             </div>
 
-            {/* Department Filter */}
-            <div>
-              <label className="block text-sm md:text-base font-medium text-gray-700 dark:text-gray-300 mb-2 md:mb-3">
-                Department
-              </label>
-              <div className="space-y-2">
-                {departmentOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => handleDepartmentChange(option.value)}
-                    className={`w-full px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl text-sm md:text-base font-medium text-left transition-colors ${
-                      filters.department === option.value
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Department filter removed from UI - backend handles department, not required in filters */}
           </div>
 
           {/* Actions */}

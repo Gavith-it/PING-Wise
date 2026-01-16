@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, memo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import CountUp from 'react-countup';
 
 interface ActivityData {
@@ -64,12 +64,9 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
     setActiveIndex(null);
   };
 
-  const onPieClick = (_: unknown, index: number) => {
-    // For mobile touch support
-    setActiveIndex(index);
-    setTimeout(() => {
-      setActiveIndex(null);
-    }, 500);
+  const onPieClick = () => {
+    // Disable click interaction - no tooltip box
+    // Chart is for display only
   };
 
   return (
@@ -78,6 +75,7 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
       <div className="relative w-36 h-36 md:w-40 md:h-40 flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
+            <Tooltip active={false} />
             <Pie
               data={chartData}
               cx="50%"

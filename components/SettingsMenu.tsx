@@ -292,22 +292,24 @@ export default function SettingsMenu() {
                   </div>
                 </button>
 
+                {/* Dark Theme - Disabled for now */}
                 <div
-                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 opacity-60 cursor-not-allowed"
                 >
                   <div className="flex items-center space-x-3">
                     {isDark ? (
-                      <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
+                      <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                     ) : (
-                      <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary" />
+                      <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                     )}
                     <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Dark Theme</span>
                   </div>
                   <ToggleSwitch
                     enabled={isDark}
-                    onChange={toggleTheme}
+                    onChange={() => {}} // Disabled - no action
                     label="Dark Theme"
                     size="md"
+                    disabled={true}
                   />
                 </div>
 

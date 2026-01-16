@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Bell, Shield, Globe, Trash2, Crown, Gift, ChevronRight, X, Sparkles, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Bell, Shield, Globe, Trash2, Crown, Gift, ChevronRight, X, Sparkles, MessageCircle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import ToggleSwitch from '@/components/ui/toggle-switch';
+import { useFontSize } from '@/contexts/FontSizeContext';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { fontSizePercentage, setFontSizePercentage, increaseFontSize, decreaseFontSize, resetFontSize } = useFontSize();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [followUpReminder, setFollowUpReminder] = useState(false);
@@ -175,6 +177,74 @@ export default function SettingsPage() {
                 <p className="text-base font-medium text-gray-900 dark:text-white">Language</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">English (US)</p>
               </button>
+
+              {/* Font Size Control */}
+              <div className="py-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex-1">
+                    <p className="text-base font-medium text-gray-900 dark:text-white">Font Size</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{fontSizePercentage}%</p>
+                  </div>
+                  <button
+                    onClick={resetFontSize}
+                    className="flex items-center justify-center px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+                    aria-label="Reset font size to default"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    Reset
+                  </button>
+                </div>
+                
+                {/* Slider Container */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={decreaseFontSize}
+                      disabled={fontSizePercentage <= 50}
+                      className="flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      aria-label="Decrease font size"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </button>
+                    
+                    {/* Range Slider */}
+                    <div className="flex-1 relative">
+                      <input
+                        type="range"
+                        min="50"
+                        max="200"
+                        step="10"
+                        value={fontSizePercentage}
+                        onChange={(e) => setFontSizePercentage(parseInt(e.target.value, 10))}
+                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer font-size-slider"
+                        style={{
+                          background: `linear-gradient(to right, #1A3E9E 0%, #1A3E9E ${((fontSizePercentage - 50) / (200 - 50)) * 100}%, #e5e7eb ${((fontSizePercentage - 50) / (200 - 50)) * 100}%, #e5e7eb 100%)`
+                        }}
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={increaseFontSize}
+                      disabled={fontSizePercentage >= 200}
+                      className="flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      aria-label="Increase font size"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  {/* Percentage Labels */}
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                    <span>125%</span>
+                    <span>150%</span>
+                    <span>175%</span>
+                    <span>200%</span>
+                  </div>
+                </div>
+              </div>
 
               <button className="w-full text-left py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 transition-colors">
                 <p className="text-base font-medium text-gray-900 dark:text-white">About</p>

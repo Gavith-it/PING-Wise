@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import { crmPatientService } from '@/lib/services/crmPatientService';
+import { teamApi } from '@/lib/services/teamApi';
+import { crmTeamsToUsers } from '@/lib/utils/teamAdapter';
 import { Appointment } from '@/types';
-import { Patient } from '@/types';
+import { Patient, User } from '@/types';
 import { formDataCache, preloadInProgress } from '@/components/modals/AppointmentModal';
 
 // Cache for today's appointments
@@ -31,6 +33,7 @@ export function useTodayAppointments(): UseTodayAppointmentsReturn {
   
   const isLoadingRef = useRef(false);
   const isLoadingPatientsRef = useRef(false);
+  const isLoadingDoctorsRef = useRef(false);
 
   const loadAppointments = useCallback(async () => {
     // Prevent duplicate calls
@@ -136,6 +139,107 @@ export function useTodayAppointments(): UseTodayAppointmentsReturn {
         } catch (error) {
           console.warn('Failed to enrich appointments with patient data (non-critical):', error);
           isLoadingPatientsRef.current = false;
+        }
+      }
+
+      // Enrich appointments with doctor data
+      if (filteredAppointments.length > 0 && !isLoadingDoctorsRef.current) {
+        try {
+          isLoadingDoctorsRef.current = true;
+          
+          // Get all unique doctor IDs from appointments (use assigned_to_id or assigned_to if it's an ID)
+          const doctorIds = filteredAppointments
+            .map(apt => {
+              // Check if doctor is a string (ID) or object
+              if (typeof apt.doctor === 'string') {
+                // If it's a string, check if it looks like an ID (long alphanumeric) or a name
+                // IDs are typically long (20+ chars), names are shorter
+                if (apt.doctor.length > 15) {
+                  return apt.doctor; // Likely an ID
+                }
+                return null; // Likely a name, skip enrichment
+              }
+              if (typeof apt.doctor === 'object' && apt.doctor?.id) {
+                return apt.doctor.id;
+              }
+              return null;
+            })
+            .filter((id): id is string => id !== null);
+          
+          if (doctorIds.length > 0) {
+            // Check shared cache first (from AppointmentModal preload) to avoid duplicate API calls
+            const cacheAge = Date.now() - formDataCache.timestamp;
+            const isCacheValid = formDataCache.doctors.length > 0 && cacheAge < 15 * 60 * 1000; // 15 minutes
+            
+            let doctors: User[] = [];
+            
+            // If cache is valid, use it (no API call needed)
+            if (isCacheValid) {
+              doctors = formDataCache.doctors;
+            } else if (preloadInProgress) {
+              // Preload is in progress, wait a bit and check cache again
+              await new Promise(resolve => setTimeout(resolve, 100));
+              const cacheAgeAfterWait = Date.now() - formDataCache.timestamp;
+              const isCacheValidAfterWait = formDataCache.doctors.length > 0 && cacheAgeAfterWait < 15 * 60 * 1000;
+              if (isCacheValidAfterWait) {
+                doctors = formDataCache.doctors;
+              } else {
+                // Preload didn't complete in time, fetch from API
+                const teamsData = await teamApi.getTeams();
+                const allUsers = crmTeamsToUsers(teamsData);
+                // Filter for doctors
+                doctors = allUsers.filter(user => {
+                  const role = (user.role || '').toLowerCase();
+                  return role === 'doctor' || role === 'physician' || role === 'dr';
+                });
+                formDataCache.doctors = doctors;
+                formDataCache.timestamp = Date.now();
+              }
+            } else {
+              // Cache is invalid and preload not in progress, fetch from API
+              const teamsData = await teamApi.getTeams();
+              const allUsers = crmTeamsToUsers(teamsData);
+              // Filter for doctors
+              doctors = allUsers.filter(user => {
+                const role = (user.role || '').toLowerCase();
+                return role === 'doctor' || role === 'physician' || role === 'dr';
+              });
+              
+              // Update shared cache for future use
+              formDataCache.doctors = doctors;
+              formDataCache.timestamp = Date.now();
+            }
+            
+            // Create a map of doctor ID to doctor object
+            const doctorMap = new Map<string, User>();
+            doctors.forEach(doctor => {
+              if (doctor.id) {
+                doctorMap.set(doctor.id, doctor);
+              }
+            });
+            
+            // Enrich appointments with doctor data
+            filteredAppointments = filteredAppointments.map(apt => {
+              // Only enrich if doctor is a string (ID) or object without name
+              if (typeof apt.doctor === 'string' && apt.doctor.length > 15) {
+                // It's an ID, look it up
+                if (doctorMap.has(apt.doctor)) {
+                  return { ...apt, doctor: doctorMap.get(apt.doctor)! };
+                }
+              } else if (typeof apt.doctor === 'object' && apt.doctor?.id && !apt.doctor?.name) {
+                // Object with ID but no name, look it up
+                if (doctorMap.has(apt.doctor.id)) {
+                  return { ...apt, doctor: doctorMap.get(apt.doctor.id)! };
+                }
+              }
+              return apt;
+            });
+          }
+          
+          isLoadingDoctorsRef.current = false;
+        } catch (error) {
+          console.warn('Failed to enrich appointments with doctor data (non-critical):', error);
+          isLoadingDoctorsRef.current = false;
         }
       }
       

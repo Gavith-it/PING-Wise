@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { FontSizeProvider } from '@/contexts/FontSizeContext';
 import { FooterVisibilityProvider } from '@/contexts/FooterVisibilityContext';
 import NotificationToast from '@/components/NotificationToast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -33,10 +34,11 @@ export default function RootLayout({
       <body className={`${inter.variable} bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100`}>
         <ErrorBoundary>
           <ThemeProvider>
-            <AuthProvider>
-              <NotificationProvider>
-                <FooterVisibilityProvider>
-                  {children}
+            <FontSizeProvider>
+              <AuthProvider>
+                <NotificationProvider>
+                  <FooterVisibilityProvider>
+                    {children}
                   <NotificationToast />
                   <Toaster
                     position="top-right"
@@ -63,9 +65,10 @@ export default function RootLayout({
                       },
                     }}
                   />
-                </FooterVisibilityProvider>
-              </NotificationProvider>
-            </AuthProvider>
+                  </FooterVisibilityProvider>
+                </NotificationProvider>
+              </AuthProvider>
+            </FontSizeProvider>
           </ThemeProvider>
         </ErrorBoundary>
       </body>

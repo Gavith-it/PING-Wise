@@ -41,8 +41,8 @@ export default function CRMPage() {
   const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({
     status: 'all',
     dateRange: { start: '', end: '' },
+    nextAppointmentDateRange: { start: '', end: '' },
     assignedDoctor: '',
-    ageRange: { min: '', max: '' },
   });
   
   // Reset status filter to 'all' when user starts searching (search is independent of filters)
@@ -132,8 +132,8 @@ export default function CRMPage() {
     setAdvancedFilters({
       status: 'all',
       dateRange: { start: '', end: '' },
+      nextAppointmentDateRange: { start: '', end: '' },
       assignedDoctor: '',
-      ageRange: { min: '', max: '' },
     });
   };
 
@@ -177,8 +177,8 @@ export default function CRMPage() {
     statusFilter !== 'all' || 
     advancedFilters.dateRange.start || 
     advancedFilters.dateRange.end ||
-    advancedFilters.ageRange.min || 
-    advancedFilters.ageRange.max ||
+    advancedFilters.nextAppointmentDateRange.start || 
+    advancedFilters.nextAppointmentDateRange.end ||
     advancedFilters.assignedDoctor
   );
   const isSearchResult = isEmpty && hasActiveFilters;

@@ -4,13 +4,14 @@
  * Converts between CRM API Appointment models and UI Appointment models
  */
 
-import { Appointment } from '@/types';
+import { Appointment, User } from '@/types';
 
 // Backend Appointment format (from swagger)
 export interface CrmAppointment {
   id: string;
   appointment_type?: string;
-  assigned_to?: string;
+  assigned_to?: string; // Doctor name (not ID)
+  assigned_to_id?: string; // Doctor ID (separate field)
   attachments?: string[];
   created_at?: string;
   customer_id?: string;
@@ -64,10 +65,36 @@ export function crmAppointmentToAppointment(crmAppointment: CrmAppointment | nul
     }
   }
 
+  // assigned_to should contain doctor name, assigned_to_id contains doctor ID
+  // However, currently API may return ID in assigned_to instead of name
+  // Check if assigned_to looks like an ID (long alphanumeric, no spaces) or a name
+  // Return as string ID for enrichment - enrichment will convert to User object
+  let doctor: string | User = '';
+  const assignedTo = crmAppointment.assigned_to || '';
+  const assignedToId = crmAppointment.assigned_to_id || '';
+  
+  if (assignedTo) {
+    // Check if assigned_to looks like an ID (long alphanumeric string, typically 20+ chars, no spaces)
+    // vs a name (shorter, may contain spaces, letters)
+    const looksLikeId = assignedTo.length > 15 && !assignedTo.includes(' ') && /^[a-zA-Z0-9]+$/.test(assignedTo);
+    
+    if (looksLikeId) {
+      // assigned_to is an ID (current API behavior), return as string ID for enrichment
+      doctor = assignedToId || assignedTo;
+    } else {
+      // assigned_to is a name (expected behavior), but we don't have full User object yet
+      // Return as string ID for enrichment - enrichment will fetch full User object with name
+      doctor = assignedToId || assignedTo;
+    }
+  } else if (assignedToId) {
+    // Only assigned_to_id available, return as string ID for enrichment
+    doctor = assignedToId;
+  }
+
   return {
     id: String(crmAppointment.id),
     patient: crmAppointment.customer_id || '', // Will be populated if needed
-    doctor: crmAppointment.assigned_to || '', // Will be populated if needed
+    doctor: doctor, // Doctor object with name from assigned_to, or empty string
     date: date,
     time: time,
     status: mapCrmStatusToAppointmentStatus(crmAppointment.status || 'pending'),
@@ -139,18 +166,22 @@ export function appointmentToCrmAppointment(
     }
   }
 
-  // Extract assigned_to (doctor ID) - ensure it's a valid string
+  // Extract assigned_to (doctor name) and assigned_to_id (doctor ID)
+  // assigned_to should contain the doctor name, assigned_to_id should contain the doctor ID
   let assigned_to: string | undefined;
   let assigned_to_id: string | undefined;
   if (appointment.doctor) {
     if (typeof appointment.doctor === 'string') {
-      // If it's already a string, use it directly (should be the doctor ID)
-      assigned_to = appointment.doctor.trim();
+      // If it's a string, it's just an ID (fallback case)
+      // Try to use it as ID, but name will be empty (backend should handle this)
       assigned_to_id = appointment.doctor.trim();
+      assigned_to = assigned_to_id; // Fallback: use ID if name not available
     } else if (typeof appointment.doctor === 'object' && appointment.doctor !== null) {
-      // If it's an object, extract the ID
-      assigned_to = appointment.doctor.id?.toString().trim();
+      // If it's an object (User), extract the name and ID
       assigned_to_id = appointment.doctor.id?.toString().trim();
+      // User type always has name property, so safe to access
+      const doctorName = 'name' in appointment.doctor ? appointment.doctor.name?.trim() : undefined;
+      assigned_to = doctorName || assigned_to_id; // Use name, fallback to ID if name missing
     }
   }
 

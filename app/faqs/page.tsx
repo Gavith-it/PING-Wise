@@ -119,9 +119,31 @@ export default function FAQsPage() {
                 <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-4">
                   If you can&apos;t find the answer you&apos;re looking for, please contact our support team.
                 </p>
-                <button className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors text-sm md:text-base">
+                <a
+                  href="mailto:dhanush.pingwise@gmail.com?subject=Support Request"
+                  onClick={(e) => {
+                    // Open Gmail in a new tab if possible
+                    e.preventDefault();
+                    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=dhanush.pingwise@gmail.com&su=Support Request`, '_blank');
+                  }}
+                  className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors text-sm md:text-base"
+                >
                   Contact Support
-                </button>
+                </a>
+                <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                  <p className="mb-1">Email us at:</p>
+                  <a
+                    href="mailto:dhanush.pingwise@gmail.com"
+                    onClick={(e) => {
+                      // Open Gmail in a new tab if possible
+                      e.preventDefault();
+                      window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=dhanush.pingwise@gmail.com`, '_blank');
+                    }}
+                    className="text-primary hover:text-primary-dark hover:underline font-medium"
+                  >
+                    dhanush.pingwise@gmail.com
+                  </a>
+                </div>
               </div>
             </div>
           </div>

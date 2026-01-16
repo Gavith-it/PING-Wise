@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import { crmPatientService } from '@/lib/services/crmPatientService';
 import { teamApi } from '@/lib/services/teamApi';
@@ -135,6 +135,8 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
   });
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<User | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicatePatientName, setDuplicatePatientName] = useState<string>('');
   const hasLoadedRef = useRef(false); // Track if data has been loaded to prevent duplicate calls
   const isLoadingRef = useRef(false); // Prevent concurrent API calls
   const isSubmittingRef = useRef(false); // Prevent duplicate form submissions
@@ -498,9 +500,14 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         return;
       }
 
-      // Ensure we have valid patient and doctor IDs
+      // Ensure we have valid patient and doctor
       const patientId = selectedPatient?.id || formData.patient;
-      const doctorId = selectedDoctor?.id || formData.doctor;
+      // Pass the full doctor object (not just ID) so adapter can extract name for assigned_to
+      // If selectedDoctor is not set, try to find it from the doctors list
+      let doctorObject = selectedDoctor;
+      if (!doctorObject && formData.doctor) {
+        doctorObject = doctors.find(d => d.id === formData.doctor || String(d.id) === String(formData.doctor)) || null;
+      }
 
       if (!patientId || patientId.trim() === '') {
         toast.error('Please select a valid patient');
@@ -508,13 +515,14 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         return;
       }
 
-      if (!doctorId || doctorId.trim() === '') {
+      if (!doctorObject || !doctorObject.id || doctorObject.id.trim() === '') {
         toast.error('Please select a valid doctor');
         setLoading(false);
         return;
       }
 
       // Check if we're editing a pending appointment and assigning a doctor
+      const doctorId = doctorObject.id;
       const wasPending = appointment && appointment.status === 'Pending';
       const hadNoDoctor = appointment && (!appointment.doctor || 
         (typeof appointment.doctor === 'string' && !appointment.doctor) ||
@@ -530,11 +538,11 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       // This applies to all new appointments regardless of date or doctor assignment
       const isNewAppointment = !appointment;
 
-      // Prepare appointment data with proper IDs
+      // Prepare appointment data with full doctor object (so adapter can extract name for assigned_to)
       const appointmentData: any = {
         ...formData,
         patient: patientId, // Ensure we use the patient ID
-        doctor: doctorId, // Ensure we use the doctor ID
+        doctor: doctorObject, // Pass full doctor object (User) so adapter can extract name
         reason: formData.reason || '', // No default value - send empty string if no reason provided
       };
       
@@ -587,6 +595,26 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         requestHeaders: error.config?.headers,
         authHeader: error.config?.headers?.Authorization || error.config?.headers?.authorization
       });
+      
+      // Check if it's a duplicate appointment error
+      const errorMsgLower = errorMessage.toLowerCase();
+      const isDuplicateError = 
+        status === 409 || // Conflict status
+        status === 400 && (
+          errorMsgLower.includes('duplicate') ||
+          errorMsgLower.includes('already exists') ||
+          errorMsgLower.includes('already has') ||
+          errorMsgLower.includes('already scheduled') ||
+          errorMsgLower.includes('appointment already')
+        );
+      
+      if (isDuplicateError && !appointment) {
+        // Show duplicate appointment popup with patient name
+        const patientName = selectedPatient?.name || 'this patient';
+        setDuplicatePatientName(patientName);
+        setShowDuplicateModal(true);
+        return; // Don't show toast error, show popup instead
+      }
       
       // Check if it's an authentication error
       if (status === 401) {
@@ -788,6 +816,42 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
           </form>
         </div>
       </div>
+
+      {/* Duplicate Appointment Popup */}
+      {showDuplicateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">
+                Duplicate Appointment
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 text-center mb-6">
+                <span className="font-semibold text-gray-900 dark:text-white">{duplicatePatientName}</span> already has an appointment scheduled.
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
+                Please check the existing appointment or select a different patient.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDuplicateModal(false);
+                    setDuplicatePatientName('');
+                  }}
+                  className="flex-1 bg-primary text-white py-2.5 px-4 rounded-lg text-base font-medium hover:bg-primary-dark transition-colors"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
