@@ -549,14 +549,19 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       };
       
       // Set status to confirmed if:
-      // 1. Creating a new appointment (always confirmed for any date), OR
+      // 1. Creating a new appointment (always confirmed for any date - frontend never creates pending), OR
       // 2. Editing a pending appointment and assigning a doctor
       if (isNewAppointment) {
-        // All new appointments should be confirmed regardless of date
+        // All new appointments created from frontend should be confirmed regardless of date
+        // Pending appointments only come from hosting page, not from frontend application
         appointmentData.status = 'Confirmed';
       } else if (shouldConfirmEdit) {
         // Only change status when editing pending and assigning doctor
         appointmentData.status = 'Confirmed';
+      } else if (appointment) {
+        // When editing existing appointment, preserve the current status (unless changing from pending to confirmed)
+        // Don't change status if it's already confirmed, completed, or cancelled
+        appointmentData.status = appointment.status || 'Confirmed';
       }
 
       let responseData: Appointment | undefined;

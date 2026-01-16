@@ -287,10 +287,21 @@ export function useAppointments({
       }
     }
     
-    // Get the date from the updated appointment
-    const updatedDate = enrichedAppointment.date instanceof Date 
-      ? enrichedAppointment.date 
-      : new Date(enrichedAppointment.date);
+    // Get the date from the updated appointment - normalize to date only (no time)
+    let updatedDate: Date;
+    if (enrichedAppointment.date instanceof Date) {
+      updatedDate = new Date(enrichedAppointment.date);
+    } else {
+      // Handle string dates - parse and create Date object
+      const dateStr = typeof enrichedAppointment.date === 'string' ? enrichedAppointment.date : String(enrichedAppointment.date);
+      updatedDate = new Date(dateStr);
+    }
+    // Normalize to date only (remove time component) for consistent comparison
+    updatedDate.setHours(0, 0, 0, 0);
+    
+    const selectedDateNormalized = new Date(selectedDate);
+    selectedDateNormalized.setHours(0, 0, 0, 0);
+    
     const updatedDateStr = format(updatedDate, 'yyyy-MM-dd');
     const updatedMonthStr = format(updatedDate, 'yyyy-MM');
     
@@ -303,7 +314,10 @@ export function useAppointments({
     // If appointment is for a different date than selected, we still need to show it when user navigates to that date
     // So we'll refresh both the selected date and the appointment's date
     
-    if (updatedDateStr === currentDateStr) {
+    // Compare normalized dates using isSameDay for accuracy
+    const isSameDate = isSameDay(updatedDate, selectedDateNormalized);
+    
+    if (isSameDate) {
       // Same date - add/update appointment in state immediately
       setAppointments(prev => {
         const existingIndex = prev.findIndex(apt => apt.id === enrichedAppointment.id);

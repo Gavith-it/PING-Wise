@@ -232,9 +232,10 @@ function mapCrmStatusToAppointmentStatus(crmStatus: string): 'Confirmed' | 'Pend
 /**
  * Map Appointment status to CRM status (capitalized format)
  * Only supports: Confirmed, Pending, Completed, Cancelled
+ * Default is 'Confirmed' for new appointments created from frontend
  */
 function mapAppointmentStatusToCrmStatus(appointmentStatus?: string): string {
-  if (!appointmentStatus) return 'Pending';
+  if (!appointmentStatus) return 'Confirmed'; // Changed from 'Pending' to 'Confirmed' - frontend always creates confirmed appointments
   
   const normalized = appointmentStatus.toLowerCase();
   

@@ -46,11 +46,11 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
     
     switch (normalized) {
       case 'Confirmed':
-        return 'bg-green-500';
+        return 'bg-blue-500'; // Changed from green to blue
       case 'Pending':
         return 'bg-orange-500';
       case 'Completed':
-        return 'bg-blue-500';
+        return 'bg-green-500'; // Changed from blue to green
       case 'Cancelled':
         return 'bg-red-500';
       default:
@@ -59,13 +59,32 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
   };
 
   const getStatusDots = (dayAppointments: Appointment[]) => {
-    // Only show pending appointments - return single dot if any pending appointments exist
-    // Normalize status for comparison
+    // Only show Confirmed and Pending appointments
+    // Show only ONE dot per day - prioritize Pending over Confirmed
+    // Even if there are multiple appointments of the same status, show only one dot
+    
     const hasPending = dayAppointments.some(apt => {
       const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
       return normalized === 'Pending';
     });
-    return hasPending ? ['Pending'] : [];
+    
+    // If there's a pending appointment, show only Pending dot (priority)
+    if (hasPending) {
+      return ['Pending'];
+    }
+    
+    const hasConfirmed = dayAppointments.some(apt => {
+      const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+      return normalized === 'Confirmed';
+    });
+    
+    // If there's a confirmed appointment (and no pending), show only Confirmed dot
+    if (hasConfirmed) {
+      return ['Confirmed'];
+    }
+    
+    // No Confirmed or Pending appointments
+    return [];
   };
 
   const nextMonth = () => {
@@ -133,11 +152,12 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
               <div className="text-xs md:text-sm">{format(day, 'd')}</div>
               {statusDots.length > 0 && isCurrentMonth && (
                 <div className="flex justify-center items-center mt-0.5 md:mt-1">
+                  {/* Show only one dot - statusDots will have at most one item */}
                   <div
-                    className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor('Pending')}`}
-                    title={`Pending appointment${dayAppointments.filter(apt => {
+                    className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor(statusDots[0])}`}
+                    title={`${statusDots[0]} appointment${dayAppointments.filter(apt => {
                       const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
-                      return normalized === 'Pending';
+                      return normalized === statusDots[0];
                     }).length > 1 ? 's' : ''} on ${format(day, 'MMM d')}`}
                   />
                 </div>
@@ -147,23 +167,15 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
         })}
       </div>
 
-      {/* Legend */}
+      {/* Legend - Only show Confirmed and Pending */}
       <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 pt-2 md:pt-3 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-1">
-          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-green-500"></div>
+          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-blue-500"></div>
           <span className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">Confirmed</span>
         </div>
         <div className="flex items-center space-x-1">
           <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-orange-500"></div>
           <span className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">Pending</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-blue-500"></div>
-          <span className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">Completed</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-red-500"></div>
-          <span className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">Cancelled</span>
         </div>
       </div>
     </div>

@@ -36,13 +36,13 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
         name: 'Confirmed',
         value: data.confirmed?.count || 0,
         percentage: data.confirmed?.percentage || 0,
-        color: '#10b981', // Green for Confirmed (matches appointments page)
+        color: '#3b82f6', // Blue for Confirmed (swapped from green)
       },
       {
         name: 'Completed',
         value: data.completed?.count || 0,
         percentage: data.completed?.percentage || 0,
-        color: '#3b82f6', // Blue for Completed (matches appointments page)
+        color: '#10b981', // Green for Completed (swapped from blue)
       },
       {
         name: 'Cancelled',

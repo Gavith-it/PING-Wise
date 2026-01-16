@@ -22,11 +22,11 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
     
     switch (normalized) {
       case 'Confirmed':
-        return 'bg-green-100 text-green-700 border-green-200';
+        return 'bg-blue-100 text-blue-700 border-blue-200'; // Changed from green to blue
       case 'Pending':
         return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'Completed':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-green-100 text-green-700 border-green-200'; // Changed from blue to green
       case 'Cancelled':
         return 'bg-red-100 text-red-700 border-red-200';
       default:
@@ -40,11 +40,11 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
     
     switch (normalized) {
       case 'Confirmed':
-        return 'border-l-green-500';
+        return 'border-l-blue-500'; // Changed from green to blue
       case 'Pending':
         return 'border-l-yellow-500';
       case 'Completed':
-        return 'border-l-blue-500';
+        return 'border-l-green-500'; // Changed from blue to green
       case 'Cancelled':
         return 'border-l-red-500';
       default:
