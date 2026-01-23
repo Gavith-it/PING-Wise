@@ -93,9 +93,9 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
 
     const width = 800;
     const height = isMobile ? 300 : 300;
-    // Minimize padding on mobile to maximize inner graph area (actual chart plotting space)
+    // Adjust padding on mobile to prevent overlap and ensure last week is visible
     const padding = isMobile 
-      ? { top: 0, right: 0, bottom: 12, left: 35 }
+      ? { top: 0, right: 20, bottom: 20, left: 45 } // Increased left for Y-axis, right for last week
       : { top: 20, right: 40, bottom: 40, left: 70 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
@@ -121,7 +121,7 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
 
       // Y-axis labels - much larger font on mobile for better visibility
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', (padding.left - 3).toString());
+      label.setAttribute('x', (padding.left - (isMobile ? 8 : 12)).toString()); // More space from edge on mobile
       label.setAttribute('y', (y + 4).toString());
       label.setAttribute('text-anchor', 'end');
       label.setAttribute('font-size', isMobile ? '18' : '13');
@@ -134,7 +134,8 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
 
     // Draw lines and areas
     const pointsPerLine = data.labels.length;
-    const xStep = chartWidth / (pointsPerLine - 1);
+    // Use full chartWidth to ensure last point is visible, especially on mobile
+    const xStep = chartWidth / Math.max(1, pointsPerLine - 1);
 
     // Visits (light blue) - with delay for staggered animation
     setTimeout(() => {
@@ -147,12 +148,19 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
     }, animate ? 300 : 0);
 
     // X-axis labels - much larger font on mobile for better visibility
+    // Position labels to ensure all are visible, especially the last one
     data.labels.forEach((label, i) => {
-      const x = padding.left + i * xStep;
+      // Calculate x position ensuring last label is within bounds
+      const x = padding.left + (i * xStep);
+      // Clamp the last label to ensure it's visible
+      const clampedX = i === data.labels.length - 1 
+        ? Math.min(x, width - padding.right - 5) // Ensure last label doesn't go beyond right padding
+        : x;
+      
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', x.toString());
-      text.setAttribute('y', (height - padding.bottom + 10).toString());
-      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('x', clampedX.toString());
+      text.setAttribute('y', (height - padding.bottom + (isMobile ? 15 : 10)).toString()); // More space on mobile
+      text.setAttribute('text-anchor', i === 0 ? 'start' : i === data.labels.length - 1 ? 'end' : 'middle'); // Align first to start, last to end
       text.setAttribute('font-size', isMobile ? '18' : '12');
       text.setAttribute('fill', isDarkMode ? '#9CA3AF' : '#1F2937');
       text.setAttribute('font-family', 'Inter, sans-serif');
@@ -345,12 +353,13 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
         <h2 className="text-lg md:text-base font-semibold text-[#1F2937] dark:text-white m-0">Engagement</h2>
       </div>
 
-      <div className="relative w-full -mx-2">
+      <div className="relative w-full overflow-x-auto">
         <svg
           ref={svgRef}
           className="w-full h-[300px] md:h-[300px]"
           viewBox={isMobile ? "0 0 800 300" : "0 0 800 300"}
           preserveAspectRatio="xMidYMid meet"
+          style={{ minWidth: '100%' }}
         />
         <div
           ref={tooltipRef}

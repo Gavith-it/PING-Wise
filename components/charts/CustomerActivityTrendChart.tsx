@@ -222,9 +222,9 @@ export default function CustomerActivityTrendChart({ currentPeriod }: CustomerAc
       label.setAttribute('y', (y + 4).toString());
       label.setAttribute('text-anchor', 'end');
       label.setAttribute('font-size', '13');
-      label.setAttribute('fill', isDarkMode ? '#D1D5DB' : '#374151');
+      label.setAttribute('fill', isDarkMode ? '#D1D5DB' : '#1F2937');
       label.setAttribute('font-family', 'Inter, sans-serif');
-      label.setAttribute('font-weight', '500');
+      label.setAttribute('font-weight', '600');
       label.textContent = Math.round(maxValue - (maxValue / 5) * i).toString();
       svg.appendChild(label);
     }
@@ -362,9 +362,9 @@ export default function CustomerActivityTrendChart({ currentPeriod }: CustomerAc
       text.setAttribute('y', (height - padding.bottom + 20).toString());
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('font-size', '12');
-      text.setAttribute('fill', isDarkMode ? '#9CA3AF' : '#6B7280');
+      text.setAttribute('fill', isDarkMode ? '#9CA3AF' : '#1F2937');
       text.setAttribute('font-family', 'Inter, sans-serif');
-      text.setAttribute('font-weight', '500');
+      text.setAttribute('font-weight', '600');
       text.textContent = label;
       svg.appendChild(text);
     });

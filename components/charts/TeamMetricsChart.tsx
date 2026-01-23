@@ -126,9 +126,9 @@ export default function TeamMetricsChart({ data, loading = false, currentPeriod 
     // Dark mode colors
     const isDarkMode = document.documentElement.classList.contains('dark');
     const gridColor = isDarkMode ? '#374151' : '#E5E7EB';
-    const textColor = isDarkMode ? '#D1D5DB' : '#374151';
+    const textColor = isDarkMode ? '#D1D5DB' : '#1F2937';
     const axisColor = isDarkMode ? '#6B7280' : '#9CA3AF';
-    const labelColor = '#9CA3AF';
+    const labelColor = isDarkMode ? '#9CA3AF' : '#1F2937';
     const barColor = '#3B82F6';
 
     const makeEl = <K extends keyof SVGElementTagNameMap>(tag: K) =>
