@@ -35,8 +35,22 @@ interface CRMPatientModalProps {
 }
 
 export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPatientModalProps) {
+  // Helper function to split name into first and last name
+  const splitName = (fullName: string) => {
+    if (!fullName) return { firstName: '', lastName: '' };
+    const names = fullName.trim().split(' ');
+    if (names.length === 1) {
+      return { firstName: names[0], lastName: '' };
+    }
+    return {
+      firstName: names[0],
+      lastName: names.slice(1).join(' ')
+    };
+  };
+
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     age: '',
     gender: '',
     dateOfBirth: '',
@@ -97,8 +111,12 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
       const normalizedStatus = normalizeCustomerStatus(patientStatus);
       const apiFormatStatus = customerStatusToApiFormat(normalizedStatus);
       
+      // Split name into first and last name
+      const { firstName, lastName } = splitName(patient.name || '');
+      
       setFormData({
-        name: patient.name || '',
+        firstName: firstName,
+        lastName: lastName,
         age: patient.age?.toString() || '',
         gender: patient.gender || '',
         dateOfBirth: formattedDateOfBirth,
@@ -112,7 +130,8 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
     } else {
       // Reset form when no patient (adding new)
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         age: '',
         gender: '',
         dateOfBirth: '',
@@ -189,10 +208,18 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Validate name - only letters, no numbers
-    const nameValidation = validateName(formData.name);
-    if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.error;
+    // Validate first name - only letters, no numbers
+    const firstNameValidation = validateName(formData.firstName);
+    if (!firstNameValidation.isValid) {
+      newErrors.firstName = firstNameValidation.error;
+    }
+
+    // Validate last name - only letters, no numbers (optional but if provided, must be valid)
+    if (formData.lastName.trim() !== '') {
+      const lastNameValidation = validateName(formData.lastName);
+      if (!lastNameValidation.isValid) {
+        newErrors.lastName = lastNameValidation.error;
+      }
     }
 
     // Validate age - only digits, max 2 digits
@@ -229,7 +256,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
       let value = e.target.value;
       
       // Apply input filtering based on field type
-      if (field === 'name') {
+      if (field === 'firstName' || field === 'lastName') {
         value = handleNameInput(value); // Remove numbers from name
       } else if (field === 'phone') {
         value = handlePhoneInput(value); // Only digits, max 10
@@ -246,7 +273,7 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
       
       // Validate field in real-time and set error
       let fieldError = '';
-      if (field === 'name') {
+      if (field === 'firstName' || field === 'lastName') {
         const validation = validateName(value);
         if (!validation.isValid) {
           fieldError = validation.error;
@@ -292,8 +319,11 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
     setLoading(true);
 
     try {
+      // Combine firstName and lastName into full name
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      
       const patientData: CreatePatientRequest = {
-        name: formData.name.trim(),
+        name: fullName,
         email: formData.email.trim(),
         phone: formatPhoneForApi(formData.phone.trim()),
         age: parseInt(formData.age),
@@ -350,36 +380,69 @@ export default function CRMPatientModal({ patient, onClose, onSuccess }: CRMPati
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Full Name *
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={handleFieldChange('name')}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
-                    errors.name ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                  placeholder="Enter patient's full name (letters only)"
-                  title={errors.name || 'Name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
-                />
-                {errors.name && (
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
-                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
-                      <span className="text-white text-xs font-bold">!</span>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  First Name *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.firstName}
+                    onChange={handleFieldChange('firstName')}
+                    className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                      errors.firstName ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="First name (letters only)"
+                    title={errors.firstName || 'First name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
+                  />
+                  {errors.firstName && (
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                      <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                        <span className="text-white text-xs font-bold">!</span>
+                      </div>
+                      <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        {errors.firstName}
+                      </div>
                     </div>
-                    <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                      {errors.name}
-                    </div>
-                  </div>
+                  )}
+                </div>
+                {errors.firstName && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.firstName}</p>
                 )}
               </div>
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
-              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Last Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.lastName}
+                    onChange={handleFieldChange('lastName')}
+                    className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 ${
+                      errors.lastName ? 'border-red-500 dark:border-red-600 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="Last name (letters only)"
+                    title={errors.lastName || 'Last name can only contain letters, spaces, hyphens, and apostrophes. Numbers are not allowed.'}
+                  />
+                  {errors.lastName && (
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 group">
+                      <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center cursor-help">
+                        <span className="text-white text-xs font-bold">!</span>
+                      </div>
+                      <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-red-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        {errors.lastName}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {errors.lastName && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.lastName}</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
