@@ -76,19 +76,59 @@ export default function CustomerActivityTrendChart({ currentPeriod }: CustomerAc
           returningData = reportData.map((item: any) => item.returning || item.returningCustomers || item.returning_count || 0);
           churnedData = reportData.map((item: any) => item.churned || item.churnedCustomers || item.churned_count || 0);
         } else if (reportData && typeof reportData === 'object') {
-          // If API returns object with data array
-          const dataArray = reportData.data || reportData.metrics || reportData.churnData || [];
-          if (Array.isArray(dataArray)) {
-            labels = dataArray.map((item: any) => item.label || item.period || item.date || '');
-            newData = dataArray.map((item: any) => item.new || item.newCustomers || item.new_count || 0);
-            returningData = dataArray.map((item: any) => item.returning || item.returningCustomers || item.returning_count || 0);
-            churnedData = dataArray.map((item: any) => item.churned || item.churnedCustomers || item.churned_count || 0);
+          // Check if API returns week-based structure: { week1: { churnedCustomers: 0, newCustomers: 0, ... }, week2: {...}, ... }
+          const weekKeys = Object.keys(reportData).filter(key => {
+            const lowerKey = key.toLowerCase();
+            return lowerKey.startsWith('week') || lowerKey.startsWith('month') || lowerKey.startsWith('quarter');
+          });
+          
+          if (weekKeys.length > 0) {
+            // Sort week keys to maintain order (week1, week2, week3, week4, etc.)
+            weekKeys.sort((a, b) => {
+              const aNum = parseInt(a.replace(/\D/g, '')) || 0;
+              const bNum = parseInt(b.replace(/\D/g, '')) || 0;
+              return aNum - bNum;
+            });
+            
+            // Extract data from each week
+            labels = weekKeys.map(key => {
+              // Format label: "Week 1", "Month 1", etc.
+              const prefix = key.toLowerCase().includes('week') ? 'Week' : 
+                           key.toLowerCase().includes('month') ? 'Month' : 
+                           key.toLowerCase().includes('quarter') ? 'Quarter' : '';
+              const num = parseInt(key.replace(/\D/g, '')) || '';
+              return prefix ? `${prefix} ${num}` : key;
+            });
+            
+            newData = weekKeys.map(key => {
+              const weekData = reportData[key];
+              return weekData?.newCustomers || weekData?.new_customers || weekData?.new || 0;
+            });
+            
+            returningData = weekKeys.map(key => {
+              const weekData = reportData[key];
+              return weekData?.returningCustomers || weekData?.returning_customers || weekData?.returning || 0;
+            });
+            
+            churnedData = weekKeys.map(key => {
+              const weekData = reportData[key];
+              return weekData?.churnedCustomers || weekData?.churned_customers || weekData?.churned || 0;
+            });
           } else {
-            // If API returns object with separate arrays
-            labels = reportData.labels || reportData.periods || [];
-            newData = reportData.new || reportData.newCustomers || [];
-            returningData = reportData.returning || reportData.returningCustomers || [];
-            churnedData = reportData.churned || reportData.churnedCustomers || [];
+            // If API returns object with data array
+            const dataArray = reportData.data || reportData.metrics || reportData.churnData || [];
+            if (Array.isArray(dataArray)) {
+              labels = dataArray.map((item: any) => item.label || item.period || item.date || '');
+              newData = dataArray.map((item: any) => item.new || item.newCustomers || item.new_count || 0);
+              returningData = dataArray.map((item: any) => item.returning || item.returningCustomers || item.returning_count || 0);
+              churnedData = dataArray.map((item: any) => item.churned || item.churnedCustomers || item.churned_count || 0);
+            } else {
+              // If API returns object with separate arrays
+              labels = reportData.labels || reportData.periods || [];
+              newData = reportData.new || reportData.newCustomers || [];
+              returningData = reportData.returning || reportData.returningCustomers || [];
+              churnedData = reportData.churned || reportData.churnedCustomers || [];
+            }
           }
         }
         

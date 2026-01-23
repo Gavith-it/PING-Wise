@@ -66,9 +66,11 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
               {appointment.type || 'Consultation'}
             </p>
-            <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
-              {maskPhoneNumber(patient?.phone)}
-            </p>
+            {patient?.phone && (
+              <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400 mb-0.5">
+                {patient.phone.startsWith('+') ? patient.phone : `+91${patient.phone}`}
+              </p>
+            )}
             <p className="text-[10px] md:text-xs text-gray-600 dark:text-gray-400">
               {formatTime(appointment.time)}
             </p>

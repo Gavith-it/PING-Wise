@@ -24,19 +24,52 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
 
   const getAppointmentsForDate = (date: Date) => {
     // Use isSameDay from date-fns which properly compares dates ignoring time components
-    // Check both the appointments prop (current month) and all appointments from cache
-    // This ensures calendar dots show pending appointments from other months too
-    let allApptsToCheck = appointments;
+    // Priority: Use fresh appointments prop (from API) for current month, cache for other months
+    const isCurrentMonth = isSameMonth(date, currentMonth);
     
-    // Use all appointments from cache if available (includes appointments from all months)
-    // This ensures pending appointments from future months (like follow-up dates) show dots
-    if (appointmentsCache && appointmentsCache.allAppointments && appointmentsCache.allAppointments.length > 0) {
-      allApptsToCheck = appointmentsCache.allAppointments;
+    let allApptsToCheck: Appointment[] = [];
+    
+    if (isCurrentMonth) {
+      // For current month: Prioritize fresh appointments prop (from API) over cache
+      // This ensures deleted appointments don't show dots
+      allApptsToCheck = appointments || [];
+      
+      // Also check cache for pending appointments from other months that might be in current month
+      // But merge with fresh data, giving priority to fresh data
+      if (appointmentsCache && appointmentsCache.allAppointments && appointmentsCache.allAppointments.length > 0) {
+        const cacheApptsForDate = appointmentsCache.allAppointments.filter(apt => {
+          const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
+          return isSameDay(aptDate, date);
+        });
+        
+        // Merge cache appointments with fresh appointments, avoiding duplicates
+        // Fresh appointments take priority (they're more up-to-date)
+        const freshApptIds = new Set(allApptsToCheck.map(apt => apt.id));
+        const uniqueCacheAppts = cacheApptsForDate.filter(apt => !freshApptIds.has(apt.id));
+        allApptsToCheck = [...allApptsToCheck, ...uniqueCacheAppts];
+      }
+    } else {
+      // For other months: Use cache (for pending appointments from future months)
+      if (appointmentsCache && appointmentsCache.allAppointments && appointmentsCache.allAppointments.length > 0) {
+        allApptsToCheck = appointmentsCache.allAppointments;
+      } else {
+        allApptsToCheck = appointments || [];
+      }
     }
     
+    // Filter appointments for the date AND only include Confirmed or Pending status
     return allApptsToCheck.filter(apt => {
       const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
-      return isSameDay(aptDate, date);
+      const isSameDate = isSameDay(aptDate, date);
+      
+      if (!isSameDate) {
+        return false;
+      }
+      
+      // Only include appointments with Confirmed or Pending status
+      // Exclude Cancelled, Completed, or any other status
+      const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+      return normalized === 'Confirmed' || normalized === 'Pending';
     });
   };
 
@@ -60,31 +93,46 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
 
   const getStatusDots = (dayAppointments: Appointment[]) => {
     // Only show Confirmed and Pending appointments
-    // Show only ONE dot per day - prioritize Pending over Confirmed
-    // Even if there are multiple appointments of the same status, show only one dot
+    // Show BOTH dots if both statuses exist for the same date
+    // Return empty array if no appointments exist or all appointments are filtered out
     
-    const hasPending = dayAppointments.some(apt => {
+    if (!dayAppointments || dayAppointments.length === 0) {
+      return [];
+    }
+    
+    // Double-check: filter to only Confirmed and Pending
+    const validAppointments = dayAppointments.filter(apt => {
+      const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+      return normalized === 'Confirmed' || normalized === 'Pending';
+    });
+    
+    // If no valid appointments after filtering, return empty array
+    if (validAppointments.length === 0) {
+      return [];
+    }
+    
+    const statuses: string[] = [];
+    
+    const hasPending = validAppointments.some(apt => {
       const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
       return normalized === 'Pending';
     });
     
-    // If there's a pending appointment, show only Pending dot (priority)
-    if (hasPending) {
-      return ['Pending'];
-    }
-    
-    const hasConfirmed = dayAppointments.some(apt => {
+    const hasConfirmed = validAppointments.some(apt => {
       const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
       return normalized === 'Confirmed';
     });
     
-    // If there's a confirmed appointment (and no pending), show only Confirmed dot
-    if (hasConfirmed) {
-      return ['Confirmed'];
+    // Add both statuses if they exist
+    if (hasPending) {
+      statuses.push('Pending');
     }
     
-    // No Confirmed or Pending appointments
-    return [];
+    if (hasConfirmed) {
+      statuses.push('Confirmed');
+    }
+    
+    return statuses;
   };
 
   const nextMonth = () => {
@@ -151,15 +199,18 @@ function CalendarView({ selectedDate, currentMonth, onDateSelect, onMonthChange,
             >
               <div className="text-xs md:text-sm">{format(day, 'd')}</div>
               {statusDots.length > 0 && isCurrentMonth && (
-                <div className="flex justify-center items-center mt-0.5 md:mt-1">
-                  {/* Show only one dot - statusDots will have at most one item */}
-                  <div
-                    className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor(statusDots[0])}`}
-                    title={`${statusDots[0]} appointment${dayAppointments.filter(apt => {
-                      const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
-                      return normalized === statusDots[0];
-                    }).length > 1 ? 's' : ''} on ${format(day, 'MMM d')}`}
-                  />
+                <div className="flex justify-center items-center gap-0.5 md:gap-1 mt-0.5 md:mt-1">
+                  {/* Show all status dots (Pending and/or Confirmed) */}
+                  {statusDots.map((status, index) => (
+                    <div
+                      key={status}
+                      className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0 ${getStatusColor(status)}`}
+                      title={`${status} appointment${dayAppointments.filter(apt => {
+                        const normalized = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+                        return normalized === status;
+                      }).length > 1 ? 's' : ''} on ${format(day, 'MMM d')}`}
+                    />
+                  ))}
                 </div>
               )}
             </button>

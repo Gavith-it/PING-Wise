@@ -21,17 +21,19 @@ export function useUpcomingAppointments(
       allAppointmentsForPending = appointmentsCache.allAppointments;
     }
     
-    // Filter for appointments with status "Pending"
-    // This includes follow-up appointments created for future dates
+    // Filter for appointments with status "Pending" for the selected date only
     const pendingAppointments = allAppointmentsForPending.filter(apt => {
-      // Only include appointments with "Pending" status
-      if (apt.status !== 'Pending') {
+      // Normalize status to handle both lowercase and capitalized
+      const normalizedStatus = apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1).toLowerCase() || '';
+      
+      // Only include appointments with "Pending" status (exclude Confirmed, Completed, Cancelled)
+      if (normalizedStatus !== 'Pending') {
         return false;
       }
       
-      // Exclude appointments for the selected date (they appear in the main list)
+      // Only show pending appointments for the selected date
       const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
-      if (isSameDay(aptDate, selectedDate)) {
+      if (!isSameDay(aptDate, selectedDate)) {
         return false;
       }
       

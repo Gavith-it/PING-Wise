@@ -196,15 +196,15 @@ export default function SettingsPage() {
                 </div>
                 
                 {/* Slider Container */}
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={decreaseFontSize}
                       disabled={fontSizePercentage <= 50}
-                      className="flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      className="flex items-center justify-center p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 shadow-sm"
                       aria-label="Decrease font size"
                     >
-                      <ZoomOut className="w-4 h-4" />
+                      <ZoomOut className="w-5 h-5" />
                     </button>
                     
                     {/* Range Slider */}
@@ -212,36 +212,31 @@ export default function SettingsPage() {
                       <input
                         type="range"
                         min="50"
-                        max="200"
-                        step="10"
+                        max="125"
+                        step="5"
                         value={fontSizePercentage}
                         onChange={(e) => setFontSizePercentage(parseInt(e.target.value, 10))}
-                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer font-size-slider"
+                        className="w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer font-size-slider"
                         style={{
-                          background: `linear-gradient(to right, #1A3E9E 0%, #1A3E9E ${((fontSizePercentage - 50) / (200 - 50)) * 100}%, #e5e7eb ${((fontSizePercentage - 50) / (200 - 50)) * 100}%, #e5e7eb 100%)`
+                          background: `linear-gradient(to right, #1A3E9E 0%, #1A3E9E ${((fontSizePercentage - 50) / (125 - 50)) * 100}%, #e5e7eb ${((fontSizePercentage - 50) / (125 - 50)) * 100}%, #e5e7eb 100%)`
                         }}
                       />
                     </div>
                     
                     <button
                       onClick={increaseFontSize}
-                      disabled={fontSizePercentage >= 200}
-                      className="flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      disabled={fontSizePercentage >= 125}
+                      className="flex items-center justify-center p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 shadow-sm"
                       aria-label="Increase font size"
                     >
-                      <ZoomIn className="w-4 h-4" />
+                      <ZoomIn className="w-5 h-5" />
                     </button>
                   </div>
                   
-                  {/* Percentage Labels */}
+                  {/* Percentage Labels - Only 50% and 125% */}
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
-                    <span>50%</span>
-                    <span>75%</span>
-                    <span>100%</span>
-                    <span>125%</span>
-                    <span>150%</span>
-                    <span>175%</span>
-                    <span>200%</span>
+                    <span className="font-medium">50%</span>
+                    <span className="font-medium">125%</span>
                   </div>
                 </div>
               </div>

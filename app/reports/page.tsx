@@ -72,22 +72,54 @@ export default function ReportsPage() {
           doctorId: item.doctorId || item.doctor_id || item.id || '',
         }));
       } else if (reportData && typeof reportData === 'object') {
-        // If API returns object with data array
-        const dataArray = reportData.data || reportData.teamMetrics || reportData.metrics || [];
-        if (Array.isArray(dataArray)) {
-          metricsData = dataArray.map((item: any) => ({
-            name: item.name || item.doctor_name || item.doctorName || 'Unknown Doctor',
-            bookings: item.bookings || item.appointments || item.count || 0,
-            doctorId: item.doctorId || item.doctor_id || item.id || '',
+        // Check if API returns week-based structure: { week1: { teamMetrics: [...] }, week2: { teamMetrics: [...] }, ... }
+        const weekKeys = Object.keys(reportData).filter(key => key.toLowerCase().startsWith('week') || key.toLowerCase().startsWith('month') || key.toLowerCase().startsWith('quarter'));
+        
+        if (weekKeys.length > 0) {
+          // Aggregate team metrics across all weeks/months/quarters
+          const aggregatedMetrics = new Map<string, { count: number; teamMemberId: string }>();
+          
+          weekKeys.forEach((weekKey) => {
+            const weekData = reportData[weekKey];
+            if (weekData && weekData.teamMetrics && Array.isArray(weekData.teamMetrics)) {
+              weekData.teamMetrics.forEach((metric: any) => {
+                const memberId = metric.teamMemberId || metric.team_member_id || metric.id || '';
+                if (memberId) {
+                  const existing = aggregatedMetrics.get(memberId);
+                  const count = metric.count || metric.bookings || metric.appointments || 0;
+                  aggregatedMetrics.set(memberId, {
+                    count: (existing?.count || 0) + count,
+                    teamMemberId: memberId,
+                  });
+                }
+              });
+            }
+          });
+          
+          // Convert aggregated metrics to TeamMetric format
+          metricsData = Array.from(aggregatedMetrics.values()).map((metric) => ({
+            name: 'Unknown Doctor', // Will be enriched later if needed
+            bookings: metric.count,
+            doctorId: metric.teamMemberId,
           }));
-        } else if (reportData.teamMembers || reportData.doctors) {
-          // If API returns object with teamMembers or doctors array
-          const members = reportData.teamMembers || reportData.doctors || [];
-          metricsData = members.map((item: any) => ({
-            name: item.name || 'Unknown Doctor',
-            bookings: item.bookings || item.appointments || item.count || 0,
-            doctorId: item.id || item.doctorId || '',
-          }));
+        } else {
+          // If API returns object with data array
+          const dataArray = reportData.data || reportData.teamMetrics || reportData.metrics || [];
+          if (Array.isArray(dataArray)) {
+            metricsData = dataArray.map((item: any) => ({
+              name: item.name || item.doctor_name || item.doctorName || 'Unknown Doctor',
+              bookings: item.bookings || item.appointments || item.count || 0,
+              doctorId: item.doctorId || item.doctor_id || item.id || '',
+            }));
+          } else if (reportData.teamMembers || reportData.doctors) {
+            // If API returns object with teamMembers or doctors array
+            const members = reportData.teamMembers || reportData.doctors || [];
+            metricsData = members.map((item: any) => ({
+              name: item.name || 'Unknown Doctor',
+              bookings: item.bookings || item.appointments || item.count || 0,
+              doctorId: item.id || item.doctorId || '',
+            }));
+          }
         }
       }
 

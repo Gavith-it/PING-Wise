@@ -240,8 +240,63 @@ export const dashboardService = {
 };
 
 export const walletService = {
-  getBalance: (): Promise<ApiResponse<{ balance: number }>> => {
-    return api.get('/wallet/balance');
+  getBalance: async (): Promise<ApiResponse<{ balance: number }>> => {
+    // Call external API directly (not through Next.js API route)
+    const baseURL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
+    
+    // Get token from storage (same pattern as other services)
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = localStorage.getItem('token') ||
+              sessionStorage.getItem('token') ||
+              localStorage.getItem('access_token') ||
+              sessionStorage.getItem('access_token');
+    }
+
+    // Create axios instance for direct external API call
+    const externalApi = axios.create({
+      baseURL: baseURL,
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    });
+
+    try {
+      const response = await externalApi.get<{
+        balance?: {
+          conversion_rate?: number;
+          current_balance?: number;
+          name?: string;
+        };
+        total_balance?: number;
+      }>('/balance');
+
+      // Extract total_balance from response
+      const totalBalance = response.data?.total_balance ?? 0;
+
+      return {
+        success: true,
+        data: {
+          balance: totalBalance
+        }
+      };
+    } catch (error: any) {
+      logger.error('Wallet balance API error', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      
+      // Return default balance on error
+      return {
+        success: true,
+        data: {
+          balance: 0
+        }
+      };
+    }
   },
 };
 

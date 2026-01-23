@@ -12,11 +12,11 @@ interface FontSizeContextType {
 
 const FontSizeContext = createContext<FontSizeContextType | undefined>(undefined);
 
-// Font size range: 50% to 200% in 10% increments
+// Font size range: 50% to 125% in 5% increments
 const MIN_FONT_SIZE = 50;
-const MAX_FONT_SIZE = 200;
+const MAX_FONT_SIZE = 125;
 const DEFAULT_FONT_SIZE = 100;
-const STEP = 10;
+const STEP = 5;
 
 export const FontSizeProvider = ({ children }: { children: ReactNode }) => {
   const [fontSizePercentage, setFontSizePercentageState] = useState<number>(DEFAULT_FONT_SIZE);

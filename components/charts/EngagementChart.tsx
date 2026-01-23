@@ -52,8 +52,19 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
     label: '',
     value: '',
   });
+  const [isMobile, setIsMobile] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Detect mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const getData = () => {
     switch (currentPeriod) {
@@ -81,8 +92,11 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
     svg.innerHTML = '';
 
     const width = 800;
-    const height = 300;
-    const padding = { top: 20, right: 40, bottom: 40, left: 70 };
+    const height = isMobile ? 300 : 300;
+    // Minimize padding on mobile to maximize inner graph area (actual chart plotting space)
+    const padding = isMobile 
+      ? { top: 0, right: 0, bottom: 12, left: 35 }
+      : { top: 20, right: 40, bottom: 40, left: 70 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -105,15 +119,15 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
       line.setAttribute('stroke-dasharray', '4 4');
       svg.appendChild(line);
 
-      // Y-axis labels
+      // Y-axis labels - much larger font on mobile for better visibility
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', (padding.left - 12).toString());
+      label.setAttribute('x', (padding.left - 3).toString());
       label.setAttribute('y', (y + 4).toString());
       label.setAttribute('text-anchor', 'end');
-      label.setAttribute('font-size', '13');
-      label.setAttribute('fill', isDarkMode ? '#D1D5DB' : '#374151');
+      label.setAttribute('font-size', isMobile ? '18' : '13');
+      label.setAttribute('fill', isDarkMode ? '#D1D5DB' : '#1F2937');
       label.setAttribute('font-family', 'Inter, sans-serif');
-      label.setAttribute('font-weight', '500');
+      label.setAttribute('font-weight', '600');
       label.textContent = Math.round(maxValue - (maxValue / 5) * i).toString();
       svg.appendChild(label);
     }
@@ -132,17 +146,17 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
       drawLineWithArea(svg, data.interactions, maxValue, xStep, padding, chartWidth, chartHeight, '#1A3E9E', 'interactions', animate);
     }, animate ? 300 : 0);
 
-    // X-axis labels
+    // X-axis labels - much larger font on mobile for better visibility
     data.labels.forEach((label, i) => {
       const x = padding.left + i * xStep;
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', x.toString());
-      text.setAttribute('y', (height - padding.bottom + 20).toString());
+      text.setAttribute('y', (height - padding.bottom + 10).toString());
       text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('font-size', '12');
-      text.setAttribute('fill', isDarkMode ? '#9CA3AF' : '#6B7280');
+      text.setAttribute('font-size', isMobile ? '18' : '12');
+      text.setAttribute('fill', isDarkMode ? '#9CA3AF' : '#1F2937');
       text.setAttribute('font-family', 'Inter, sans-serif');
-      text.setAttribute('font-weight', '500');
+      text.setAttribute('font-weight', '600');
       text.textContent = label;
       svg.appendChild(text);
     });
@@ -157,13 +171,13 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
       return () => clearTimeout(timer2);
     }, 50);
     return () => clearTimeout(timer1);
-  }, [currentPeriod]);
+  }, [currentPeriod, isMobile]);
   
   useEffect(() => {
     if (!isAnimating && svgRef.current) {
       drawChart(false);
     }
-  }, [data, isAnimating]);
+  }, [data, isAnimating, isMobile]);
 
 
   const drawLineWithArea = (
@@ -327,15 +341,15 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
 
   return (
     <>
-      <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
-        <h2 className="text-base font-semibold text-[#1F2937] dark:text-white m-0">Engagement</h2>
+      <div className="flex justify-between items-center mb-0 flex-wrap gap-2">
+        <h2 className="text-lg md:text-base font-semibold text-[#1F2937] dark:text-white m-0">Engagement</h2>
       </div>
 
-      <div className="relative w-full">
+      <div className="relative w-full -mx-2">
         <svg
           ref={svgRef}
-          className="w-full h-[300px]"
-          viewBox="0 0 800 300"
+          className="w-full h-[300px] md:h-[300px]"
+          viewBox={isMobile ? "0 0 800 300" : "0 0 800 300"}
           preserveAspectRatio="xMidYMid meet"
         />
         <div
@@ -354,13 +368,13 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
         </div>
       </div>
 
-      <div className="flex justify-center gap-6 mt-2 flex-nowrap">
-        <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
-          <div className="w-3 h-3 rounded bg-[#60A5FA]" />
+      <div className="flex justify-center gap-6 mt-0 flex-nowrap">
+        <div className="flex items-center gap-1.5 text-sm md:text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+          <div className="w-3.5 h-3.5 md:w-3 md:h-3 rounded bg-[#60A5FA]" />
           <span>Visits</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
-          <div className="w-3 h-3 rounded bg-[#1A3E9E]" />
+        <div className="flex items-center gap-1.5 text-sm md:text-xs text-[#6B7280] dark:text-gray-400 whitespace-nowrap">
+          <div className="w-3.5 h-3.5 md:w-3 md:h-3 rounded bg-[#1A3E9E]" />
           <span>Interactions</span>
         </div>
       </div>

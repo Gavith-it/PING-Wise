@@ -30,6 +30,11 @@ const FilterModal = dynamic(() => import('@/components/modals/FilterModal').then
   ssr: false
 });
 
+const BulkUploadModal = dynamic(() => import('@/components/modals/BulkUploadModal'), {
+  loading: () => null,
+  ssr: false
+});
+
 export default function CRMPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -37,6 +42,7 @@ export default function CRMPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({
     status: 'all',
@@ -205,6 +211,7 @@ export default function CRMPage() {
                 onSearchChange={setSearchTerm}
                 onAddClick={handleAddPatient}
                 onFilterClick={() => setShowFilterModal(true)}
+                onBulkUploadClick={() => setShowBulkUploadModal(true)}
               />
             </div>
 
@@ -304,6 +311,17 @@ export default function CRMPage() {
               onClose={() => setShowFilterModal(false)}
               onApply={handleFilterApply}
               currentFilters={advancedFilters}
+            />
+          )}
+
+          {showBulkUploadModal && (
+            <BulkUploadModal
+              onClose={() => setShowBulkUploadModal(false)}
+              onSuccess={() => {
+                // Refresh patient list after successful bulk upload
+                handlePatientCreated();
+                setShowBulkUploadModal(false);
+              }}
             />
           )}
         </div>

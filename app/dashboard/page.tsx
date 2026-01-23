@@ -221,7 +221,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-sm border border-gray-100 dark:border-gray-700 w-full">
+          <div className="w-full">
             <div className="mb-2 md:mb-3">
               <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Appointment overview</h3>
             </div>

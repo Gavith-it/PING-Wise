@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, memo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import CountUp from 'react-countup';
 
 interface ActivityData {
@@ -74,7 +74,7 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
   return (
     <div className="flex flex-row items-center gap-4 md:gap-6">
       {/* Chart */}
-      <div className="relative w-36 h-36 md:w-40 md:h-40 flex-shrink-0">
+      <div className="relative w-36 h-36 md:w-40 md:h-40 flex-shrink-0" style={{ pointerEvents: 'none' }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -94,6 +94,7 @@ const ActivityChart = memo(function ActivityChart({ data }: ActivityChartProps) 
                 />
               ))}
             </Pie>
+            <Tooltip content={<></>} />
           </PieChart>
         </ResponsiveContainer>
         

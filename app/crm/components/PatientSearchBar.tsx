@@ -1,15 +1,16 @@
 'use client';
 
-import { Search, Plus, Filter } from 'lucide-react';
+import { Search, Plus, Filter, Upload } from 'lucide-react';
 
 interface PatientSearchBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onAddClick: () => void;
   onFilterClick?: () => void;
+  onBulkUploadClick?: () => void;
 }
 
-export default function PatientSearchBar({ searchTerm, onSearchChange, onAddClick, onFilterClick }: PatientSearchBarProps) {
+export default function PatientSearchBar({ searchTerm, onSearchChange, onAddClick, onFilterClick, onBulkUploadClick }: PatientSearchBarProps) {
   return (
     <div className="flex flex-col gap-2 md:gap-3">
       {/* Search Bar - Full Width */}
@@ -23,7 +24,7 @@ export default function PatientSearchBar({ searchTerm, onSearchChange, onAddClic
           className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 bg-white dark:bg-gray-700 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
         />
       </div>
-      {/* Action Buttons - Add Patient and Filter */}
+      {/* Action Buttons - Add Patient, Filter, and Bulk Upload */}
       <div className="flex gap-2 md:gap-2.5">
         <button
           onClick={onAddClick}
@@ -38,6 +39,15 @@ export default function PatientSearchBar({ searchTerm, onSearchChange, onAddClic
             className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md"
           >
             <Filter className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+        )}
+        {onBulkUploadClick && (
+          <button
+            onClick={onBulkUploadClick}
+            className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md"
+            title="Bulk Upload"
+          >
+            <Upload className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         )}
       </div>

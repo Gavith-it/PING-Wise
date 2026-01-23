@@ -322,12 +322,14 @@ export function useAppointments({
       setAppointments(prev => {
         const existingIndex = prev.findIndex(apt => apt.id === enrichedAppointment.id);
         if (existingIndex >= 0) {
-          // Update existing appointment
+          // Update existing appointment with new status (e.g., Pending -> Confirmed)
           const updated = [...prev];
           updated[existingIndex] = enrichedAppointment;
           return updated;
         } else {
           // Add new appointment (at the beginning for visibility)
+          // This handles the case where a pending appointment from another date
+          // is moved to this date, or a pending appointment becomes confirmed
           return [enrichedAppointment, ...prev];
         }
       });
@@ -367,6 +369,19 @@ export function useAppointments({
       toast.success(`Appointment scheduled for ${format(updatedDate, 'MMMM d, yyyy')}`);
     }
     
+    // Update allAppointments cache with the updated appointment status
+    // This ensures pending appointments that become confirmed are properly reflected
+    if (appointmentsCache.allAppointments) {
+      const existingIndex = appointmentsCache.allAppointments.findIndex(apt => apt.id === enrichedAppointment.id);
+      if (existingIndex >= 0) {
+        // Update existing appointment in cache with new status
+        appointmentsCache.allAppointments[existingIndex] = enrichedAppointment;
+      } else {
+        // Add new appointment to cache
+        appointmentsCache.allAppointments.push(enrichedAppointment);
+      }
+    }
+    
     // Always refresh month appointments to ensure calendar dots are updated
     lastLoadedMonth.current = '';
     await loadMonthAppointments(true); // Background refresh
@@ -376,15 +391,46 @@ export function useAppointments({
     if (!window.confirm('Cancel this appointment?')) {
       return;
     }
+    
+    // Find the appointment to get its date before deleting
+    const appointmentToDelete = appointments.find(apt => apt.id === id) || 
+                                 allMonthAppointments.find(apt => apt.id === id);
+    
+    if (appointmentToDelete) {
+      const aptDate = appointmentToDelete.date instanceof Date 
+        ? appointmentToDelete.date 
+        : new Date(appointmentToDelete.date);
+      const aptDateStr = format(aptDate, 'yyyy-MM-dd');
+      const aptMonthStr = format(aptDate, 'yyyy-MM');
+      
+      // Invalidate cache for the appointment's date
+      delete appointmentsCache.appointments[aptDateStr];
+      if (aptMonthStr === format(currentMonth, 'yyyy-MM')) {
+        delete appointmentsCache.monthAppointments[aptMonthStr];
+      }
+      
+      // Remove from allAppointments cache to prevent stale dots
+      if (appointmentsCache.allAppointments) {
+        appointmentsCache.allAppointments = appointmentsCache.allAppointments.filter(
+          apt => apt.id !== id
+        );
+      }
+    }
+    
     try {
       await crmAppointmentService.cancelAppointment(id);
       toast.success('Appointment cancelled');
-      await loadAppointmentsForDate();
-      await loadMonthAppointments();
+      
+      // Reset refs to force refresh
+      lastSelectedDate.current = '';
+      lastLoadedMonth.current = '';
+      
+      await loadAppointmentsForDate(false);
+      await loadMonthAppointments(false);
     } catch (error) {
       toast.error('Failed to cancel appointment');
     }
-  }, [loadAppointmentsForDate, loadMonthAppointments]);
+  }, [appointments, allMonthAppointments, currentMonth, loadAppointmentsForDate, loadMonthAppointments]);
 
   return {
     appointments,

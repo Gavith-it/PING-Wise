@@ -269,9 +269,30 @@ textarea:focus {
 .recharts-default-tooltip,
 .recharts-tooltip-cursor,
 .recharts-active-shape,
-.recharts-tooltip-cursor-rectangle {
+.recharts-tooltip-cursor-rectangle,
+.recharts-active-dot,
+.recharts-reference-line,
+.recharts-brush,
+.recharts-brush-slide,
+.recharts-brush-traveller {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+/* Hide any selection boxes or outlines on charts */
+.recharts-wrapper * {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.recharts-wrapper svg {
+  outline: none !important;
+}
+
+/* Prevent any blue selection boxes */
+.recharts-pie-active-shape,
+.recharts-sector {
+  outline: none !important;
 }

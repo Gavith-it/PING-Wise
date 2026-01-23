@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { crmPatientService } from '@/lib/services/crmPatientService';
+import { crmAppointmentService } from '@/lib/services/appointmentService';
+import { invalidateAppointmentsCache } from '@/app/appointments/hooks/useAppointments';
 import toast from 'react-hot-toast';
 import { Patient } from '@/types';
 import { FilterOptions } from '@/components/modals/FilterModal';
@@ -341,7 +343,7 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     // Show appropriate confirmation message based on patient status
     // Only show appointment warning if patient status indicates appointments
     const confirmationMessage = hasAppointments
-      ? 'This patient has appointments scheduled. Are you sure you want to delete? The appointments will show as "Unknown" patient.'
+      ? 'This patient has appointments scheduled. Are you sure you want to delete? The appointments of this patient will be deleted as well.'
       : 'Are you sure you want to delete this patient?';
 
     console.log('[Delete Patient] Showing confirmation:', {
@@ -365,14 +367,46 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
       console.log('[Delete Patient] Has Appointments:', hasAppointments);
       console.log('[Delete Patient] ============================================');
       
+      // Step 1: Delete all appointments for this patient first
+      // This ensures appointments are deleted and won't show as "unknown patient"
+      if (hasAppointments) {
+        console.log('[Delete Patient] Step 1: Finding all appointments for this patient...');
+        try {
+          const appointmentsResponse = await crmAppointmentService.searchAppointments({ customer_id: id });
+          const patientAppointments = appointmentsResponse.data || [];
+          
+          console.log('[Delete Patient] Found appointments:', patientAppointments.length);
+          
+          // Delete all appointments for this patient
+          if (patientAppointments.length > 0) {
+            console.log('[Delete Patient] Deleting all appointments...');
+            const deletePromises = patientAppointments.map(appointment => 
+              crmAppointmentService.cancelAppointment(appointment.id).catch(error => {
+                console.warn(`[Delete Patient] Failed to delete appointment ${appointment.id}:`, error);
+                // Continue with other deletions even if one fails
+                return null;
+              })
+            );
+            
+            await Promise.all(deletePromises);
+            console.log('[Delete Patient] All appointments deleted successfully');
+          }
+        } catch (appointmentError) {
+          console.warn('[Delete Patient] Error deleting appointments (non-critical):', appointmentError);
+          // Continue with patient deletion even if appointment deletion fails
+          // The backend might handle cascade deletion
+        }
+      }
+      
+      // Step 2: Delete the patient
       // IMPORTANT: Call API FIRST and WAIT for response before updating UI
       // This ensures the API is definitely called and we have confirmation
-      console.log('[Delete Patient] Step 1: Calling DELETE API...');
+      console.log('[Delete Patient] Step 2: Calling DELETE API for patient...');
       console.log('[Delete Patient] Waiting for API response...');
       
       const deleteResponse = await crmPatientService.deletePatient(id);
       
-      console.log('[Delete Patient] Step 2: API call completed!');
+      console.log('[Delete Patient] Step 3: API call completed!');
       console.log('[Delete Patient] API Response:', deleteResponse);
       console.log('[Delete Patient] API Response Success:', deleteResponse?.success);
       
@@ -381,7 +415,7 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
         throw new Error('API returned unsuccessful response');
       }
       
-      console.log('[Delete Patient] Step 3: API confirmed successful - updating UI...');
+      console.log('[Delete Patient] Step 4: API confirmed successful - updating UI...');
       
       // ONLY update UI after confirmed successful API call
       setAllPatients(prevAllPatients => {
@@ -394,12 +428,17 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
       patientsCache.allPatients = patientsCache.allPatients.filter(p => p.id !== id);
       patientsCache.timestamp = Date.now();
       
-      console.log('[Delete Patient] Step 4: Patient deleted successfully from database AND UI');
+      console.log('[Delete Patient] Step 5: Patient deleted successfully from database AND UI');
       console.log('[Delete Patient] ============================================');
+      
+      // Invalidate appointments cache to ensure deleted appointments don't show
+      invalidateAppointmentsCache();
+      console.log('[Delete Patient] Appointments cache invalidated');
+      
       toast.success('Patient deleted successfully');
       
       // Refresh in background to ensure sync (non-blocking)
-      console.log('[Delete Patient] Step 5: Refreshing patient list in background...');
+      console.log('[Delete Patient] Step 6: Refreshing patient list in background...');
       loadAllPatients(true).catch((refreshError) => {
         console.warn('[Delete Patient] Background refresh failed (non-critical):', refreshError);
       });
