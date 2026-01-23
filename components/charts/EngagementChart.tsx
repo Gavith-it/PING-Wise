@@ -95,8 +95,8 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
     const height = isMobile ? 300 : 300;
     // Adjust padding on mobile to prevent overlap and ensure last week is visible
     const padding = isMobile 
-      ? { top: 0, right: 20, bottom: 20, left: 45 } // Increased left for Y-axis, right for last week
-      : { top: 20, right: 40, bottom: 40, left: 70 };
+      ? { top: 0, right: 20, bottom: 20, left: 50 } // Increased left to prevent first label cutoff
+      : { top: 20, right: 40, bottom: 40, left: 75 }; // Increased left to prevent first label cutoff
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -148,13 +148,20 @@ export default function EngagementChart({ currentPeriod }: EngagementChartProps)
     }, animate ? 300 : 0);
 
     // X-axis labels - much larger font on mobile for better visibility
-    // Position labels to ensure all are visible, especially the last one
+    // Position labels to ensure all are visible, especially the first and last one
     data.labels.forEach((label, i) => {
-      // Calculate x position ensuring last label is within bounds
-      const x = padding.left + (i * xStep);
+      // Calculate x position ensuring all labels are within bounds
+      let x = padding.left + (i * xStep);
+      
+      // Adjust first label to ensure it's fully visible (not cut off on left)
+      if (i === 0) {
+        // Use middle alignment and add small offset to ensure full visibility
+        x = padding.left + (isMobile ? 10 : 15); // Add offset for first label
+      }
+      
       // Clamp the last label to ensure it's visible
       const clampedX = i === data.labels.length - 1 
-        ? Math.min(x, width - padding.right - 5) // Ensure last label doesn't go beyond right padding
+        ? Math.min(padding.left + (i * xStep), width - padding.right - 5) // Ensure last label doesn't go beyond right padding
         : x;
       
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');

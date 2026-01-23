@@ -88,7 +88,7 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
                 e.stopPropagation();
                 onEdit();
               }}
-              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors focus:outline-none focus:ring-0 active:outline-none active:ring-0 active:bg-transparent active:shadow-none"
               title="Edit"
             >
               <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
@@ -98,7 +98,7 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
                 e.stopPropagation();
                 onDelete();
               }}
-              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors focus:outline-none focus:ring-0 active:outline-none active:ring-0 active:bg-transparent active:shadow-none"
               title="Cancel"
             >
               <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
@@ -120,7 +120,7 @@ function UpcomingAppointmentCard({ appointment, onEdit, onReschedule, onDelete }
                     window.location.href = `tel:${phoneNumber}`;
                   }
                 }}
-                className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                className="p-1 md:p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors focus:outline-none focus:ring-0 active:outline-none active:ring-0 active:bg-transparent active:shadow-none"
                 title="Call"
               >
                 <Phone className="w-3 h-3 md:w-3.5 md:h-3.5" />

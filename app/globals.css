@@ -98,6 +98,39 @@ textarea:focus {
   outline-offset: 2px;
 }
 
+/* Remove focus outline and shadow from appointment action buttons */
+button[title="Edit"],
+button[title="Cancel"],
+button[title="Follow-up"],
+button[title="Call"] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button[title="Edit"]:focus,
+button[title="Cancel"]:focus,
+button[title="Follow-up"]:focus,
+button[title="Call"]:focus,
+button[title="Edit"]:active,
+button[title="Cancel"]:active,
+button[title="Follow-up"]:active,
+button[title="Call"]:active {
+  outline: none !important;
+  box-shadow: none !important;
+  ring: none !important;
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Remove active state background from all appointment action buttons */
+.appointments button:active,
+.appointments button[class*="p-1"]:active,
+.appointments button[class*="p-1.5"]:active {
+  background-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 /* Sidebar animation */
 @keyframes slideIn {
   from {
