@@ -9,7 +9,6 @@ export default function LoginPage() {
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -30,7 +29,7 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const success = await login(userName, password, rememberMe);
+    const success = await login(userName, password);
     
     if (success) {
       router.replace('/dashboard');
@@ -68,6 +67,7 @@ export default function LoginPage() {
             {/* Logo */}
             <div className="flex items-center mb-6 animate-fade-in">
               <span className="text-xl font-bold text-white">Pingwise</span>
+              <span className="text-xs font-medium text-red-500 ml-2">Beta</span>
             </div>
 
             {/* Welcome text */}
@@ -211,20 +211,8 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Remember & Forgot */}
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-2 border-gray-300 focus:ring-2 focus:ring-offset-0 cursor-pointer"
-                      style={{
-                        '--tw-ring-color': '#1A3E9E'
-                      } as React.CSSProperties}
-                    />
-                    <span className="ml-2 text-xs font-medium text-gray-700">Remember me</span>
-                  </label>
+                {/* Forgot Password */}
+                <div className="flex items-center justify-end pt-1">
                   <a 
                     href="#" 
                     onClick={(e) => {

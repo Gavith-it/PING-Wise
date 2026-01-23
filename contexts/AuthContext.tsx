@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (userName: string, password: string, rememberMe?: boolean) => Promise<boolean>;
+  login: (userName: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (userData: RegisterRequest) => Promise<boolean>;
   isAuthenticated: boolean;
@@ -137,7 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const login = useCallback(async (userName: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
+  const login = useCallback(async (userName: string, password: string): Promise<boolean> => {
     try {
       // Get backend URL from environment variable (same as CRM API)
       const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
@@ -179,26 +179,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           initials: firstName.charAt(0).toUpperCase(),
         };
         
-        // Store token based on rememberMe preference
-        // If rememberMe is true, use localStorage (persists across sessions)
-        // If rememberMe is false, use sessionStorage (cleared when browser closes)
-        if (rememberMe) {
-          localStorage.setItem('token', token);
-          localStorage.setItem('access_token', token);
-          localStorage.setItem('user', JSON.stringify(user));
-          // Clear sessionStorage tokens to avoid conflicts
-          sessionStorage.removeItem('token');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('user');
-        } else {
-          sessionStorage.setItem('token', token);
-          sessionStorage.setItem('access_token', token);
-          sessionStorage.setItem('user', JSON.stringify(user));
-          // Clear localStorage tokens to avoid conflicts
-          localStorage.removeItem('token');
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user');
-        }
+        // Store token in sessionStorage (cleared when browser closes)
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('access_token', token);
+        sessionStorage.setItem('user', JSON.stringify(user));
+        // Clear localStorage tokens to avoid conflicts
+        localStorage.removeItem('token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
         
         // Update state
         setToken(token);
