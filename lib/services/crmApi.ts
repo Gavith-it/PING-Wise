@@ -321,6 +321,32 @@ class CrmApiService {
   }
 
   /**
+   * Bulk upload customers from CSV
+   * POST /customers/bulk
+   * Request: { "customer_csv": "string" } (CSV content as string)
+   * Response: CSV string (not JSON)
+   */
+  async bulkUploadCustomers(csvContent: string): Promise<string> {
+    try {
+      const response = await this.api.post<string>(
+        '/customers/bulk',
+        { customer_csv: csvContent },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/csv', // API returns CSV, not JSON
+          },
+          responseType: 'text', // Handle CSV response as text
+        }
+      );
+      return response.data || '';
+    } catch (error: any) {
+      console.error('[CRM API] Error in bulkUploadCustomers:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete customer
    * DELETE /customers/{id}
    */

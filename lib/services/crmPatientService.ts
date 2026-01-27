@@ -190,11 +190,104 @@ export const crmPatientService = {
   },
 
   /**
-   * Bulk upload patients (not supported by CRM API yet)
+   * Bulk upload patients from CSV file
+   * POST /customers/bulk
+   * Reads CSV file content and sends as string in JSON body
+   * Response is CSV format with results
    */
-  async bulkUploadPatients(formData: FormData): Promise<ApiResponse<{ successCount: number; errors: any[] }>> {
-    // CRM API doesn't support bulk upload yet
-    throw new Error('Bulk upload not supported by CRM API');
+  async bulkUploadPatients(file: File): Promise<ApiResponse<{ successCount: number; errors: any[] }>> {
+    try {
+      // Read CSV file content as text
+      const csvContent = await file.text();
+      
+      // Call CRM API bulk upload endpoint
+      const csvResponse = await crmApi.bulkUploadCustomers(csvContent);
+      
+      // Parse CSV response - API returns CSV with same structure as input
+      const lines = csvResponse.trim().split('\n').filter(line => line.trim());
+      if (lines.length === 0) {
+        return {
+          success: true,
+          data: { successCount: 0, errors: [] },
+          message: 'No data processed',
+        };
+      }
+      
+      // First line is header, rest are successfully processed rows
+      const header = lines[0];
+      const dataRows = lines.slice(1);
+      
+      // Count successful rows (all rows in response are successful)
+      // The API returns CSV with successfully created customers
+      const successCount = dataRows.length;
+      
+      // Calculate original input rows for error tracking
+      const inputLines = csvContent.trim().split('\n').filter(line => line.trim());
+      const inputDataRows = inputLines.slice(1); // Skip header
+      const totalInputRows = inputDataRows.length;
+      
+      // If response has fewer rows than input, some rows failed
+      const errors: any[] = [];
+      if (successCount < totalInputRows) {
+        // Some rows failed - we don't know which ones from CSV response alone
+        // API might return errors separately or in response, but for now we'll note the difference
+        for (let i = successCount; i < totalInputRows; i++) {
+          errors.push({
+            row: i + 2, // +2 for header and 0-based index
+            field: 'row',
+            message: 'Failed to process row',
+            data: inputDataRows[i],
+          });
+        }
+      }
+      
+      return {
+        success: true,
+        data: { successCount, errors },
+        message: errors.length > 0 
+          ? `Uploaded ${successCount} patient(s) with ${errors.length} error(s)`
+          : `Successfully uploaded ${successCount} patient(s)`,
+      };
+    } catch (error: any) {
+      console.error('Error in bulk upload:', error);
+      
+      // Try to parse error response - could be CSV or JSON
+      let errors: any[] = [];
+      let errorMessage = error.message || 'Failed to upload patients';
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          // CSV error response
+          const errorCsv = error.response.data;
+          const errorLines = errorCsv.trim().split('\n').filter((line: string) => line.trim());
+          if (errorLines.length > 1) {
+            errorLines.slice(1).forEach((row: string, index: number) => {
+              if (row.trim()) {
+                errors.push({
+                  row: index + 2,
+                  field: 'row',
+                  message: 'Upload failed',
+                  data: row,
+                });
+              }
+            });
+          }
+          errorMessage = `Upload failed: ${errorLines[0] || 'Unknown error'}`;
+        } else if (error.response.data.message) {
+          // JSON error response
+          errorMessage = error.response.data.message;
+          if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+            errors = error.response.data.errors;
+          }
+        }
+      }
+      
+      return {
+        success: false,
+        data: { successCount: 0, errors },
+        message: errorMessage,
+      };
+    }
   },
 };
 

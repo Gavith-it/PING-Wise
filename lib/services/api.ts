@@ -239,6 +239,191 @@ export const dashboardService = {
   },
 };
 
+/** UserProfile API response (GET /userProfile) */
+export interface UserProfileApiResponse {
+  user_name: string;
+  email: string;
+  phone: string;
+  role: string;
+  created_at: string;
+}
+
+/** Mapped user profile for UI consumption */
+export interface UserProfileData {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  createdAt?: string;
+}
+
+/** PUT /userProfile request body */
+export interface UserProfileUpdatePayload {
+  user_name: string;
+  email: string;
+  phone: string;
+  role: string;
+  org_id?: string;
+  password?: string;
+}
+
+function getCrmGatewayClient() {
+  const baseURL = process.env.NEXT_PUBLIC_CRM_API_BASE_URL || 'https://pw-crm-gateway-1.onrender.com';
+  let token: string | null = null;
+  if (typeof window !== 'undefined') {
+    token =
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token') ||
+      localStorage.getItem('access_token') ||
+      sessionStorage.getItem('access_token');
+  }
+  return axios.create({
+    baseURL,
+    headers: {
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+}
+
+/** @deprecated Use getCrmGatewayClient */
+const getUserProfileApiClient = getCrmGatewayClient;
+
+/** GET /config – organization config item */
+export interface ConfigItem {
+  config_name: string;
+  config_possible_values: string[];
+  config_type: string;
+  config_value: string;
+}
+
+export interface ConfigApiResponse {
+  config: ConfigItem[];
+}
+
+/** Config keys for WhatsApp reminders (config_value: "on" | "off") */
+export const CONFIG_KEYS = {
+  FOLLOW_UP_REMINDER: 'follow_up_reminder',
+  APPOINTMENT_REMINDER: 'appointment_reminder',
+} as const;
+
+export const configService = {
+  getConfig: async (): Promise<ConfigApiResponse> => {
+    const client = getCrmGatewayClient();
+    try {
+      const { data } = await client.get<ConfigApiResponse>('/config');
+      return { config: data?.config ?? [] };
+    } catch (err: any) {
+      logger.error('Config API error', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+      throw err;
+    }
+  },
+
+  updateConfig: async (configItems: ConfigItem[]): Promise<ConfigApiResponse> => {
+    const client = getCrmGatewayClient();
+    try {
+      const { data } = await client.patch<ConfigApiResponse>('/config', {
+        config: configItems,
+      });
+      return { config: data?.config ?? [] };
+    } catch (err: any) {
+      logger.error('Config update API error', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+      throw err;
+    }
+  },
+};
+
+/** Resolve toggle state from config: "on" → true, else false */
+export function configValueToEnabled(value: string): boolean {
+  return String(value || '').toLowerCase() === 'on';
+}
+
+export const userProfileService = {
+  getProfile: async (): Promise<ApiResponse<UserProfileData>> => {
+    const externalApi = getUserProfileApiClient();
+    try {
+      const response = await externalApi.get<UserProfileApiResponse>('/userProfile');
+      const raw = response.data;
+
+      return {
+        success: true,
+        data: {
+          name: raw?.user_name ?? '',
+          email: raw?.email ?? '',
+          phone: raw?.phone ?? '',
+          role: raw?.role ?? '',
+          createdAt: raw?.created_at,
+        },
+      };
+    } catch (err: any) {
+      logger.error('User profile API error', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+      throw err;
+    }
+  },
+
+  updateProfile: async (payload: UserProfileUpdatePayload): Promise<ApiResponse<UserProfileData>> => {
+    const externalApi = getUserProfileApiClient();
+    const body: Record<string, string> = {
+      user_name: payload.user_name,
+      email: payload.email,
+      phone: payload.phone ?? '',
+      role: payload.role,
+      org_id: payload.org_id ?? '',
+    };
+    if (payload.password && payload.password.trim()) {
+      body.password = payload.password.trim();
+    }
+    try {
+      const response = await externalApi.put<UserProfileApiResponse>('/userProfile', body);
+      const raw = response.data;
+      return {
+        success: true,
+        data: {
+          name: raw?.user_name ?? '',
+          email: raw?.email ?? '',
+          phone: raw?.phone ?? '',
+          role: raw?.role ?? '',
+          createdAt: raw?.created_at,
+        },
+      };
+    } catch (err: any) {
+      logger.error('User profile update API error', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+      throw err;
+    }
+  },
+
+  deleteProfile: async (): Promise<void> => {
+    const externalApi = getUserProfileApiClient();
+    try {
+      await externalApi.delete('/userProfile');
+    } catch (err: any) {
+      logger.error('User profile delete API error', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+      throw err;
+    }
+  },
+};
+
 export const walletService = {
   getBalance: async (): Promise<ApiResponse<{ balance: number }>> => {
     // Call external API directly (not through Next.js API route)

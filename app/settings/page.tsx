@@ -3,19 +3,107 @@
 import { useState } from 'react';
 import { ArrowLeft, Bell, Shield, Globe, Trash2, Crown, Gift, ChevronRight, X, Sparkles, MessageCircle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
 import ToggleSwitch from '@/components/ui/toggle-switch';
 import { useFontSize } from '@/contexts/FontSizeContext';
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  userProfileService,
+  configService,
+  CONFIG_KEYS,
+  configValueToEnabled,
+  ConfigItem,
+} from '@/lib/services/api';
+
+function getConfigValue(config: { config_name: string; config_value: string }[], name: string): string {
+  const item = config.find((c) => c.config_name === name);
+  return item?.config_value ?? 'off';
+}
+
+function findConfigItem(config: ConfigItem[], name: string): ConfigItem | null {
+  return config.find((c) => c.config_name === name) ?? null;
+}
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { logout } = useAuth();
   const { fontSizePercentage, setFontSizePercentage, increaseFontSize, decreaseFontSize, resetFontSize } = useFontSize();
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [followUpReminder, setFollowUpReminder] = useState(false);
   const [appointmentReminder, setAppointmentReminder] = useState(false);
+  const [whatsappConfigItems, setWhatsappConfigItems] = useState<ConfigItem[]>([]);
+  const [whatsappConfigLoading, setWhatsappConfigLoading] = useState(true);
+  const [whatsappUpdating, setWhatsappUpdating] = useState<string | null>(null);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setWhatsappConfigLoading(true);
+    configService
+      .getConfig()
+      .then((res) => {
+        if (!mounted) return;
+        const cfg = res.config ?? [];
+        setWhatsappConfigItems(cfg);
+        setFollowUpReminder(configValueToEnabled(getConfigValue(cfg, CONFIG_KEYS.FOLLOW_UP_REMINDER)));
+        setAppointmentReminder(configValueToEnabled(getConfigValue(cfg, CONFIG_KEYS.APPOINTMENT_REMINDER)));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setFollowUpReminder(false);
+        setAppointmentReminder(false);
+      })
+      .finally(() => {
+        if (mounted) setWhatsappConfigLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const updateWhatsAppConfig = async (configName: string, enabled: boolean) => {
+    const item = findConfigItem(whatsappConfigItems, configName);
+    if (!item) {
+      toast.error(`Configuration not found: ${configName}`);
+      return;
+    }
+
+    const newValue = enabled ? 'on' : 'off';
+    const updatedItem: ConfigItem = {
+      ...item,
+      config_value: newValue,
+    };
+
+    setWhatsappUpdating(configName);
+    try {
+      await configService.updateConfig([updatedItem]);
+      const updatedConfig = whatsappConfigItems.map((c) =>
+        c.config_name === configName ? updatedItem : c
+      );
+      setWhatsappConfigItems(updatedConfig);
+      if (configName === CONFIG_KEYS.FOLLOW_UP_REMINDER) {
+        setFollowUpReminder(enabled);
+      } else if (configName === CONFIG_KEYS.APPOINTMENT_REMINDER) {
+        setAppointmentReminder(enabled);
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to update reminder setting';
+      toast.error(msg);
+      if (configName === CONFIG_KEYS.FOLLOW_UP_REMINDER) {
+        setFollowUpReminder(!enabled);
+      } else if (configName === CONFIG_KEYS.APPOINTMENT_REMINDER) {
+        setAppointmentReminder(!enabled);
+      }
+    } finally {
+      setWhatsappUpdating(null);
+    }
+  };
 
   return (
     <PrivateRoute>
@@ -86,9 +174,13 @@ export default function SettingsPage() {
                 </div>
                 <ToggleSwitch
                   enabled={followUpReminder}
-                  onChange={setFollowUpReminder}
+                  onChange={(enabled) => {
+                    setFollowUpReminder(enabled);
+                    updateWhatsAppConfig(CONFIG_KEYS.FOLLOW_UP_REMINDER, enabled);
+                  }}
                   label="Follow-Up Reminder"
                   size="md"
+                  disabled={whatsappConfigLoading || whatsappUpdating === CONFIG_KEYS.FOLLOW_UP_REMINDER}
                 />
               </div>
 
@@ -99,9 +191,13 @@ export default function SettingsPage() {
                 </div>
                 <ToggleSwitch
                   enabled={appointmentReminder}
-                  onChange={setAppointmentReminder}
+                  onChange={(enabled) => {
+                    setAppointmentReminder(enabled);
+                    updateWhatsAppConfig(CONFIG_KEYS.APPOINTMENT_REMINDER, enabled);
+                  }}
                   label="Appointment Reminder"
                   size="md"
+                  disabled={whatsappConfigLoading || whatsappUpdating === CONFIG_KEYS.APPOINTMENT_REMINDER}
                 />
               </div>
             </div>
@@ -249,18 +345,82 @@ export default function SettingsPage() {
           </div>
 
           {/* Danger Zone */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl p-6 md:p-8 shadow-sm border border-red-200 dark:border-red-900">
+          <div className="bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl p-6 md:p-8 shadow-sm border-2 border-red-200 dark:border-red-900">
             <div className="flex items-center space-x-3 mb-6">
               <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
               <h3 className="text-lg md:text-xl font-semibold text-red-600 dark:text-red-400">Danger Zone</h3>
             </div>
-            
-            <button className="w-full text-left py-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg px-2 transition-colors">
+
+            <div className="space-y-1">
               <p className="text-base font-medium text-red-600 dark:text-red-400">Delete Account</p>
               <p className="text-sm text-red-500 dark:text-red-500">Permanently delete your account and all data</p>
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Delete Account
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Delete Account Confirmation Modal */}
+        {showDeleteConfirm && (
+          <>
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 z-[60]"
+              onClick={() => !deleting && setShowDeleteConfirm(false)}
+              role="presentation"
+            />
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <div
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                  <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Delete Account</h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm md:text-base mb-6">
+                  This will permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => !deleting && setShowDeleteConfirm(false)}
+                    disabled={deleting}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (deleting) return;
+                      setDeleting(true);
+                      try {
+                        await userProfileService.deleteProfile();
+                        toast.success('Account deleted');
+                        setShowDeleteConfirm(false);
+                        logout();
+                      } catch (err: any) {
+                        const msg = err?.response?.data?.message || err?.message || 'Failed to delete account';
+                        toast.error(msg);
+                      } finally {
+                        setDeleting(false);
+                      }
+                    }}
+                    disabled={deleting}
+                    className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Coming Soon Modal */}
         {showComingSoon && (

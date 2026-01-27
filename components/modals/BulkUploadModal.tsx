@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { X, Upload, FileSpreadsheet, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { crmPatientService } from '@/lib/services/crmPatientService';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 interface BulkUploadModalProps {
   onClose: () => void;
@@ -24,16 +25,41 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
   const [successCount, setSuccessCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const convertExcelToCSV = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          
+          // Get first sheet
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Convert to CSV
+          const csv = XLSX.utils.sheet_to_csv(worksheet);
+          resolve(csv);
+        } catch (error) {
+          reject(new Error('Failed to parse Excel file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsBinaryString(file);
+    });
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       const validExtensions = ['.csv', '.xlsx', '.xls'];
       const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
       
       if (!validExtensions.includes(fileExtension)) {
-        toast.error('Please upload a CSV or Excel file');
+        toast.error('Please upload a CSV or Excel file (.csv, .xlsx, .xls)');
         return;
       }
+      
       setFile(selectedFile);
       setErrors([]);
       setSuccessCount(0);
@@ -51,11 +77,38 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
     setSuccessCount(0);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Use CRM patient service (backend API) instead of Next.js API
-      const response = await crmPatientService.bulkUploadPatients(formData);
+      let csvContent: string;
+      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+      
+      // Convert Excel to CSV if needed, otherwise read CSV directly
+      if (fileExtension === '.csv') {
+        csvContent = await file.text();
+      } else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
+        try {
+          // Convert Excel to CSV
+          csvContent = await convertExcelToCSV(file);
+          if (!csvContent || csvContent.trim().length === 0) {
+            toast.error('Excel file is empty or could not be converted');
+            setUploading(false);
+            return;
+          }
+        } catch (convertError: any) {
+          toast.error(convertError.message || 'Failed to convert Excel file to CSV');
+          setUploading(false);
+          return;
+        }
+      } else {
+        toast.error('Unsupported file format');
+        setUploading(false);
+        return;
+      }
+      
+      // Create a temporary CSV file object for the service
+      const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+      const csvFile = new File([csvBlob], file.name.replace(/\.(xlsx|xls)$/i, '.csv'), { type: 'text/csv' });
+      
+      // Pass converted CSV file to service
+      const response = await crmPatientService.bulkUploadPatients(csvFile);
       
       if (response.success) {
         const data = response.data as { successCount: number; errors: UploadError[] };
@@ -125,7 +178,7 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
             {/* File Upload Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload CSV/Excel File
+                Upload CSV or Excel File
               </label>
               <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary transition-colors">
                 <input
@@ -142,7 +195,7 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
                       Click to upload or drag and drop
                     </p>
                     <p className="text-xs text-gray-500 mb-4">
-                      CSV or Excel files only
+                      CSV or Excel files (.csv, .xlsx, .xls)
                     </p>
                     <button
                       onClick={() => fileInputRef.current?.click()}
@@ -176,16 +229,26 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
 
             {/* Field Mapping Info */}
             <div className="bg-blue-50 rounded-xl p-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">Expected Field Mapping</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
-                <div>• Name (required)</div>
-                <div>• Email (required)</div>
-                <div>• Phone (required)</div>
-                <div>• Age (required)</div>
-                <div>• Gender (optional)</div>
-                <div>• Address (optional)</div>
-                <div>• Status (optional)</div>
-                <div>• Medical Notes (optional)</div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">Expected CSV Format</h4>
+              <div className="text-xs text-gray-700 space-y-1">
+                <p className="font-medium mb-2">Required columns (in order):</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>• first_name</div>
+                  <div>• last_name</div>
+                  <div>• email</div>
+                  <div>• phone</div>
+                  <div>• address</div>
+                  <div>• age</div>
+                  <div>• gender</div>
+                  <div>• date_of_birth</div>
+                  <div>• last_visit</div>
+                  <div>• next_visit</div>
+                  <div>• status</div>
+                  <div>• medical_history</div>
+                </div>
+                <p className="mt-2 text-gray-600 italic">
+                  medical_history should be a JSON string, e.g.: {"{"}"allergies":["penicillin"],"conditions":["diabetes"]{"}"}
+                </p>
               </div>
             </div>
 
