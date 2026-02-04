@@ -8,7 +8,76 @@
 import { crmApi } from './crmApi';
 import { crmCustomerToPatient, patientToCrmCustomer, crmCustomersToPatients } from '@/lib/utils/crmAdapter';
 import { Patient, CreatePatientRequest, ApiResponse } from '@/types';
-import { CrmCustomer } from '@/types/crmApi';
+import { CrmCustomer, CrmCustomerRequest } from '@/types/crmApi';
+
+/** Parse a single CSV line respecting double-quoted fields */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if ((c === ',' && !inQuotes) || (c === '\r' && !inQuotes)) {
+      result.push(current.trim());
+      current = '';
+    } else if (c !== '\r') {
+      current += c;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+/** Parse CSV string to array of CrmCustomerRequest (header row required) */
+function parseCSVToCustomers(csvContent: string): CrmCustomerRequest[] {
+  const lines = csvContent.replace(/\r\n/g, '\n').split('\n').filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const header = parseCSVLine(lines[0]).map((h) => h.trim().toLowerCase());
+  const customers: CrmCustomerRequest[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    const row: Record<string, string> = {};
+    header.forEach((h, idx) => {
+      row[h] = values[idx] ?? '';
+    });
+    const first_name = row.first_name?.trim() ?? '';
+    const last_name = row.last_name?.trim() ?? '';
+    const email = row.email?.trim() ?? '';
+    if (!first_name && !last_name && !email) continue;
+    const req: CrmCustomerRequest = {
+      first_name: first_name || 'Unknown',
+      last_name: last_name || 'Unknown',
+      email: email || `bulk-${Date.now()}-${i}@placeholder.local`,
+    };
+    if (row.phone) req.phone = row.phone.trim();
+    if (row.address) req.address = row.address.trim();
+    if (row.age) {
+      const n = parseInt(row.age, 10);
+      if (!isNaN(n)) req.age = n;
+    }
+    if (row.gender) req.gender = row.gender.trim();
+    if (row.date_of_birth) req.date_of_birth = row.date_of_birth.trim();
+    if (row.last_visit) req.last_visit = row.last_visit.trim();
+    if (row.next_visit) req.next_visit = row.next_visit.trim();
+    if (row.status) req.status = row.status.trim();
+    if (row.medical_history?.trim()) {
+      try {
+        req.medical_history = JSON.parse(row.medical_history.trim()) as Record<string, any>;
+      } catch {
+        req.medical_history = {};
+      }
+    }
+    customers.push(req);
+  }
+  return customers;
+}
 
 /**
  * CRM Patient Service - Compatible interface with patientService
@@ -190,98 +259,81 @@ export const crmPatientService = {
   },
 
   /**
-   * Bulk upload patients from CSV file
-   * POST /customers/bulk
-   * Reads CSV file content and sends as string in JSON body
-   * Response is CSV format with results
+   * Bulk upload patients from CSV file.
+   * Tries CSV body first; on 400 "Incorrect customer request" retries with JSON array of customers.
    */
   async bulkUploadPatients(file: File): Promise<ApiResponse<{ successCount: number; errors: any[] }>> {
-    try {
-      // Read CSV file content as text
-      const csvContent = await file.text();
-      
-      // Call CRM API bulk upload endpoint
-      const csvResponse = await crmApi.bulkUploadCustomers(csvContent);
-      
-      // Parse CSV response - API returns CSV with same structure as input
-      const lines = csvResponse.trim().split('\n').filter(line => line.trim());
-      if (lines.length === 0) {
-        return {
-          success: true,
-          data: { successCount: 0, errors: [] },
-          message: 'No data processed',
-        };
-      }
-      
-      // First line is header, rest are successfully processed rows
-      const header = lines[0];
-      const dataRows = lines.slice(1);
-      
-      // Count successful rows (all rows in response are successful)
-      // The API returns CSV with successfully created customers
-      const successCount = dataRows.length;
-      
-      // Calculate original input rows for error tracking
-      const inputLines = csvContent.trim().split('\n').filter(line => line.trim());
-      const inputDataRows = inputLines.slice(1); // Skip header
-      const totalInputRows = inputDataRows.length;
-      
-      // If response has fewer rows than input, some rows failed
+    let csvContent = await file.text();
+    csvContent = csvContent.replace(/^\uFEFF/, '').trim();
+
+    const runCsvResponse = (response: string) => {
+      const lines = response.trim().split('\n').filter((l: string) => l.trim());
+      const successCount = lines.length <= 1 ? 0 : lines.length - 1;
+      const inputRows = csvContent.trim().split('\n').filter((l: string) => l.trim()).length - 1;
       const errors: any[] = [];
-      if (successCount < totalInputRows) {
-        // Some rows failed - we don't know which ones from CSV response alone
-        // API might return errors separately or in response, but for now we'll note the difference
-        for (let i = successCount; i < totalInputRows; i++) {
-          errors.push({
-            row: i + 2, // +2 for header and 0-based index
-            field: 'row',
-            message: 'Failed to process row',
-            data: inputDataRows[i],
-          });
+      if (successCount < inputRows) {
+        for (let i = successCount; i < inputRows; i++) {
+          errors.push({ row: i + 2, field: 'row', message: 'Failed to process row', data: null });
         }
       }
-      
       return {
         success: true,
         data: { successCount, errors },
-        message: errors.length > 0 
+        message: errors.length > 0
           ? `Uploaded ${successCount} patient(s) with ${errors.length} error(s)`
           : `Successfully uploaded ${successCount} patient(s)`,
       };
+    };
+
+    try {
+      const csvResponse = await crmApi.bulkUploadCustomers(csvContent);
+      return runCsvResponse(csvResponse);
     } catch (error: any) {
-      console.error('Error in bulk upload:', error);
-      
-      // Try to parse error response - could be CSV or JSON
-      let errors: any[] = [];
-      let errorMessage = error.message || 'Failed to upload patients';
-      
-      if (error.response?.data) {
-        if (typeof error.response.data === 'string') {
-          // CSV error response
-          const errorCsv = error.response.data;
-          const errorLines = errorCsv.trim().split('\n').filter((line: string) => line.trim());
-          if (errorLines.length > 1) {
-            errorLines.slice(1).forEach((row: string, index: number) => {
-              if (row.trim()) {
-                errors.push({
-                  row: index + 2,
-                  field: 'row',
-                  message: 'Upload failed',
-                  data: row,
-                });
-              }
-            });
+      const is400Incorrect =
+        error.response?.status === 400 &&
+        (typeof error.response?.data === 'string'
+          ? error.response.data.includes('Incorrect customer request')
+          : String(error.response?.data?.message || '').includes('Incorrect customer request'));
+
+      if (is400Incorrect) {
+        try {
+          const customers = parseCSVToCustomers(csvContent);
+          if (customers.length === 0) {
+            return {
+              success: false,
+              data: { successCount: 0, errors: [{ row: 0, field: 'csv', message: 'No valid rows after parsing', data: null }] },
+              message: 'No valid customer rows in CSV',
+            };
           }
-          errorMessage = `Upload failed: ${errorLines[0] || 'Unknown error'}`;
-        } else if (error.response.data.message) {
-          // JSON error response
-          errorMessage = error.response.data.message;
-          if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
-            errors = error.response.data.errors;
-          }
+          const jsonResponse = await crmApi.bulkUploadCustomersAsJson(customers);
+          const count = Array.isArray(jsonResponse)
+            ? jsonResponse.length
+            : (jsonResponse?.count ?? jsonResponse?.successCount ?? jsonResponse?.data?.count ?? customers.length);
+          return {
+            success: true,
+            data: { successCount: count, errors: [] },
+            message: `Successfully uploaded ${count} patient(s)`,
+          };
+        } catch (jsonError: any) {
+          console.error('Bulk upload (JSON fallback) failed:', jsonError);
+          return {
+            success: false,
+            data: { successCount: 0, errors: [] },
+            message: jsonError.response?.data?.message || jsonError.message || 'Bulk upload failed',
+          };
         }
       }
-      
+
+      let errors: any[] = [];
+      let errorMessage = error.message || 'Failed to upload patients';
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data.split('\n')[0] || errorMessage;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+          if (Array.isArray(error.response.data.errors)) errors = error.response.data.errors;
+        }
+      }
       return {
         success: false,
         data: { successCount: 0, errors },

@@ -102,7 +102,10 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
         setUploading(false);
         return;
       }
-      
+
+      // Strip BOM and trim so payload has no leading/trailing newlines (backend expects clean CSV)
+      csvContent = csvContent.replace(/^\uFEFF/, '').trim();
+
       // Create a temporary CSV file object for the service
       const csvBlob = new Blob([csvContent], { type: 'text/csv' });
       const csvFile = new File([csvBlob], file.name.replace(/\.(xlsx|xls)$/i, '.csv'), { type: 'text/csv' });

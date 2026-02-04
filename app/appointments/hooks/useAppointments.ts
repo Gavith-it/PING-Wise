@@ -47,6 +47,7 @@ interface UseAppointmentsParams {
 interface UseAppointmentsReturn {
   appointments: Appointment[];
   allMonthAppointments: Appointment[];
+  cancelledAppointments: Appointment[];
   loading: boolean;
   loadAppointmentsForDate: (isBackgroundRefresh?: boolean) => Promise<void>;
   loadMonthAppointments: (isBackgroundRefresh?: boolean) => Promise<void>;
@@ -61,6 +62,7 @@ export function useAppointments({
 }: UseAppointmentsParams): UseAppointmentsReturn {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [allMonthAppointments, setAllMonthAppointments] = useState<Appointment[]>([]);
+  const [cancelledAppointments, setCancelledAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   
   const isLoadingRef = useRef(false);
@@ -419,6 +421,13 @@ export function useAppointments({
     
     try {
       await crmAppointmentService.cancelAppointment(id);
+      // Add to cancelled list for display in Cancelled Appointments section (patient name + status)
+      const cancelledApt = appointmentToDelete
+        ? { ...appointmentToDelete, status: 'Cancelled' as const }
+        : null;
+      if (cancelledApt) {
+        setCancelledAppointments(prev => [cancelledApt, ...prev]);
+      }
       toast.success('Appointment cancelled');
       
       // Reset refs to force refresh
@@ -435,6 +444,7 @@ export function useAppointments({
   return {
     appointments,
     allMonthAppointments,
+    cancelledAppointments,
     loading,
     loadAppointmentsForDate,
     loadMonthAppointments,

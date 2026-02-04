@@ -290,7 +290,7 @@ function getCrmGatewayClient() {
 /** @deprecated Use getCrmGatewayClient */
 const getUserProfileApiClient = getCrmGatewayClient;
 
-/** GET /config – organization config item */
+/** GET /orgConfig – organization config item */
 export interface ConfigItem {
   config_name: string;
   config_possible_values: string[];
@@ -304,15 +304,15 @@ export interface ConfigApiResponse {
 
 /** Config keys for WhatsApp reminders (config_value: "on" | "off") */
 export const CONFIG_KEYS = {
-  FOLLOW_UP_REMINDER: 'follow_up_reminder',
-  APPOINTMENT_REMINDER: 'appointment_reminder',
+  FOLLOW_UP_REMINDER: 'follow-up-reminder',
+  APPOINTMENT_REMINDER: 'appointment-reminder',
 } as const;
 
 export const configService = {
   getConfig: async (): Promise<ConfigApiResponse> => {
     const client = getCrmGatewayClient();
     try {
-      const { data } = await client.get<ConfigApiResponse>('/config');
+      const { data } = await client.get<ConfigApiResponse>('/orgConfig');
       return { config: data?.config ?? [] };
     } catch (err: any) {
       logger.error('Config API error', {
@@ -327,7 +327,7 @@ export const configService = {
   updateConfig: async (configItems: ConfigItem[]): Promise<ConfigApiResponse> => {
     const client = getCrmGatewayClient();
     try {
-      const { data } = await client.patch<ConfigApiResponse>('/config', {
+      const { data } = await client.patch<ConfigApiResponse>('/orgConfig', {
         config: configItems,
       });
       return { config: data?.config ?? [] };

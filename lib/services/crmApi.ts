@@ -321,22 +321,18 @@ class CrmApiService {
   }
 
   /**
-   * Bulk upload customers from CSV
-   * POST /customers/bulk
-   * Request: { "customer_csv": "string" } (CSV content as string)
-   * Response: CSV string (not JSON)
+   * Bulk upload customers from CSV string
+   * POST /customers/bulk with { "customer_csv": "string" }
    */
   async bulkUploadCustomers(csvContent: string): Promise<string> {
+    const cleaned = csvContent.replace(/^\uFEFF/, '').trim();
     try {
       const response = await this.api.post<string>(
         '/customers/bulk',
-        { customer_csv: csvContent },
+        { customer_csv: cleaned },
         {
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'text/csv', // API returns CSV, not JSON
-          },
-          responseType: 'text', // Handle CSV response as text
+          headers: { 'Content-Type': 'application/json', Accept: 'text/csv' },
+          responseType: 'text',
         }
       );
       return response.data || '';
@@ -344,6 +340,21 @@ class CrmApiService {
       console.error('[CRM API] Error in bulkUploadCustomers:', error);
       throw error;
     }
+  }
+
+  /**
+   * Bulk upload customers as JSON array (alternative when backend expects array, not CSV string)
+   * POST /customers/bulk with { "customers": CrmCustomerRequest[] }
+   */
+  async bulkUploadCustomersAsJson(customers: CrmCustomerRequest[]): Promise<any> {
+    const response = await this.api.post<any>(
+      '/customers/bulk',
+      { customers },
+      {
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+    return response;
   }
 
   /**

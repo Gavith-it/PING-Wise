@@ -10,12 +10,10 @@ import { Appointment, CreateAppointmentRequest } from '@/types';
 import { useAppointments } from './hooks/useAppointments';
 import { usePatientEnrichment } from './hooks/usePatientEnrichment';
 import { useAppointmentFilters } from './hooks/useAppointmentFilters';
-import { useUpcomingAppointments } from './hooks/useUpcomingAppointments';
 import { useAppointmentEdit } from './hooks/useAppointmentEdit';
 import CalendarView from './components/CalendarView';
 import AppointmentSearchBar from './components/AppointmentSearchBar';
 import AppointmentList from './components/AppointmentList';
-import UpcomingAppointmentsList from './components/UpcomingAppointmentsList';
 import { crmPatientService } from '@/lib/services/crmPatientService';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import toast from 'react-hot-toast';
@@ -50,6 +48,7 @@ export default function AppointmentsPage() {
   const {
     appointments,
     allMonthAppointments,
+    cancelledAppointments,
     loading,
     handleAppointmentCreated,
     handleDeleteAppointment,
@@ -86,8 +85,22 @@ export default function AppointmentsPage() {
   // Use filter hook for selected date appointments (including completed)
   const filteredAppointments = useAppointmentFilters(selectedDateAppointments, searchTerm, statusFilter);
 
-  // Use upcoming appointments hook - shows appointments for dates other than selected date
-  const upcomingAppointments = useUpcomingAppointments(allMonthAppointments, appointments, selectedDate, today);
+  // Single list under date: API appointments + session cancelled for this date (no subsections)
+  const appointmentsForDate = useMemo(() => {
+    const cancelledForDate = cancelledAppointments.filter(apt => {
+      const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date);
+      return isSameDay(aptDate, selectedDate);
+    });
+    const ids = new Set(filteredAppointments.map(a => a.id));
+    const extra = cancelledForDate.filter(a => !ids.has(a.id));
+    const merged = [...filteredAppointments, ...extra];
+    merged.sort((a, b) => {
+      const timeA = a.time || '';
+      const timeB = b.time || '';
+      return timeA.localeCompare(timeB);
+    });
+    return merged;
+  }, [filteredAppointments, cancelledAppointments, selectedDate]);
 
   // Use edit hook
   const {
@@ -325,13 +338,13 @@ export default function AppointmentsPage() {
                   Appointments for {format(selectedDate, 'MMMM d, yyyy')}
                 </h3>
                 <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? 's' : ''} {statusFilter !== 'all' ? `(${statusFilter})` : ''}
+                  {appointmentsForDate.length} appointment{appointmentsForDate.length !== 1 ? 's' : ''} {statusFilter !== 'all' ? `(${statusFilter})` : ''}
                 </p>
               </div>
             </div>
 
             <AppointmentList
-              appointments={filteredAppointments}
+              appointments={appointmentsForDate}
               loading={loading}
               searchTerm={searchTerm}
               statusFilter={statusFilter}
@@ -340,19 +353,6 @@ export default function AppointmentsPage() {
               onFollowUp={handleFollowUpClick}
               onAddClick={handleAddClick}
               isPastDate={isPastDate}
-            />
-          </div>
-
-          {/* Pending Appointments Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg md:rounded-xl p-3 md:p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-4 md:mb-6">
-            <h3 className="text-sm md:text-lg font-semibold text-gray-900 dark:text-white mb-3 md:mb-4">
-              Pending Appointments
-            </h3>
-            <UpcomingAppointmentsList
-              upcomingAppointments={upcomingAppointments}
-              onEdit={handleEditClick}
-              onReschedule={handleRescheduleClick}
-              onDelete={handleDeleteAppointment}
             />
           </div>
 

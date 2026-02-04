@@ -1,0 +1,4 @@
+first_name,last_name,email,phone,address,age,gender,date_of_birth,last_visit,next_visit,status,medical_history
+John,Doe,john.doe@example.com,9876543210,123 Main St,35,Male,1990-05-15,2025-01-10,2025-02-10,Active,"{""allergies"":[],""conditions"":[]}"
+Jane,Smith,jane.smith@example.com,9876543211,456 Oak Ave,28,Female,1997-08-22,2025-01-01,2025-02-01,Active,"{""allergies"":[""penicillin""],""conditions"":[]}"
+Raj,Kumar,raj.kumar@example.com,9876543212,789 Park Rd,42,Male,1983-03-08,2025-01-15,2025-02-15,FollowUp,"{""allergies"":[],""conditions"":[""diabetes""]}"
