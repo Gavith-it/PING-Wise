@@ -393,47 +393,29 @@ export function useAppointments({
     if (!window.confirm('Cancel this appointment?')) {
       return;
     }
-    
-    // Find the appointment to get its date before deleting
-    const appointmentToDelete = appointments.find(apt => apt.id === id) || 
+    const appointmentToUpdate = appointments.find(apt => apt.id === id) ||
                                  allMonthAppointments.find(apt => apt.id === id);
-    
-    if (appointmentToDelete) {
-      const aptDate = appointmentToDelete.date instanceof Date 
-        ? appointmentToDelete.date 
-        : new Date(appointmentToDelete.date);
-      const aptDateStr = format(aptDate, 'yyyy-MM-dd');
-      const aptMonthStr = format(aptDate, 'yyyy-MM');
-      
-      // Invalidate cache for the appointment's date
+    const aptDateStr = appointmentToUpdate
+      ? format(appointmentToUpdate.date instanceof Date ? appointmentToUpdate.date : new Date(appointmentToUpdate.date), 'yyyy-MM-dd')
+      : '';
+    const aptMonthStr = appointmentToUpdate
+      ? format(appointmentToUpdate.date instanceof Date ? appointmentToUpdate.date : new Date(appointmentToUpdate.date), 'yyyy-MM')
+      : '';
+    try {
+      // PATCH appointment status to Cancelled (no DELETE); cancelled appointments persist and are visible across the app
+      await crmAppointmentService.cancelAppointment(id);
+      const cancelledApt = appointmentToUpdate ? { ...appointmentToUpdate, status: 'Cancelled' as const } : null;
+      if (appointmentsCache.allAppointments && cancelledApt) {
+        const idx = appointmentsCache.allAppointments.findIndex(apt => apt.id === id);
+        if (idx >= 0) appointmentsCache.allAppointments[idx] = cancelledApt;
+      }
       delete appointmentsCache.appointments[aptDateStr];
       if (aptMonthStr === format(currentMonth, 'yyyy-MM')) {
         delete appointmentsCache.monthAppointments[aptMonthStr];
       }
-      
-      // Remove from allAppointments cache to prevent stale dots
-      if (appointmentsCache.allAppointments) {
-        appointmentsCache.allAppointments = appointmentsCache.allAppointments.filter(
-          apt => apt.id !== id
-        );
-      }
-    }
-    
-    try {
-      await crmAppointmentService.cancelAppointment(id);
-      // Add to cancelled list for display in Cancelled Appointments section (patient name + status)
-      const cancelledApt = appointmentToDelete
-        ? { ...appointmentToDelete, status: 'Cancelled' as const }
-        : null;
-      if (cancelledApt) {
-        setCancelledAppointments(prev => [cancelledApt, ...prev]);
-      }
-      toast.success('Appointment cancelled');
-      
-      // Reset refs to force refresh
       lastSelectedDate.current = '';
       lastLoadedMonth.current = '';
-      
+      toast.success('Appointment cancelled');
       await loadAppointmentsForDate(false);
       await loadMonthAppointments(false);
     } catch (error) {

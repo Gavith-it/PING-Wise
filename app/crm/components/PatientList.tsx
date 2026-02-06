@@ -16,6 +16,8 @@ interface PatientListProps {
   onNextPage: () => void;
   onPreviousPage: () => void;
   getStatusColor: (status: string) => string;
+  /** Patient IDs that have an active appointment; used to show "Booked" only when an appointment exists */
+  patientIdsWithActiveAppointments?: Set<string>;
 }
 
 function PatientList({ 
@@ -28,7 +30,8 @@ function PatientList({
   onCardClick, 
   onNextPage,
   onPreviousPage,
-  getStatusColor 
+  getStatusColor,
+  patientIdsWithActiveAppointments = new Set(),
 }: PatientListProps) {
   // Only show pagination if there are multiple pages
   const showPagination = totalPages > 1;
@@ -37,14 +40,21 @@ function PatientList({
     <>
       {/* Patient List */}
       <div className="space-y-1.5 md:space-y-2 pb-4">
-        {patients.map((patient) => (
-          <PatientCard
-            key={patient.id}
-            patient={patient}
-            onClick={() => onCardClick(patient)}
-            getStatusColor={getStatusColor}
-          />
-        ))}
+        {patients.map((patient) => {
+          const hasActiveAppointment = patientIdsWithActiveAppointments.has(String(patient.id));
+          const displayStatus = (patient.status || '').toLowerCase() === 'booked' && !hasActiveAppointment
+            ? 'active'
+            : (patient.status ?? '');
+          return (
+            <PatientCard
+              key={patient.id}
+              patient={patient}
+              onClick={() => onCardClick(patient)}
+              getStatusColor={getStatusColor}
+              displayStatus={displayStatus}
+            />
+          );
+        })}
       </div>
 
       {/* Pagination Controls */}

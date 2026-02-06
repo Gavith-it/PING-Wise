@@ -12,11 +12,12 @@ export default function BottomNav() {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
+  // Order: mobile footer shows Appointments before Campaigns; desktop uses Header nav (unchanged)
   const menuItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/crm', icon: Users, label: 'CRM' },
-    { path: '/campaigns', icon: Megaphone, label: 'Campaigns' },
     { path: '/appointments', icon: Calendar, label: 'Appointments' },
+    { path: '/campaigns', icon: Megaphone, label: 'Campaigns' },
     { path: '/team', icon: UserCheck, label: 'Team' },
   ];
 
@@ -105,18 +106,19 @@ export default function BottomNav() {
         finalVisibility ? 'translate-y-0' : 'translate-y-full'
       }`}
     >
-      <div className="flex items-center justify-between px-2 py-1.5 gap-1">
+      <div className="flex items-center justify-between px-2 py-1.5 gap-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
-          
+          const isCampaigns = item.path === '/campaigns';
           return (
             <Link
               key={item.path}
               href={item.path}
               prefetch={true}
               className={`flex flex-col items-center justify-center py-1 rounded-lg transition-all duration-200 ease-in-out flex-1 focus:outline-none focus:ring-0 active:bg-transparent ${
-                  active
+                  isCampaigns ? 'ml-2' : ''
+                } ${active
                     ? 'text-primary'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}

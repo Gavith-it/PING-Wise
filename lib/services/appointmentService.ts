@@ -5,6 +5,7 @@
  * This allows the Appointments page to use the external Appointment API while maintaining compatibility
  */
 
+import { format } from 'date-fns';
 import { appointmentApi } from './appointmentApi';
 import { crmAppointmentToAppointment, appointmentToCrmAppointment, crmAppointmentsToAppointments } from '@/lib/utils/appointmentAdapter';
 import { Appointment, CreateAppointmentRequest, ApiResponse } from '@/types';
@@ -141,12 +142,25 @@ export const crmAppointmentService = {
   },
 
   /**
-   * Cancel/Delete appointment
+   * Cancel appointment via PUT (set status to Cancelled). Same as follow-up: PUT with status change. Does not DELETE; cancelled appointments persist and are visible across the app.
    */
   async cancelAppointment(id: string): Promise<ApiResponse> {
     try {
-      await appointmentApi.deleteAppointment(id);
-      
+      const { data: appointment } = await this.getAppointment(id);
+      if (!appointment) throw new Error('Appointment not found');
+      const dateStr = appointment.date instanceof Date ? format(appointment.date, 'yyyy-MM-dd') : String(appointment.date);
+      const doctorId = typeof appointment.doctor === 'object' && appointment.doctor !== null ? (appointment.doctor as { id?: string }).id : appointment.doctor;
+      const fullData: Partial<CreateAppointmentRequest> = {
+        patient: typeof appointment.patient === 'object' && appointment.patient !== null ? (appointment.patient as { id: string }).id : appointment.patient,
+        doctor: doctorId || '',
+        date: dateStr,
+        time: appointment.time,
+        status: 'Cancelled',
+        type: appointment.type,
+        notes: appointment.notes,
+        reason: appointment.reason,
+      };
+      await appointmentApi.updateAppointment(id, appointmentToCrmAppointment(fullData));
       return {
         success: true,
         message: 'Appointment cancelled successfully',

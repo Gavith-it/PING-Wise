@@ -95,6 +95,12 @@ export default function AppointmentsPage() {
     const extra = cancelledForDate.filter(a => !ids.has(a.id));
     const merged = [...filteredAppointments, ...extra];
     merged.sort((a, b) => {
+      // Show non-completed (Confirmed, Pending) first; Completed last
+      const aCompleted = a.status === 'Completed';
+      const bCompleted = b.status === 'Completed';
+      if (aCompleted && !bCompleted) return 1;
+      if (!aCompleted && bCompleted) return -1;
+      // Same group: sort by time
       const timeA = a.time || '';
       const timeB = b.time || '';
       return timeA.localeCompare(timeB);

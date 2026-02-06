@@ -43,6 +43,31 @@ export function invalidateDoctorsCache(): void {
   formDataCache.timestamp = 0;
 }
 
+const FORM_CACHE_PATIENTS_UPDATED = 'formDataCachePatientsUpdated';
+
+// Merge API patients with any patients currently in cache that are not in API response
+// (e.g. newly created patient added via addPatientToFormCache) so they appear immediately
+function mergePatientsIntoCache(apiPatients: Patient[]): void {
+  const apiIds = new Set(apiPatients.map(p => String(p.id)));
+  const onlyInCache = formDataCache.patients.filter(p => !apiIds.has(String(p.id)));
+  formDataCache.patients = [...apiPatients, ...onlyInCache];
+}
+
+// Add a newly created patient to form cache so appointment dropdown shows it immediately
+export function addPatientToFormCache(patient: Patient): void {
+  const id = patient?.id ?? (patient as any)?.customer_id;
+  if (id == null || id === '') return;
+  const normalized = { ...patient, id: String(id) };
+  const exists = formDataCache.patients.some(p => String(p.id) === String(id));
+  if (!exists) {
+    formDataCache.patients = [...formDataCache.patients, normalized];
+    formDataCache.timestamp = Date.now();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(FORM_CACHE_PATIENTS_UPDATED));
+    }
+  }
+}
+
 // Export function to preload and cache form data
 export async function preloadFormData() {
   // Prevent duplicate preload calls
@@ -64,7 +89,7 @@ export async function preloadFormData() {
         crmPatientService.getPatients({ limit: 50 }), // Use CRM patient service to match CRM page
         teamApi.getTeams(), // Use real team API to get all teams
       ]);
-      formDataCache.patients = patientsRes.data || [];
+      mergePatientsIntoCache(patientsRes.data || []);
       
       // Convert CrmTeam to User and filter for doctors
       const allUsers = crmTeamsToUsers(teamsData);
@@ -193,13 +218,13 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
         return isDoctor && isNotOnLeave && isNotInactive;
       });
       
-      // Update cache
-      formDataCache.patients = newPatients;
+      // Update cache: merge so newly added patients (e.g. from dashboard) are not lost
+      mergePatientsIntoCache(newPatients);
       formDataCache.doctors = newDoctors;
       formDataCache.timestamp = Date.now();
       
-      // Update state
-      setPatients(newPatients);
+      // Update state from cache so merged list (including newly added patient) is shown
+      setPatients(formDataCache.patients);
       setDoctors(newDoctors);
     } catch (error) {
       toast.error('Failed to load form data');
@@ -254,7 +279,13 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
       setLoadingPatients(false); // Ensure loading is false when using cache
       setLoadingDoctors(false); // Ensure loading is false when using cache
       hasLoadedRef.current = true;
-      // DO NOT make any API calls - use cached data
+      // Re-sync from cache after a tick so we pick up any patient just added (e.g. from dashboard quick action)
+      const t = setTimeout(() => {
+        if (formDataCache.patients.length > 0) {
+          setPatients(formDataCache.patients);
+        }
+      }, 0);
+      return () => clearTimeout(t);
     } else {
       // Truly no cache - only then load with API calls
       hasLoadedRef.current = true;
@@ -262,6 +293,17 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointment]);
+
+  // When a new patient is added to form cache (e.g. from dashboard), refresh the dropdown list
+  useEffect(() => {
+    const handleCacheUpdated = () => {
+      if (formDataCache.patients.length > 0) {
+        setPatients(formDataCache.patients);
+      }
+    };
+    window.addEventListener(FORM_CACHE_PATIENTS_UPDATED, handleCacheUpdated);
+    return () => window.removeEventListener(FORM_CACHE_PATIENTS_UPDATED, handleCacheUpdated);
+  }, []);
 
   useEffect(() => {
     if (appointment) {

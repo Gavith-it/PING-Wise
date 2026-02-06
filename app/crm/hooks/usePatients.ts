@@ -27,6 +27,16 @@ export function invalidatePatientsCache(): void {
   patientsCache.timestamp = 0;
 }
 
+// Add a newly created patient to CRM cache so list shows it immediately when navigating to CRM
+export function addPatientToPatientsCache(patient: Patient): void {
+  if (!patient?.id) return;
+  const exists = patientsCache.allPatients.some(p => String(p.id) === String(patient.id));
+  if (!exists) {
+    patientsCache.allPatients = [patient, ...patientsCache.allPatients];
+    patientsCache.timestamp = Date.now();
+  }
+}
+
 interface UsePatientsParams {
   debouncedSearchTerm: string;
   statusFilter: string;
@@ -42,6 +52,8 @@ interface UsePatientsReturn {
   hasPrevious: boolean;
   page: number;
   totalPages: number;
+  /** Patient IDs that have at least one active (non-cancelled) appointment. Used to show "Booked" only when an appointment exists. */
+  patientIdsWithActiveAppointments: Set<string>;
   loadPatients: (reset?: boolean, skipLoadingSpinner?: boolean) => Promise<void>;
   handleNextPage: () => void;
   handlePreviousPage: () => void;
@@ -61,6 +73,8 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
   const [hasMore, setHasMore] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
+  /** Patient IDs that have at least one active (non-cancelled) appointment. Booked status is only shown when patient is in this set. */
+  const [patientIdsWithActiveAppointments, setPatientIdsWithActiveAppointments] = useState<Set<string>>(new Set());
   const hasInitialized = useRef(false);
   const isLoadingRef = useRef(false);
 
@@ -174,13 +188,15 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
   const filterPatients = useCallback((patientsToFilter: Patient[]): Patient[] => {
     let filtered = [...patientsToFilter];
 
-    // Status filter - normalize both sides for comparison
+    // Status filter - use effective status (Booked only when patient has active appointment)
     if (statusFilter !== 'all') {
-      // Normalize filter value to standardized format for comparison
       const normalizedFilter = normalizeCustomerStatus(statusFilter);
       filtered = filtered.filter(p => {
-        // Normalize patient status to standardized format for comparison
-        const normalizedPatientStatus = normalizeCustomerStatus(p.status);
+        const hasActiveAppointment = patientIdsWithActiveAppointments.has(String(p.id));
+        const effectiveStatus = (p.status || '').toLowerCase() === 'booked' && !hasActiveAppointment
+          ? 'active'
+          : (p.status || '');
+        const normalizedPatientStatus = normalizeCustomerStatus(effectiveStatus);
         return normalizedPatientStatus === normalizedFilter;
       });
     }
@@ -239,7 +255,31 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     }
 
     return filtered;
-  }, [debouncedSearchTerm, statusFilter, advancedFilters]);
+  }, [debouncedSearchTerm, statusFilter, advancedFilters, patientIdsWithActiveAppointments]);
+
+  // Fetch patient IDs that have at least one active (non-cancelled) appointment
+  // So we only show "Booked" when an appointment actually exists
+  useEffect(() => {
+    if (allPatients.length === 0) return;
+    let cancelled = false;
+    crmAppointmentService.getAppointments({})
+      .then((res) => {
+        if (cancelled) return;
+        const list = res.data || [];
+        const ids = new Set<string>();
+        for (const apt of list) {
+          const status = (apt.status || '').toLowerCase();
+          if (status === 'cancelled' || status === 'canceled') continue;
+          const pid = typeof apt.patient === 'string' ? apt.patient : (apt.patient as { id?: string })?.id;
+          if (pid) ids.add(String(pid));
+        }
+        setPatientIdsWithActiveAppointments(ids);
+      })
+      .catch(() => {
+        if (!cancelled) setPatientIdsWithActiveAppointments(new Set());
+      });
+    return () => { cancelled = true; };
+  }, [allPatients.length]);
 
   // Load all patients on initial mount or when cache is invalid
   useEffect(() => {
@@ -312,32 +352,16 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    // Find the patient to check their status
+    // Check if patient has active appointments (same source as "Booked" display)
+    const hasAppointments = patientIdsWithActiveAppointments.has(String(id));
     const patient = allPatients.find(p => p.id === id);
     
-    // Check if patient has appointments based on status
-    // "booked" and "followup"/"follow-up" statuses indicate the patient has appointments scheduled
-    // "active" and "inactive" statuses indicate no appointments
-    let hasAppointments = false;
-    
     if (patient) {
-      const status = (patient.status || '').toLowerCase();
-      // Normalize status variations
-      const normalizedStatus = status === 'follow-up' || status === 'followup' ? 'followup' : status;
-      
-      // Statuses that indicate appointments: "booked", "followup"
-      hasAppointments = normalizedStatus === 'booked' || normalizedStatus === 'followup';
-      
-      console.log('[Delete Patient] Status check:', {
+      console.log('[Delete Patient] Appointments check:', {
         patientId: id,
         patientName: patient.name,
-        status: patient.status,
-        normalizedStatus,
-        hasAppointments
+        hasAppointments,
       });
-    } else {
-      console.warn('[Delete Patient] Patient not found in list, assuming no appointments');
-      hasAppointments = false;
     }
 
     // Show appropriate confirmation message based on patient status
@@ -345,11 +369,6 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     const confirmationMessage = hasAppointments
       ? 'This patient has appointments scheduled. Are you sure you want to delete? The appointments of this patient will be deleted as well.'
       : 'Are you sure you want to delete this patient?';
-
-    console.log('[Delete Patient] Showing confirmation:', {
-      hasAppointments,
-      message: confirmationMessage
-    });
 
     if (!window.confirm(confirmationMessage)) {
       return;
@@ -469,7 +488,7 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
                           'Failed to delete patient. The patient was NOT deleted from the database.';
       toast.error(errorMessage);
     }
-  }, [allPatients, loadAllPatients]);
+  }, [allPatients, loadAllPatients, patientIdsWithActiveAppointments]);
 
   const handlePatientCreated = useCallback((newPatient?: Patient) => {
     if (newPatient) {
@@ -531,6 +550,7 @@ export function usePatients({ debouncedSearchTerm, statusFilter, advancedFilters
     hasPrevious,
     page,
     totalPages,
+    patientIdsWithActiveAppointments,
     loadPatients,
     handleNextPage,
     handlePreviousPage,

@@ -103,7 +103,26 @@ export default function TeamPage() {
       const data = await teamApi.getTeamDashboard().catch(() => ({}));
       setDashboardData(data);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || error.message || 'Failed to delete team member');
+      const status = error.response?.status;
+      const data = error.response?.data;
+      let message = 'Failed to delete team member.';
+      if (status === 500 && data) {
+        const serverMsg = typeof data === 'string' ? data : (data.message || data.error || data.details);
+        if (serverMsg && typeof serverMsg === 'string' && serverMsg.length < 120) {
+          message = `Deletion failed: ${serverMsg}`;
+        } else {
+          message = 'Deletion failed: The server could not remove this team member (it may be linked to other data). Please try again later or contact support.';
+        }
+      } else if (status === 403 || status === 401) {
+        message = 'You do not have permission to delete this team member.';
+      } else if (status === 404) {
+        message = 'Team member not found. It may have already been deleted.';
+      } else if (data?.message) {
+        message = data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      toast.error(message, { duration: 6000 });
     }
   };
 

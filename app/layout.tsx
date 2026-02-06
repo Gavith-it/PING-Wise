@@ -7,6 +7,7 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { FontSizeProvider } from '@/contexts/FontSizeContext';
 import { FooterVisibilityProvider } from '@/contexts/FooterVisibilityContext';
+import { MenuProvider } from '@/contexts/MenuContext';
 import NotificationToast from '@/components/NotificationToast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -38,34 +39,36 @@ export default function RootLayout({
               <AuthProvider>
                 <NotificationProvider>
                   <FooterVisibilityProvider>
-                    {children}
-                  <NotificationToast />
-                  <Toaster
-                    position="top-right"
-                    toastOptions={{
-                      duration: 3000,
-                      style: {
-                        background: 'var(--toast-bg, #fff)',
-                        color: 'var(--toast-color, #333)',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                      },
-                      className: 'dark:!bg-gray-800 dark:!text-gray-100',
-                      success: {
-                        iconTheme: {
-                          primary: '#1A3E9E',
-                          secondary: '#fff',
-                        },
-                      },
-                      error: {
-                        iconTheme: {
-                          primary: '#ef4444',
-                          secondary: '#fff',
-                        },
-                      },
-                    }}
-                  />
-                  </FooterVisibilityProvider>
+                    <MenuProvider>
+                      {children}
+                      <NotificationToast />
+                      <Toaster
+                        position="top-right"
+                        toastOptions={{
+                          duration: 3000,
+                          style: {
+                            background: 'var(--toast-bg, #fff)',
+                            color: 'var(--toast-color, #333)',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          },
+                          className: 'dark:!bg-gray-800 dark:!text-gray-100',
+                          success: {
+                            iconTheme: {
+                              primary: '#1A3E9E',
+                              secondary: '#fff',
+                            },
+                          },
+                          error: {
+                            iconTheme: {
+                              primary: '#ef4444',
+                              secondary: '#fff',
+                            },
+                          },
+                        }}
+                      />
+                    </MenuProvider>
+                </FooterVisibilityProvider>
                 </NotificationProvider>
               </AuthProvider>
             </FontSizeProvider>

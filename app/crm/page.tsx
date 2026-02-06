@@ -77,6 +77,7 @@ export default function CRMPage() {
     hasPrevious,
     page,
     totalPages,
+    patientIdsWithActiveAppointments,
     handleNextPage,
     handlePreviousPage,
     handleDelete,
@@ -249,6 +250,7 @@ export default function CRMPage() {
                 onNextPage={handleNextPage}
                 onPreviousPage={handlePreviousPage}
                 getStatusColor={getStatusColor}
+                patientIdsWithActiveAppointments={patientIdsWithActiveAppointments}
               />
             )}
           </div>

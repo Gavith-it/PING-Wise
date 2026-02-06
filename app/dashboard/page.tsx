@@ -9,6 +9,8 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
+import { addPatientToFormCache } from '@/components/modals/AppointmentModal';
+import { addPatientToPatientsCache } from '@/app/crm/hooks/usePatients';
 import { cn } from '@/lib/utils';
 import { useDashboardStats } from './hooks/useDashboardStats';
 import { useTodayAppointments } from './hooks/useTodayAppointments';
@@ -173,17 +175,13 @@ export default function DashboardPage() {
       title: 'New Patient Registered',
       message: 'A new patient has been successfully added to the system.',
     });
-    
-    // Invalidate CRM cache so the new patient appears in CRM page immediately
-    if (typeof window !== 'undefined') {
-      // Import and call invalidatePatientsCache to refresh CRM page cache
-      import('@/app/crm/hooks/usePatients').then((module) => {
-        if (module.invalidatePatientsCache) {
-          module.invalidatePatientsCache();
-        }
-      });
+    // Add new patient to caches so it appears immediately in appointment dropdown and CRM list
+    const id = createdPatient?.id ?? (createdPatient as any)?.customer_id;
+    if (id != null && id !== '') {
+      const normalized = { ...createdPatient, id: String(id) };
+      addPatientToFormCache(normalized);
+      addPatientToPatientsCache(normalized);
     }
-    
     loadDashboardData();
     loadAppointments();
   }, [addNotification, loadDashboardData, loadAppointments]);

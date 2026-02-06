@@ -155,9 +155,9 @@ export default function Header() {
           </div>
 
           <button
-            onClick={() => router.push(`/guide?page=${pathname}`)}
+            onClick={() => router.push(`/guide?page=${encodeURIComponent(pathname || '/dashboard')}`)}
             className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-0 active:bg-transparent active:text-gray-600 dark:active:text-gray-300 active:shadow-none"
-            title="Help & User Guide"
+            title={pathname ? `Help for this page (${pathname})` : 'Help & User Guide'}
           >
             <HelpCircle className="w-4 h-4 md:w-5 md:h-5" />
           </button>

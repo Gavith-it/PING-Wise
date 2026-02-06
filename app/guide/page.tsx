@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Home, Users, Calendar, Megaphone, UserCheck, FileText, CalendarPlus, UserPlus, Bell, Settings, ArrowLeft, CheckCircle2, Clock, DollarSign, Activity } from 'lucide-react';
+import { Home, Users, Calendar, Megaphone, UserCheck, FileText, CalendarPlus, UserPlus, Bell, Settings, ArrowLeft, CheckCircle2, Clock, DollarSign, Activity, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
@@ -40,54 +40,54 @@ const dashboardGuide: GuideSection[] = [
     items: [
       {
         title: 'Total Bookings',
-        description: 'Shows the total number of appointments scheduled. Includes trend indicators showing increase or decrease.',
+        description: 'Shows the total number of appointments scheduled.',
         icon: CalendarPlus
       },
       {
         title: 'Total Patients',
-        description: 'Displays the count of all registered patients in the system with trend information.',
+        description: 'Displays the count of all registered patients in the system.',
         icon: Users
       },
       {
-        title: 'Follow-ups',
+        title: 'Total Follow-Up',
         description: 'Shows the number of patients requiring follow-up appointments.',
         icon: Clock
       },
       {
         title: 'Revenue',
-        description: 'Displays total revenue in currency format (e.g., $24.5K) with trend indicators.',
+        description: 'Revenue card is currently shown as "Coming Soon". This feature will be available in a future update.',
         icon: DollarSign
       }
     ]
   },
   {
-    title: 'Patient Activity Chart',
+    title: 'Appointment overview',
     icon: Activity,
     items: [
       {
-        title: 'Donut Chart',
-        description: 'Interactive chart showing patient distribution by status (Active, Booked, Follow-up). Hover over segments to see specific values. The center displays the total count.',
+        title: 'Appointment status chart',
+        description: 'Pie chart showing appointment distribution by status (Confirmed, Completed, Cancelled, Pending). The center displays the total count. The legend on the right shows each status with count and percentage.',
         icon: Activity
       },
       {
         title: 'Legend',
-        description: 'The right side shows a legend with color-coded indicators for each patient status category.',
+        description: 'The right side shows a legend with color-coded indicators for each appointment status (Confirmed, Completed, Cancelled, Pending).',
         icon: CheckCircle2
       }
     ]
   },
   {
-    title: 'Today\'s Appointments',
+    title: 'Upcoming Appointment',
     icon: Calendar,
     items: [
       {
-        title: 'Appointment List',
-        description: 'View all appointments scheduled for today. Each card shows patient name, time, doctor, and status. Click on any appointment to view details.',
+        title: 'Appointment list',
+        description: 'View upcoming appointments. Each card shows patient name, time, doctor, and status.',
         icon: Calendar
       },
       {
         title: 'View All',
-        description: 'Click "View All" to navigate to the full appointments page with calendar view.',
+        description: 'Click "View All" to go to the full Appointments page with calendar view.',
         icon: ArrowLeft
       }
     ]
@@ -113,6 +113,11 @@ const patientsGuide: GuideSection[] = [
         title: 'Filter by Status',
         description: 'Filter patients by status: Active, Booked, Follow-up, or Inactive.',
         icon: Users
+      },
+      {
+        title: 'Bulk Upload',
+        description: 'Click the upload icon in the search bar to add many patients at once. Upload a CSV or Excel file (.csv, .xlsx, .xls) with patient data. Download the sample template to match the required columns, then upload your file.',
+        icon: Upload
       },
       {
         title: 'View Patient Details',
@@ -299,29 +304,49 @@ const commonGuide: GuideSection[] = [
   }
 ];
 
+/** Normalize path and return the main section for guide lookup (so sub-routes get the right guide) */
+function getSectionFromPathname(pathname: string): string {
+  const normalized = (pathname || '').trim().replace(/\/+$/, '') || '/';
+  if (normalized === '/') return '/dashboard';
+  if (normalized.startsWith('/dashboard')) return '/dashboard';
+  if (normalized.startsWith('/crm')) return '/crm';
+  if (normalized.startsWith('/appointments')) return '/appointments';
+  if (normalized.startsWith('/campaigns')) return '/campaigns';
+  if (normalized.startsWith('/team')) return '/team';
+  if (normalized.startsWith('/reports')) return '/reports';
+  if (normalized.startsWith('/settings')) return '/settings';
+  if (normalized.startsWith('/profile')) return '/profile';
+  if (normalized.startsWith('/guide')) return '/dashboard';
+  return '/dashboard';
+}
+
 function getPageGuide(pathname: string): GuideSection[] {
-  if (pathname === '/dashboard') return [...commonGuide, ...dashboardGuide];
-  if (pathname === '/crm') return [...commonGuide, ...patientsGuide];
-  if (pathname === '/appointments') return [...commonGuide, ...appointmentsGuide];
-  if (pathname === '/campaigns') return [...commonGuide, ...campaignsGuide];
-  if (pathname === '/team') return [...commonGuide, ...teamGuide];
-  if (pathname === '/reports') return [...commonGuide, ...reportsGuide];
-  return commonGuide;
+  const section = getSectionFromPathname(pathname);
+  if (section === '/dashboard') return [...commonGuide, ...dashboardGuide];
+  if (section === '/crm') return [...commonGuide, ...patientsGuide];
+  if (section === '/appointments') return [...commonGuide, ...appointmentsGuide];
+  if (section === '/campaigns') return [...commonGuide, ...campaignsGuide];
+  if (section === '/team') return [...commonGuide, ...teamGuide];
+  if (section === '/reports') return [...commonGuide, ...reportsGuide];
+  return [...commonGuide, ...dashboardGuide];
 }
 
 function GuideContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const currentPage = searchParams.get('page') || '/dashboard';
-  const guideSections = getPageGuide(currentPage);
+  const pageParam = searchParams.get('page') || '';
+  const currentSection = getSectionFromPathname(pageParam || '/dashboard');
+  const guideSections = getPageGuide(pageParam || '/dashboard');
 
   const getPageTitle = () => {
-    if (currentPage === '/dashboard') return 'Dashboard Guide';
-    if (currentPage === '/crm') return 'Patients Guide';
-    if (currentPage === '/appointments') return 'Appointments Guide';
-    if (currentPage === '/campaigns') return 'Campaigns Guide';
-    if (currentPage === '/team') return 'Team Guide';
-    if (currentPage === '/reports') return 'Reports Guide';
+    if (currentSection === '/dashboard') return 'Dashboard Guide';
+    if (currentSection === '/crm') return 'Patients (CRM) Guide';
+    if (currentSection === '/appointments') return 'Appointments Guide';
+    if (currentSection === '/campaigns') return 'Campaigns Guide';
+    if (currentSection === '/team') return 'Team Guide';
+    if (currentSection === '/reports') return 'Reports Guide';
+    if (currentSection === '/settings') return 'Settings Guide';
+    if (currentSection === '/profile') return 'Profile Guide';
     return 'User Guide';
   };
 
@@ -338,7 +363,7 @@ function GuideContent() {
           </button>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{getPageTitle()}</h1>
           <p className="text-sm md:text-base text-gray-600 mt-2">
-            Learn how to use all features and sections of PingWise
+            Help for this section — tips and steps for using {getPageTitle().replace(' Guide', '')}.
           </p>
         </div>
       </div>

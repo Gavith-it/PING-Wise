@@ -7,9 +7,11 @@ interface PatientCardProps {
   patient: Patient;
   onClick: () => void;
   getStatusColor: (status: string) => string;
+  /** When set, used for badge instead of patient.status (e.g. show Active when API says Booked but no appointment exists) */
+  displayStatus?: string;
 }
 
-function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
+function PatientCard({ patient, onClick, getStatusColor, displayStatus }: PatientCardProps) {
 
   // Generate initials if not present
   const getInitials = (name?: string) => {
@@ -99,16 +101,15 @@ function PatientCard({ patient, onClick, getStatusColor }: PatientCardProps) {
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 md:gap-2 flex-shrink-0 ml-1">
-          {/* Status Badge - Top Right */}
-          <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(patient.status)}`}>
+          {/* Status Badge - Top Right (use displayStatus when provided, e.g. Active when Booked but no appointment) */}
+          <span className={`text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 rounded-full border ${getStatusColor(displayStatus ?? patient.status ?? '')}`}>
             {(() => {
-              // Display status properly - handle 'follow-up' or 'followup' to show as 'FollowUp'
-              const status = patient.status;
+              const status = displayStatus ?? patient.status ?? '';
               const normalized = status?.toLowerCase() || '';
               if (normalized === 'follow-up' || normalized === 'followup') {
                 return 'FollowUp';
               }
-              // For other statuses, capitalize first letter
+              if (!status) return 'Active';
               return status.charAt(0).toUpperCase() + status.slice(1);
             })()}
           </span>

@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
+import { useMenu } from '@/contexts/MenuContext';
 
 interface FAQItem {
   question: string;
@@ -47,7 +47,7 @@ const faqs: FAQItem[] = [
 ];
 
 export default function FAQsPage() {
-  const router = useRouter();
+  const { openMenu } = useMenu();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggleFAQ = (index: number) => {
@@ -61,8 +61,9 @@ export default function FAQsPage() {
           {/* Header */}
           <div className="flex items-center space-x-3 mb-4 md:mb-6">
             <button
-              onClick={() => router.back()}
+              onClick={openMenu}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Open menu"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>

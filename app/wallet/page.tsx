@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, Wallet } from 'lucide-react';
 import { walletService } from '@/lib/services/api';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
+import { useMenu } from '@/contexts/MenuContext';
 
 interface Transaction {
   id: string;
@@ -18,7 +18,7 @@ interface Transaction {
 }
 
 export default function WalletPage() {
-  const router = useRouter();
+  const { openMenu } = useMenu();
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,8 +66,9 @@ export default function WalletPage() {
           {/* Header */}
           <div className="flex items-center space-x-3 md:space-x-4">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={openMenu}
               className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+              aria-label="Open menu"
             >
               <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
             </button>

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect, startTransition } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Menu, X, User, Settings as SettingsIcon, Moon, Sun, HelpCircle, LogOut, ChevronRight, Wallet, Sparkles, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFooterVisibility } from '@/contexts/FooterVisibilityContext';
+import { useMenu } from '@/contexts/MenuContext';
+import { MENU_DEST_KEY } from '@/contexts/MenuContext';
 import ToggleSwitch from '@/components/ui/toggle-switch';
 import { walletService } from '@/lib/services/api';
 
@@ -21,11 +23,10 @@ const walletBalanceCache: {
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function SettingsMenu() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setOpen: setIsOpen, closeMenu } = useMenu();
   const [isMounted, setIsMounted] = useState(false);
   const [shouldShow, setShouldShow] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
-  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   // Initialize from cache if available (from dashboard page)
   const [walletBalance, setWalletBalance] = useState<number>(() => {
     const cacheAge = Date.now() - walletBalanceCache.timestamp;
@@ -141,29 +142,26 @@ export default function SettingsMenu() {
     setFooterVisible(!isOpen);
   }, [isOpen, setFooterVisible]);
 
-  // Close menu when navigation completes (pathname changes)
+  // Close menu when navigation completes (pathname changes to the target).
+  const prevPathRef = useRef(pathname);
   useEffect(() => {
-    if (navigatingTo && pathname === navigatingTo) {
-      // Navigation completed, close menu
-      setIsOpen(false);
-      setNavigatingTo(null);
-    }
-  }, [pathname, navigatingTo]);
+    if (prevPathRef.current === pathname) return;
+    prevPathRef.current = pathname;
+    setIsOpen(false);
+  }, [pathname, setIsOpen]);
 
   const handleNavigation = (path: string) => {
-    // Get current path to check if we need to navigate
     const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
-    
-    // Only navigate if we're not already on that path
     if (currentPath !== path) {
-      // Set navigating state - this keeps menu open during navigation
-      setNavigatingTo(path);
-      
-      // Navigate immediately - menu stays open until navigation completes
-      // This prevents showing the old page (dashboard) while menu closes
-      router.replace(path);
+      // Close menu immediately so it doesn't stay open on the new page
+      setIsOpen(false);
+      // Mark that we're navigating TO this path from the menu; Layout will push a duplicate
+      // history entry so the first back press only opens the menu (no navigation).
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(MENU_DEST_KEY, path);
+      }
+      router.push(path);
     } else {
-      // Already on the path, just close menu
       setIsOpen(false);
     }
   };
