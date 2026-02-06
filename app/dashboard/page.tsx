@@ -9,7 +9,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PrivateRoute from '@/components/PrivateRoute';
-import { addPatientToFormCache } from '@/components/modals/AppointmentModal';
+import { addPatientToFormCache, refreshFormCachePatientsFromApi } from '@/components/modals/AppointmentModal';
 import { addPatientToPatientsCache } from '@/app/crm/hooks/usePatients';
 import { cn } from '@/lib/utils';
 import { useDashboardStats } from './hooks/useDashboardStats';
@@ -182,6 +182,8 @@ export default function DashboardPage() {
       addPatientToFormCache(normalized);
       addPatientToPatientsCache(normalized);
     }
+    // Refresh form cache from patients API so Schedule New Appointment list shows the new patient immediately
+    refreshFormCachePatientsFromApi().catch(() => {});
     loadDashboardData();
     loadAppointments();
   }, [addNotification, loadDashboardData, loadAppointments]);

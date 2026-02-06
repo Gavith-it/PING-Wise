@@ -68,6 +68,20 @@ export function addPatientToFormCache(patient: Patient): void {
   }
 }
 
+// Refresh form cache patients from API so appointment dropdown shows latest list (e.g. after adding patient from Dashboard)
+export async function refreshFormCachePatientsFromApi(): Promise<void> {
+  try {
+    const patientsRes = await crmPatientService.getPatients({ limit: 50 });
+    mergePatientsIntoCache(patientsRes.data || []);
+    formDataCache.timestamp = Date.now();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(FORM_CACHE_PATIENTS_UPDATED));
+    }
+  } catch (e) {
+    console.warn('Failed to refresh form cache patients', e);
+  }
+}
+
 // Export function to preload and cache form data
 export async function preloadFormData() {
   // Prevent duplicate preload calls
