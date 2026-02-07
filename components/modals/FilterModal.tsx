@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Filter } from 'lucide-react';
+import { X, Filter, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface FilterModalProps {
@@ -45,6 +45,16 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <style dangerouslySetInnerHTML={{ __html: `
+        input.filter-date-input::-webkit-calendar-picker-indicator {
+          opacity: 0;
+          position: absolute;
+          right: 0;
+          width: 100%;
+          height: 100%;
+          cursor: pointer;
+        }
+      `}} />
       <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
@@ -79,86 +89,106 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
               </select>
             </div>
 
-            {/* Date Range */}
+            {/* Date Range - same layout as before (side-by-side), paddingRight keeps icon from covering value */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Last Visit Date Range
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-2 gap-3 min-w-0">
+                <div className="min-w-0">
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={filters.dateRange.start}
-                    onChange={(e) => {
-                      const dateStr = e.target.value;
-                      setFilters({
-                        ...filters,
-                        dateRange: { ...filters.dateRange, start: dateStr },
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
-                    style={{ cursor: 'pointer' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={filters.dateRange.start}
+                      onChange={(e) => {
+                        const dateStr = e.target.value;
+                        setFilters({
+                          ...filters,
+                          dateRange: { ...filters.dateRange, start: dateStr },
+                        });
+                      }}
+                      className="filter-date-input w-full min-w-0 pl-2.5 pr-10 py-2 text-[11px] sm:text-xs border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer box-border [color-scheme:light] dark:[color-scheme:dark]"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800 dark:text-gray-200">
+                      <Calendar className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={filters.dateRange.end}
-                    onChange={(e) => {
-                      const dateStr = e.target.value;
-                      setFilters({
-                        ...filters,
-                        dateRange: { ...filters.dateRange, end: dateStr },
-                      });
-                    }}
-                    min={filters.dateRange.start || undefined}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
-                    style={{ cursor: 'pointer' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={filters.dateRange.end}
+                      onChange={(e) => {
+                        const dateStr = e.target.value;
+                        setFilters({
+                          ...filters,
+                          dateRange: { ...filters.dateRange, end: dateStr },
+                        });
+                      }}
+                      min={filters.dateRange.start || undefined}
+                      className="filter-date-input w-full min-w-0 pl-2.5 pr-10 py-2 text-[11px] sm:text-xs border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer box-border [color-scheme:light] dark:[color-scheme:dark]"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800 dark:text-gray-200">
+                      <Calendar className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Next Appointment Date Range */}
+            {/* Next Appointment Date Range - same layout, icon on far right so value visible */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Next Appointment Date Range
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-2 gap-3 min-w-0">
+                <div className="min-w-0">
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={filters.nextAppointmentDateRange.start}
-                    onChange={(e) => {
-                      const dateStr = e.target.value;
-                      setFilters({
-                        ...filters,
-                        nextAppointmentDateRange: { ...filters.nextAppointmentDateRange, start: dateStr },
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
-                    style={{ cursor: 'pointer' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={filters.nextAppointmentDateRange.start}
+                      onChange={(e) => {
+                        const dateStr = e.target.value;
+                        setFilters({
+                          ...filters,
+                          nextAppointmentDateRange: { ...filters.nextAppointmentDateRange, start: dateStr },
+                        });
+                      }}
+                      className="filter-date-input w-full min-w-0 pl-2.5 pr-10 py-2 text-[11px] sm:text-xs border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer box-border [color-scheme:light] dark:[color-scheme:dark]"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800 dark:text-gray-200">
+                      <Calendar className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={filters.nextAppointmentDateRange.end}
-                    onChange={(e) => {
-                      const dateStr = e.target.value;
-                      setFilters({
-                        ...filters,
-                        nextAppointmentDateRange: { ...filters.nextAppointmentDateRange, end: dateStr },
-                      });
-                    }}
-                    min={filters.nextAppointmentDateRange.start || undefined}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
-                    style={{ cursor: 'pointer' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={filters.nextAppointmentDateRange.end}
+                      onChange={(e) => {
+                        const dateStr = e.target.value;
+                        setFilters({
+                          ...filters,
+                          nextAppointmentDateRange: { ...filters.nextAppointmentDateRange, end: dateStr },
+                        });
+                      }}
+                      min={filters.nextAppointmentDateRange.start || undefined}
+                      className="filter-date-input w-full min-w-0 pl-2.5 pr-10 py-2 text-[11px] sm:text-xs border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer box-border [color-scheme:light] dark:[color-scheme:dark]"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800 dark:text-gray-200">
+                      <Calendar className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

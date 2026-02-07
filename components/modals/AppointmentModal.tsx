@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, Calendar, Clock } from 'lucide-react';
 import { crmAppointmentService } from '@/lib/services/appointmentService';
 import { crmPatientService } from '@/lib/services/crmPatientService';
 import { teamApi } from '@/lib/services/teamApi';
@@ -796,24 +796,40 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            {/* Date and Time: single custom icon on far right; native browser icon hidden */}
+            <style dangerouslySetInnerHTML={{ __html: `
+              input.appointment-date-time-input::-webkit-calendar-picker-indicator {
+                opacity: 0;
+                position: absolute;
+                right: 0;
+                width: 100%;
+                height: 100%;
+                cursor: pointer;
+              }
+            `}} />
+            <div className="grid grid-cols-[1.2fr_0.8fr] sm:grid-cols-2 gap-3 min-w-0">
+              <div className="min-w-0 overflow-hidden">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Date *
                 </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  onClick={(e) => e.currentTarget.showPicker?.()}
-                  min={format(new Date(), 'yyyy-MM-dd')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
-                  style={{ cursor: 'pointer' }}
-                />
+                <div className="relative">
+                  <input
+                    type="date"
+                    required
+                    value={formData.date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
+                    min={format(new Date(), 'yyyy-MM-dd')}
+                    className="appointment-date-time-input w-full min-w-0 py-2 pl-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs sm:text-sm cursor-pointer box-border [color-scheme:light] dark:[color-scheme:dark]"
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800 dark:text-gray-200">
+                    <Calendar className="w-4 h-4" />
+                  </span>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="min-w-0 overflow-hidden">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Time *
                 </label>
                 <div className="relative">
@@ -823,9 +839,12 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                     value={formData.time}
                     onChange={handleFieldChange('time')}
                     onClick={(e) => e.currentTarget.showPicker?.()}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 cursor-pointer"
+                    className="appointment-date-time-input w-full min-w-0 py-2 pl-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs sm:text-sm cursor-pointer box-border [color-scheme:light] dark:[color-scheme:dark]"
                     style={{ cursor: 'pointer' }}
                   />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-800 dark:text-gray-200">
+                    <Clock className="w-4 h-4" />
+                  </span>
                 </div>
               </div>
             </div>
