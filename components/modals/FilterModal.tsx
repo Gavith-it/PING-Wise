@@ -54,6 +54,17 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
           height: 100%;
           cursor: pointer;
         }
+        /* iOS/Safari: enforce padding so date value never overlaps/cuts; same as Android */
+        input.filter-date-input {
+          padding-right: 2.75rem !important;
+          box-sizing: border-box;
+        }
+        @media (max-width: 640px) {
+          input.filter-date-input {
+            font-size: 12px;
+            -webkit-text-size-adjust: 100%;
+          }
+        }
       `}} />
       <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="p-6">

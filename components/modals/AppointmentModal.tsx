@@ -796,7 +796,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
               />
             </div>
 
-            {/* Date and Time: single custom icon on far right; native browser icon hidden */}
+            {/* Date and Time: single custom icon on far right; native browser icon hidden; iOS/Safari fixes for no overlap/cut */}
             <style dangerouslySetInnerHTML={{ __html: `
               input.appointment-date-time-input::-webkit-calendar-picker-indicator {
                 opacity: 0;
@@ -806,9 +806,20 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 height: 100%;
                 cursor: pointer;
               }
+              /* iOS/Safari: enforce padding so value never overlaps icon; same as Android */
+              input.appointment-date-time-input {
+                padding-right: 2.75rem !important;
+                box-sizing: border-box;
+              }
+              @media (max-width: 640px) {
+                input.appointment-date-time-input {
+                  font-size: 14px;
+                  -webkit-text-size-adjust: 100%;
+                }
+              }
             `}} />
-            <div className="grid grid-cols-[1.2fr_0.8fr] sm:grid-cols-2 gap-3 min-w-0">
-              <div className="min-w-0 overflow-hidden">
+            <div className="grid grid-cols-[minmax(140px,1.2fr)_minmax(90px,0.8fr)] sm:grid-cols-2 gap-3 min-w-0">
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Date *
                 </label>
@@ -828,7 +839,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                   </span>
                 </div>
               </div>
-              <div className="min-w-0 overflow-hidden">
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Time *
                 </label>
