@@ -796,7 +796,7 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
               />
             </div>
 
-            {/* Date and Time: single custom icon on far right; native browser icon hidden; iOS/Safari fixes for no overlap/cut */}
+            {/* Date and Time: single custom icon on far right; native browser icon hidden; iOS-only extra padding/font so value never overlaps on iPhone */}
             <style dangerouslySetInnerHTML={{ __html: `
               input.appointment-date-time-input::-webkit-calendar-picker-indicator {
                 opacity: 0;
@@ -806,7 +806,6 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 height: 100%;
                 cursor: pointer;
               }
-              /* iOS/Safari: enforce padding so value never overlaps icon; same as Android */
               input.appointment-date-time-input {
                 padding-right: 2.75rem !important;
                 box-sizing: border-box;
@@ -815,6 +814,15 @@ export default function AppointmentModal({ appointment, selectedDate, onClose, o
                 input.appointment-date-time-input {
                   font-size: 14px;
                   -webkit-text-size-adjust: 100%;
+                }
+              }
+              /* iOS only: extra padding + slightly smaller font so Safari-drawn value never overlaps icon; no impact on Android/desktop */
+              html.ios input.appointment-date-time-input {
+                padding-right: 3.5rem !important;
+              }
+              @media (max-width: 640px) {
+                html.ios input.appointment-date-time-input {
+                  font-size: 13px;
                 }
               }
             `}} />

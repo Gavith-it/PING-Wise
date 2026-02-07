@@ -54,7 +54,6 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
           height: 100%;
           cursor: pointer;
         }
-        /* iOS/Safari: enforce padding so date value never overlaps/cuts; same as Android */
         input.filter-date-input {
           padding-right: 2.75rem !important;
           box-sizing: border-box;
@@ -63,6 +62,15 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
           input.filter-date-input {
             font-size: 12px;
             -webkit-text-size-adjust: 100%;
+          }
+        }
+        /* iOS only: extra padding + slightly smaller font so date value never overlaps icon; no impact on Android/desktop */
+        html.ios input.filter-date-input {
+          padding-right: 3.5rem !important;
+        }
+        @media (max-width: 640px) {
+          html.ios input.filter-date-input {
+            font-size: 11px;
           }
         }
       `}} />
